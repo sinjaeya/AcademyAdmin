@@ -17,7 +17,8 @@ import {
   ChevronRight,
   Shield,
   CreditCard,
-  GraduationCap
+  GraduationCap,
+  BookOpen
 } from 'lucide-react';
 
 const navigation = [
@@ -25,6 +26,7 @@ const navigation = [
   { name: '등/하원 조회', href: '/admin/checkinout', icon: Clock },
   { name: '입금조회', href: '/admin/payments', icon: CreditCard },
   { name: '학생 관리', href: '/admin/students', icon: GraduationCap },
+  { name: '학습리포트', href: '/admin/study-reports', icon: BookOpen },
   { name: '통계', href: '/admin/analytics', icon: BarChart3 },
   { name: '문서', href: '/admin/documents', icon: FileText },
   { 
