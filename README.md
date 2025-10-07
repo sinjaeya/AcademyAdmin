@@ -1,36 +1,143 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Next.js 어드민 사이트
 
-## Getting Started
+현대적이고 반응형인 Next.js 기반 어드민 패널입니다.
 
-First, run the development server:
+## 🚀 기술 스택
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Next.js 14** (App Router)
+- **TypeScript** - 타입 안정성
+- **Tailwind CSS** - 유틸리티 기반 스타일링
+- **shadcn/ui** - 고품질 UI 컴포넌트
+- **Zustand** - 상태 관리
+- **React Query** - 서버 상태 관리
+- **Prisma** - ORM
+- **NextAuth.js** - 인증 시스템
+
+## 📁 프로젝트 구조
+
+```
+src/
+├── app/                    # Next.js App Router
+│   ├── admin/             # 어드민 페이지들
+│   │   ├── users/         # 사용자 관리
+│   │   └── page.tsx       # 대시보드
+│   └── api/               # API 라우트
+├── components/            # React 컴포넌트
+│   ├── admin/            # 어드민 전용 컴포넌트
+│   ├── layout/           # 레이아웃 컴포넌트
+│   └── ui/               # shadcn/ui 컴포넌트
+├── lib/                  # 유틸리티 및 설정
+│   ├── auth/             # 인증 관련
+│   ├── db/               # 데이터베이스 설정
+│   └── validations/      # 폼 검증 스키마
+├── store/                # Zustand 스토어
+├── types/                # TypeScript 타입 정의
+└── hooks/                # 커스텀 훅
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ 설치 및 실행
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **의존성 설치**
+   ```bash
+   npm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Supabase 설정**
 
-## Learn More
+   **대화형 설정 (추천)**
+   ```bash
+   npm run setup
+   ```
+   - 터미널에서 대화형으로 Supabase 정보 입력
+   - 자동으로 .env.local 파일 생성
 
-To learn more about Next.js, take a look at the following resources:
+   **빠른 설정**
+   ```bash
+   npm run setup:quick
+   ```
+   - .env.local.example 파일 생성
+   - 수동으로 .env.local 파일 생성 및 수정
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. **개발 서버 실행**
+   ```bash
+   npm run dev
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4. **브라우저에서 확인**
+   ```
+   http://localhost:3000
+   ```
 
-## Deploy on Vercel
+## 📋 주요 기능
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### ✅ 구현 완료
+- [x] Next.js 14 프로젝트 설정
+- [x] TypeScript 설정
+- [x] Tailwind CSS + shadcn/ui 설정
+- [x] 반응형 어드민 레이아웃
+- [x] 사이드바 네비게이션
+- [x] 대시보드 페이지
+- [x] 사용자 관리 페이지
+- [x] 통계 카드 컴포넌트
+- [x] 사용자 테이블 컴포넌트
+- [x] 상태 관리 (Zustand)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 🚧 진행 예정
+- [ ] 인증 시스템 (NextAuth.js)
+- [ ] 데이터베이스 연동 (Prisma)
+- [ ] API 라우트 구현
+- [ ] 폼 검증 및 제출
+- [ ] 실시간 데이터 업데이트
+- [ ] 권한 기반 접근 제어
+- [ ] 다크 모드 지원
+- [ ] 국제화 (i18n)
+
+## 🎨 UI 컴포넌트
+
+shadcn/ui를 사용하여 다음 컴포넌트들이 포함되어 있습니다:
+- Button, Card, Input, Label
+- Table, Dropdown Menu
+- Avatar, Badge
+- Navigation Menu, Sidebar
+
+## 📱 반응형 디자인
+
+- 모바일: 햄버거 메뉴로 사이드바 토글
+- 태블릿: 적응형 그리드 레이아웃
+- 데스크톱: 고정 사이드바 + 메인 콘텐츠
+
+## 🔧 개발 도구
+
+- **ESLint** - 코드 품질 검사
+- **Prettier** - 코드 포맷팅
+- **TypeScript** - 정적 타입 검사
+
+## 📝 다음 단계
+
+1. **인증 시스템 구현**
+   - NextAuth.js 설정
+   - 로그인/로그아웃 페이지
+   - 세션 관리
+
+2. **데이터베이스 연동**
+   - Prisma 스키마 정의
+   - 데이터베이스 마이그레이션
+   - API 라우트 구현
+
+3. **고급 기능**
+   - 실시간 알림
+   - 데이터 필터링 및 검색
+   - 엑셀 내보내기
+   - 차트 및 그래프
+
+## 🤝 기여하기
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 라이선스
+
+이 프로젝트는 MIT 라이선스 하에 배포됩니다.
