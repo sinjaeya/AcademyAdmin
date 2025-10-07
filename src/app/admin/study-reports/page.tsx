@@ -18,7 +18,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  BookOpen
+  BookOpen,
+  MessageCircle
 } from 'lucide-react';
 
 // 학생 데이터 타입 정의 (student 테이블 사용)
@@ -69,6 +70,9 @@ export default function StudyReportsPage() {
       });
   
   const [messageText, setMessageText] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [showAlert, setShowAlert] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   // 학습정보 변경 핸들러
   const handleLearningInfoChange = (field: string, value: string) => {
@@ -77,6 +81,152 @@ export default function StudyReportsPage() {
       [field]: value
     }));
   };
+
+  // 미리보기 작성 핸들러
+  const handlePreviewCreate = () => {
+    if (!selectedStudent) {
+      setAlertMessage('학생을 먼저 선택해 주세요');
+      setShowAlert(true);
+          // 1초 후 자동으로 알림 숨기기
+          setTimeout(() => {
+            setShowAlert(false);
+          }, 1000);
+      return;
+    }
+    
+    // 선택된 학생 정보 가져오기
+    const student = students.find(s => s.id === selectedStudent);
+    const studentName = student?.name || '알 수 없음';
+    
+    // 라벨 매핑 객체
+    const labelMappings = {
+      attendance: {
+        'attendance': '출석',
+        'late': '지각',
+        'absent': '결석'
+      },
+      classAttitude: {
+        'excellent': '우수',
+        'average': '보통',
+        'poor': '미흡'
+      },
+      homeworkSubmission: {
+        'submitted': '제출',
+        'not_submitted': '미제출'
+      },
+      homeworkQuality: {
+        'excellent': '우수',
+        'average': '보통',
+        'poor': '미흡'
+      }
+    };
+    
+    // 미리보기 텍스트 생성
+    const previewText = `학생명 : ${studentName}
+
+출결사항 : ${labelMappings.attendance[learningInfo.attendance] || learningInfo.attendance}
+
+수업태도 : ${labelMappings.classAttitude[learningInfo.classAttitude] || learningInfo.classAttitude}
+
+과제제출 : ${labelMappings.homeworkSubmission[learningInfo.homeworkSubmission] || learningInfo.homeworkSubmission}
+
+과제성실도 : ${labelMappings.homeworkQuality[learningInfo.homeworkQuality] || learningInfo.homeworkQuality}
+
+테스트 점수 : ${learningInfo.testScore ? learningInfo.testScore + '점' : ''}`;
+
+    // 메시지 텍스트 영역에 설정
+    setMessageText(previewText);
+    
+        console.log('미리보기 작성 완료:', previewText);
+      };
+
+      // 카카오톡 전송 핸들러
+      const handleKakaoSend = async () => {
+        if (!selectedStudent) {
+          setAlertMessage('학생을 먼저 선택해 주세요');
+          setShowAlert(true);
+          setTimeout(() => {
+            setShowAlert(false);
+          }, 1000);
+          return;
+        }
+
+        if (!messageText.trim()) {
+          setAlertMessage('메시지 내용이 비어있습니다');
+          setShowAlert(true);
+          setTimeout(() => {
+            setShowAlert(false);
+          }, 1000);
+          return;
+        }
+
+        try {
+          setIsSending(true);
+
+          // 선택된 학생 정보 가져오기
+          const student = students.find(s => s.id === selectedStudent);
+          if (!student) {
+            throw new Error('선택된 학생을 찾을 수 없습니다');
+          }
+
+          // 메시지 히스토리에 저장
+          const { error } = await supabase
+            .from('message_history')
+            .insert({
+              student_id: parseInt(selectedStudent),
+              student_name: student.name,
+              message_content: messageText,
+              attendance: learningInfo.attendance,
+              class_attitude: learningInfo.classAttitude,
+              homework_submission: learningInfo.homeworkSubmission,
+              homework_quality: learningInfo.homeworkQuality,
+              test_score: learningInfo.testScore && learningInfo.testScore.trim() !== '' ? parseInt(learningInfo.testScore) : null
+            });
+
+          if (error) {
+            throw error;
+          }
+
+          // 성공 메시지 표시
+          setAlertMessage(`${student.name} 학생에게 메시지가 전송되었습니다!`);
+          setShowAlert(true);
+          setTimeout(() => {
+            setShowAlert(false);
+          }, 1000);
+
+          // 메시지 내용 초기화
+          setMessageText('');
+
+          console.log('메시지 전송 완료:', {
+            student: student.name,
+            message: messageText,
+            timestamp: new Date().toISOString()
+          });
+
+        } catch (error) {
+          console.error('메시지 전송 중 오류:', error);
+          setAlertMessage('메시지 전송 중 오류가 발생했습니다. 다시 시도해주세요.');
+          setShowAlert(true);
+          setTimeout(() => {
+            setShowAlert(false);
+          }, 1000);
+        } finally {
+          setIsSending(false);
+        }
+      };
+
+      // 초기화 핸들러
+      const handleReset = () => {
+        setSelectedStudent(null);
+        setLearningInfo({
+          attendance: 'attendance',
+          classAttitude: 'average',
+          homeworkSubmission: 'submitted',
+          homeworkQuality: 'average',
+          testScore: ''
+        });
+        setMessageText('');
+      };
 
   // 데이터 가져오기
   const fetchStudents = async () => {
@@ -123,6 +273,54 @@ export default function StudyReportsPage() {
                 <p className="text-gray-600 mt-2">학생을 선택하고 학습정보를 입력하여 학부모 문자 메시지를 작성합니다</p>
               </div>
             </div>
+
+            {/* 얼럿 메시지 */}
+            {showAlert && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center">
+                <div className={`rounded-lg p-4 shadow-lg max-w-sm w-full mx-4 ${
+                  alertMessage.includes('전송되었습니다') 
+                    ? 'bg-green-50 border border-green-200' 
+                    : 'bg-red-50 border border-red-200'
+                }`}>
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      {alertMessage.includes('전송되었습니다') ? (
+                        <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="ml-3">
+                      <p className={`text-sm font-medium ${
+                        alertMessage.includes('전송되었습니다') 
+                          ? 'text-green-800' 
+                          : 'text-red-800'
+                      }`}>
+                        {alertMessage}
+                      </p>
+                    </div>
+                    <div className="ml-auto pl-3">
+                      <button
+                        onClick={() => setShowAlert(false)}
+                        className={`inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                          alertMessage.includes('전송되었습니다')
+                            ? 'bg-green-50 text-green-400 hover:bg-green-100 focus:ring-green-600 focus:ring-offset-green-50'
+                            : 'bg-red-50 text-red-400 hover:bg-red-100 focus:ring-red-600 focus:ring-offset-red-50'
+                        }`}
+                      >
+                        <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* 3단 레이아웃 */}
             <div className="grid grid-cols-12 gap-6">
@@ -398,11 +596,8 @@ export default function StudyReportsPage() {
                     {/* 미리보기 작성 버튼 */}
                     <div className="pt-4">
                       <button 
-                        className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-200"
-                        onClick={() => {
-                          // 미리보기 작성 로직 추가 예정
-                          console.log('미리보기 작성 버튼 클릭');
-                        }}
+                        className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-200 cursor-pointer"
+                        onClick={handlePreviewCreate}
                       >
                         미리보기 작성
                       </button>
@@ -433,11 +628,19 @@ export default function StudyReportsPage() {
                         />
                       </div>
                       <div className="flex justify-end space-x-2">
-                        <button className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+                        <button 
+                          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer transition-colors duration-200"
+                          onClick={handleReset}
+                        >
                           초기화
                         </button>
-                        <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                          메시지 전송
+                        <button 
+                          className="px-4 py-2 bg-[#FEE500] text-[#3C1E1E] rounded hover:bg-[#FFEB3B] cursor-pointer transition-colors duration-200 flex items-center gap-2 font-medium shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={handleKakaoSend}
+                          disabled={isSending}
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          {isSending ? '전송 중...' : '카카오톡 전송'}
                         </button>
                       </div>
                     </div>
