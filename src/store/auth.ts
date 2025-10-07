@@ -17,7 +17,7 @@ interface AuthStore extends AuthState {
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       session: null,
       isLoading: false,
@@ -35,6 +35,7 @@ export const useAuthStore = create<AuthStore>()(
         user: session?.user || null,
         isAuthenticated: !!session 
       }),
+
 
       login: async (email: string, password: string) => {
         try {
@@ -97,7 +98,7 @@ export const useAuthStore = create<AuthStore>()(
           }
           
           set({ 
-            user: null, 
+            user: null,
             session: null, 
             isAuthenticated: false, 
             isLoading: false 
@@ -200,7 +201,7 @@ export const useAuthStore = create<AuthStore>()(
           
           if (!supabase) {
             set({ 
-              user: null, 
+              user: null,
               session: null, 
               isAuthenticated: false, 
               isLoading: false 
@@ -211,15 +212,15 @@ export const useAuthStore = create<AuthStore>()(
           const { data: { session } } = await supabase.auth.getSession();
           
           if (session) {
-            set({ 
+            set({
               user: session.user as User,
               session: session as Session,
               isAuthenticated: true,
-              isLoading: false 
+              isLoading: false
             });
           } else {
             set({ 
-              user: null, 
+              user: null,
               session: null, 
               isAuthenticated: false, 
               isLoading: false 
@@ -227,16 +228,16 @@ export const useAuthStore = create<AuthStore>()(
           }
 
           // 인증 상태 변화 감지
-          supabase.auth.onAuthStateChange((event, session) => {
+          supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'SIGNED_IN' && session) {
-              set({ 
+              set({
                 user: session.user as User,
                 session: session as Session,
-                isAuthenticated: true 
+                isAuthenticated: true
               });
             } else if (event === 'SIGNED_OUT') {
               set({ 
-                user: null, 
+                user: null,
                 session: null, 
                 isAuthenticated: false 
               });
@@ -244,7 +245,7 @@ export const useAuthStore = create<AuthStore>()(
           });
         } catch {
           set({ 
-            user: null, 
+            user: null,
             session: null, 
             isAuthenticated: false, 
             isLoading: false 
@@ -255,7 +256,7 @@ export const useAuthStore = create<AuthStore>()(
     {
       name: 'auth-storage',
       partialize: (state) => ({ 
-        user: state.user, 
+        user: state.user,
         isAuthenticated: state.isAuthenticated 
       }),
     }

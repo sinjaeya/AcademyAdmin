@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, Open_Sans, Roboto } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/components/auth/AuthProvider'
+import { ToastProvider } from '@/components/ui/toast'
 
 const inter = Inter({ subsets: ['latin'] })
 const openSans = Open_Sans({ subsets: ['latin'], variable: '--font-open-sans' })
@@ -24,9 +25,11 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={`${inter.className} ${openSans.variable} ${roboto.variable}`}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </ToastProvider>
       </body>
     </html>
   )

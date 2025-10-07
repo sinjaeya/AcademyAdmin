@@ -17,6 +17,7 @@ export interface User {
   };
 }
 
+
 // Supabase Session 타입
 export interface Session {
   access_token: string;

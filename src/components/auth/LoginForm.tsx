@@ -2,9 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,30 +10,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 
-const loginSchema = z.object({
-  email: z.string().email('유효한 이메일을 입력해주세요'),
-  password: z.string().min(6, '비밀번호는 최소 6자 이상이어야 합니다'),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
-
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const router = useRouter();
   const { login, isLoading } = useAuthStore();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-  });
-
-  const onSubmit = async (data: LoginFormData) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    console.log('handleSubmit 함수 호출됨!');
+    e.preventDefault();
+    console.log('폼 제출됨:', email, password);
+    
+    if (!email || !password) {
+      setError('이메일과 비밀번호를 입력해주세요.');
+      return;
+    }
+    
     setError(null);
-    const result = await login(data.email, data.password);
+    const result = await login(email, password);
+    
+    console.log('로그인 결과:', result);
     
     if (result.success) {
       router.push('/admin');
@@ -58,7 +53,7 @@ export function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -71,12 +66,9 @@ export function LoginForm() {
               id="email"
               type="email"
               placeholder="admin@example.com"
-              {...register('email')}
-              className={errors.email ? 'border-red-500' : ''}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
-            {errors.email && (
-              <p className="text-sm text-red-500">{errors.email.message}</p>
-            )}
           </div>
 
           <div className="space-y-2">
@@ -86,8 +78,9 @@ export function LoginForm() {
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="비밀번호를 입력하세요"
-                {...register('password')}
-                className={errors.password ? 'border-red-500 pr-10' : 'pr-10'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pr-10"
               />
               <Button
                 type="button"
@@ -103,9 +96,6 @@ export function LoginForm() {
                 )}
               </Button>
             </div>
-            {errors.password && (
-              <p className="text-sm text-red-500">{errors.password.message}</p>
-            )}
           </div>
 
           <Button

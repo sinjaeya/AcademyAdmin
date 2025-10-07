@@ -3,6 +3,16 @@
     "Framelink Figma MCP": {
       "command": "npx",
       "args": ["-y", "figma-developer-mcp", "--figma-api-key=YOUR-FIGMA-API-KEY", "--stdio"]
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "sbp_94509a4eb3cd48efd160a97e264810da9a4e189b"
+      ]
     }
   }
+
 }
