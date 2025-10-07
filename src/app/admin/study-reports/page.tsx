@@ -211,18 +211,45 @@ export default function StudyReportsPage() {
                     {/* 출결사항 */}
                     <div className="space-y-3">
                       <Label>출결사항</Label>
-                      <RadioGroup value={learningInfo.attendance} onValueChange={(value) => handleLearningInfoChange('attendance', value)} className="flex flex-row gap-6">
-                        <div className="flex items-center space-x-2 cursor-pointer">
-                          <RadioGroupItem value="attendance" id="attendance-attendance" />
-                          <Label htmlFor="attendance-attendance" className="cursor-pointer">출석</Label>
+                      <RadioGroup value={learningInfo.attendance} onValueChange={(value) => handleLearningInfoChange('attendance', value)} className="flex flex-row gap-2">
+                        <div className="flex-1">
+                          <RadioGroupItem value="attendance" id="attendance-attendance" className="sr-only" />
+                          <Label 
+                            htmlFor="attendance-attendance" 
+                            className={`flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-md border cursor-pointer transition-all duration-200 ${
+                              learningInfo.attendance === 'attendance' 
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                            }`}
+                          >
+                            출석
+                          </Label>
                         </div>
-                        <div className="flex items-center space-x-2 cursor-pointer">
-                          <RadioGroupItem value="late" id="attendance-late" />
-                          <Label htmlFor="attendance-late" className="cursor-pointer">지각</Label>
+                        <div className="flex-1">
+                          <RadioGroupItem value="late" id="attendance-late" className="sr-only" />
+                          <Label 
+                            htmlFor="attendance-late" 
+                            className={`flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-md border cursor-pointer transition-all duration-200 ${
+                              learningInfo.attendance === 'late' 
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                            }`}
+                          >
+                            지각
+                          </Label>
                         </div>
-                        <div className="flex items-center space-x-2 cursor-pointer">
-                          <RadioGroupItem value="absent" id="attendance-absent" />
-                          <Label htmlFor="attendance-absent" className="cursor-pointer">결석</Label>
+                        <div className="flex-1">
+                          <RadioGroupItem value="absent" id="attendance-absent" className="sr-only" />
+                          <Label 
+                            htmlFor="attendance-absent" 
+                            className={`flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-md border cursor-pointer transition-all duration-200 ${
+                              learningInfo.attendance === 'absent' 
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                            }`}
+                          >
+                            결석
+                          </Label>
                         </div>
                       </RadioGroup>
                     </div>
@@ -230,18 +257,45 @@ export default function StudyReportsPage() {
                     {/* 수업태도 */}
                     <div className="space-y-3">
                       <Label>수업태도</Label>
-                      <RadioGroup value={learningInfo.classAttitude} onValueChange={(value) => handleLearningInfoChange('classAttitude', value)} className="flex flex-row gap-6">
-                        <div className="flex items-center space-x-2 cursor-pointer">
-                          <RadioGroupItem value="excellent" id="classAttitude-excellent" />
-                          <Label htmlFor="classAttitude-excellent" className="cursor-pointer">우수</Label>
+                      <RadioGroup value={learningInfo.classAttitude} onValueChange={(value) => handleLearningInfoChange('classAttitude', value)} className="flex flex-row gap-2">
+                        <div className="flex-1">
+                          <RadioGroupItem value="excellent" id="classAttitude-excellent" className="sr-only" />
+                          <Label 
+                            htmlFor="classAttitude-excellent" 
+                            className={`flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-md border cursor-pointer transition-all duration-200 ${
+                              learningInfo.classAttitude === 'excellent' 
+                                ? 'bg-green-600 text-white border-green-600 shadow-md' 
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                            }`}
+                          >
+                            우수
+                          </Label>
                         </div>
-                        <div className="flex items-center space-x-2 cursor-pointer">
-                          <RadioGroupItem value="average" id="classAttitude-average" />
-                          <Label htmlFor="classAttitude-average" className="cursor-pointer">보통</Label>
+                        <div className="flex-1">
+                          <RadioGroupItem value="average" id="classAttitude-average" className="sr-only" />
+                          <Label 
+                            htmlFor="classAttitude-average" 
+                            className={`flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-md border cursor-pointer transition-all duration-200 ${
+                              learningInfo.classAttitude === 'average' 
+                                ? 'bg-green-600 text-white border-green-600 shadow-md' 
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                            }`}
+                          >
+                            보통
+                          </Label>
                         </div>
-                        <div className="flex items-center space-x-2 cursor-pointer">
-                          <RadioGroupItem value="poor" id="classAttitude-poor" />
-                          <Label htmlFor="classAttitude-poor" className="cursor-pointer">미흡</Label>
+                        <div className="flex-1">
+                          <RadioGroupItem value="poor" id="classAttitude-poor" className="sr-only" />
+                          <Label 
+                            htmlFor="classAttitude-poor" 
+                            className={`flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-md border cursor-pointer transition-all duration-200 ${
+                              learningInfo.classAttitude === 'poor' 
+                                ? 'bg-green-600 text-white border-green-600 shadow-md' 
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                            }`}
+                          >
+                            미흡
+                          </Label>
                         </div>
                       </RadioGroup>
                     </div>
@@ -249,14 +303,32 @@ export default function StudyReportsPage() {
                     {/* 과제제출 */}
                     <div className="space-y-3">
                       <Label>과제제출</Label>
-                      <RadioGroup value={learningInfo.homeworkSubmission} onValueChange={(value) => handleLearningInfoChange('homeworkSubmission', value)} className="flex flex-row gap-6">
-                        <div className="flex items-center space-x-2 cursor-pointer">
-                          <RadioGroupItem value="submitted" id="homeworkSubmission-submitted" />
-                          <Label htmlFor="homeworkSubmission-submitted" className="cursor-pointer">제출</Label>
+                      <RadioGroup value={learningInfo.homeworkSubmission} onValueChange={(value) => handleLearningInfoChange('homeworkSubmission', value)} className="flex flex-row gap-2">
+                        <div className="flex-1">
+                          <RadioGroupItem value="submitted" id="homeworkSubmission-submitted" className="sr-only" />
+                          <Label 
+                            htmlFor="homeworkSubmission-submitted" 
+                            className={`flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-md border cursor-pointer transition-all duration-200 ${
+                              learningInfo.homeworkSubmission === 'submitted' 
+                                ? 'bg-purple-600 text-white border-purple-600 shadow-md' 
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                            }`}
+                          >
+                            제출
+                          </Label>
                         </div>
-                        <div className="flex items-center space-x-2 cursor-pointer">
-                          <RadioGroupItem value="not_submitted" id="homeworkSubmission-not_submitted" />
-                          <Label htmlFor="homeworkSubmission-not_submitted" className="cursor-pointer">미제출</Label>
+                        <div className="flex-1">
+                          <RadioGroupItem value="not_submitted" id="homeworkSubmission-not_submitted" className="sr-only" />
+                          <Label 
+                            htmlFor="homeworkSubmission-not_submitted" 
+                            className={`flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-md border cursor-pointer transition-all duration-200 ${
+                              learningInfo.homeworkSubmission === 'not_submitted' 
+                                ? 'bg-purple-600 text-white border-purple-600 shadow-md' 
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                            }`}
+                          >
+                            미제출
+                          </Label>
                         </div>
                       </RadioGroup>
                     </div>
@@ -264,18 +336,45 @@ export default function StudyReportsPage() {
                     {/* 과제성실도 */}
                     <div className="space-y-3">
                       <Label>과제성실도</Label>
-                      <RadioGroup value={learningInfo.homeworkQuality} onValueChange={(value) => handleLearningInfoChange('homeworkQuality', value)} className="flex flex-row gap-6">
-                        <div className="flex items-center space-x-2 cursor-pointer">
-                          <RadioGroupItem value="excellent" id="homeworkQuality-excellent" />
-                          <Label htmlFor="homeworkQuality-excellent" className="cursor-pointer">우수</Label>
+                      <RadioGroup value={learningInfo.homeworkQuality} onValueChange={(value) => handleLearningInfoChange('homeworkQuality', value)} className="flex flex-row gap-2">
+                        <div className="flex-1">
+                          <RadioGroupItem value="excellent" id="homeworkQuality-excellent" className="sr-only" />
+                          <Label 
+                            htmlFor="homeworkQuality-excellent" 
+                            className={`flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-md border cursor-pointer transition-all duration-200 ${
+                              learningInfo.homeworkQuality === 'excellent' 
+                                ? 'bg-orange-600 text-white border-orange-600 shadow-md' 
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                            }`}
+                          >
+                            우수
+                          </Label>
                         </div>
-                        <div className="flex items-center space-x-2 cursor-pointer">
-                          <RadioGroupItem value="average" id="homeworkQuality-average" />
-                          <Label htmlFor="homeworkQuality-average" className="cursor-pointer">보통</Label>
+                        <div className="flex-1">
+                          <RadioGroupItem value="average" id="homeworkQuality-average" className="sr-only" />
+                          <Label 
+                            htmlFor="homeworkQuality-average" 
+                            className={`flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-md border cursor-pointer transition-all duration-200 ${
+                              learningInfo.homeworkQuality === 'average' 
+                                ? 'bg-orange-600 text-white border-orange-600 shadow-md' 
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                            }`}
+                          >
+                            보통
+                          </Label>
                         </div>
-                        <div className="flex items-center space-x-2 cursor-pointer">
-                          <RadioGroupItem value="poor" id="homeworkQuality-poor" />
-                          <Label htmlFor="homeworkQuality-poor" className="cursor-pointer">미흡</Label>
+                        <div className="flex-1">
+                          <RadioGroupItem value="poor" id="homeworkQuality-poor" className="sr-only" />
+                          <Label 
+                            htmlFor="homeworkQuality-poor" 
+                            className={`flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-md border cursor-pointer transition-all duration-200 ${
+                              learningInfo.homeworkQuality === 'poor' 
+                                ? 'bg-orange-600 text-white border-orange-600 shadow-md' 
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                            }`}
+                          >
+                            미흡
+                          </Label>
                         </div>
                       </RadioGroup>
                     </div>
