@@ -8,10 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { LoginFormData } from '@/types';
 
 export default function Home() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState<LoginFormData>({
+    email: '',
+    password: ''
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,8 +39,8 @@ export default function Home() {
       const supabase = createClient(supabaseUrl, supabaseKey);
       
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: formData.email,
+        password: formData.password,
       });
 
       if (error) {
@@ -90,8 +93,8 @@ export default function Home() {
                   id="email"
                   type="email"
                   placeholder="guest@gmail.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                   required
                 />
               </div>
@@ -103,8 +106,8 @@ export default function Home() {
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="비밀번호를 입력하세요"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                     className="pr-10"
                     required
                   />
@@ -136,6 +139,68 @@ export default function Home() {
                   </>
                 ) : (
                   '로그인'
+                )}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full mt-2"
+                onClick={async () => {
+                  // 폼 데이터 설정
+                  setFormData({
+                    email: 'admin@example.com',
+                    password: 'password1234'
+                  });
+                  
+                  // 잠시 대기 후 자동 로그인 실행
+                  setTimeout(async () => {
+                    setError(null);
+                    setIsLoading(true);
+
+                    try {
+                      // Supabase 인증 사용
+                      const { createClient } = await import('@supabase/supabase-js');
+                      
+                      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+                      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+                      
+                      if (!supabaseUrl || !supabaseKey) {
+                        throw new Error('Supabase 설정이 필요합니다. npm run setup을 실행해주세요.');
+                      }
+                      
+                      const supabase = createClient(supabaseUrl, supabaseKey);
+                      
+                      const { data, error } = await supabase.auth.signInWithPassword({
+                        email: 'admin@example.com',
+                        password: 'password1234',
+                      });
+
+                      if (error) {
+                        setError(error.message);
+                        setIsLoading(false);
+                        return;
+                      }
+
+                      if (data.user) {
+                        // 로그인 성공 - 어드민 페이지로 이동
+                        router.push('/admin');
+                      }
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : '개발자 로그인 중 오류가 발생했습니다.');
+                      setIsLoading(false);
+                    }
+                  }, 100); // 100ms 후 실행
+                }}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    개발자 로그인 중...
+                  </>
+                ) : (
+                  '개발자 로그인'
                 )}
               </Button>
             </form>
