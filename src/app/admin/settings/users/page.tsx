@@ -17,6 +17,13 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -32,13 +39,18 @@ import {
   X
 } from 'lucide-react';
 
-// 사용자 데이터 타입 정의 (user_role 테이블의 모든 컬럼)
+// 사용자 데이터 타입 정의 (user_role + auth.users 조인)
 interface User {
   id: string;
   user_id: string;
-  role_id: string;
+  name: string;
+  role: string;
+  academy_id?: string;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
+  // auth.users에서 가져온 이메일 정보
+  email?: string;
   // 추가 컬럼들이 있을 수 있으므로 모든 컬럼을 포함
   [key: string]: any;
 }
@@ -46,7 +58,8 @@ interface User {
 // 새 사용자 추가 폼 데이터 타입 (user_role 테이블)
 interface NewUserForm {
   user_id: string;
-  role_id: string;
+  name: string;
+  role: string;
   // 추가 필드들이 있을 수 있음
   [key: string]: any;
 }
@@ -72,9 +85,12 @@ export default function SettingsUsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newUser, setNewUser] = useState<NewUserForm>({
     user_id: '',
-    role_id: ''
+    name: '',
+    role: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -88,15 +104,14 @@ export default function SettingsUsersPage() {
         throw new Error('Supabase client is not available');
       }
 
-      const { data, error: fetchError } = await supabase
-        .from('user_role')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // RPC 함수를 사용하여 사용자와 이메일 정보를 함께 가져오기
+      const { data, error: fetchError } = await supabase.rpc('get_users_with_email');
 
       if (fetchError) {
         throw fetchError;
       }
 
+      // RPC 함수에서 반환된 데이터를 그대로 사용
       setUsers(data || []);
     } catch (err) {
       console.error('Error fetching users:', err);
@@ -159,7 +174,8 @@ export default function SettingsUsersPage() {
         setUsers(prev => [data[0], ...prev]);
         setNewUser({
           user_id: '',
-          role_id: ''
+          name: '',
+          role: ''
         });
         setIsAddUserOpen(false);
       }
@@ -177,6 +193,60 @@ export default function SettingsUsersPage() {
       ...prev,
       [field]: value
     }));
+  };
+
+  // 수정 버튼 클릭 핸들러
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setIsEditUserOpen(true);
+  };
+
+  // 사용자 수정 함수
+  const handleUpdateUser = async () => {
+    if (!editingUser) return;
+
+    try {
+      setIsSubmitting(true);
+      
+      if (!supabase) {
+        throw new Error('Supabase client is not available');
+      }
+
+      const { error } = await supabase
+        .from('user_role')
+        .update({
+          name: editingUser.name,
+          role: editingUser.role
+        })
+        .eq('id', editingUser.id);
+
+      if (error) {
+        throw error;
+      }
+
+      // 성공적으로 수정되면 목록 업데이트
+      setUsers(prev => prev.map(user => 
+        user.id === editingUser.id ? editingUser : user
+      ));
+      
+      setIsEditUserOpen(false);
+      setEditingUser(null);
+    } catch (err) {
+      console.error('Error updating user:', err);
+      alert('사용자 수정 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 수정 중인 사용자 정보 변경 핸들러
+  const handleEditInputChange = (field: keyof User, value: string) => {
+    if (!editingUser) return;
+    
+    setEditingUser(prev => prev ? {
+      ...prev,
+      [field]: value
+    } : null);
   };
 
   return (
@@ -228,8 +298,9 @@ export default function SettingsUsersPage() {
                   <TableHeader>
                             <TableRow>
                               <TableHead>ID</TableHead>
-                              <TableHead>User ID</TableHead>
-                              <TableHead>Role ID</TableHead>
+                              <TableHead>이메일</TableHead>
+                              <TableHead>이름</TableHead>
+                              <TableHead>역할</TableHead>
                               <TableHead>Created At</TableHead>
                               <TableHead>Updated At</TableHead>
                               <TableHead>액션</TableHead>
@@ -243,12 +314,17 @@ export default function SettingsUsersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm text-gray-600">
-                            {user.user_id || 'N/A'}
+                            {user.email || 'N/A'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm font-medium">
+                            {user.name || 'N/A'}
                           </div>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {user.role_id || 'N/A'}
+                            {user.role || 'N/A'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
@@ -259,7 +335,11 @@ export default function SettingsUsersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleEditUser(user)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button 
@@ -305,13 +385,31 @@ export default function SettingsUsersPage() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="role_id">Role ID *</Label>
+                <Label htmlFor="name">이름 *</Label>
                 <Input
-                  id="role_id"
-                  value={newUser.role_id}
-                  onChange={(e) => handleInputChange('role_id', e.target.value)}
-                  placeholder="역할 ID를 입력하세요"
+                  id="name"
+                  value={newUser.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  placeholder="사용자 이름을 입력하세요"
                 />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="role">역할 *</Label>
+                <Select
+                  value={newUser.role}
+                  onValueChange={(value) => handleInputChange('role', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="역할을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">관리자</SelectItem>
+                    <SelectItem value="owner">원장</SelectItem>
+                    <SelectItem value="teacher">선생님</SelectItem>
+                    <SelectItem value="tutor">튜터</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             
@@ -325,9 +423,81 @@ export default function SettingsUsersPage() {
               </Button>
                       <Button
                         onClick={handleAddUser}
-                        disabled={isSubmitting || !newUser.user_id || !newUser.role_id}
+                        disabled={isSubmitting || !newUser.user_id || !newUser.name || !newUser.role}
                       >
                 {isSubmitting ? '추가 중...' : '추가'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 사용자 수정 다이얼로그 */}
+        <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>사용자 수정</DialogTitle>
+              <DialogDescription>
+                사용자 정보를 수정하세요.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">이메일</Label>
+                <Input
+                  id="edit-email"
+                  value={editingUser?.email || ''}
+                  disabled
+                  className="bg-gray-50"
+                />
+                <p className="text-xs text-gray-500">이메일은 수정할 수 없습니다.</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">이름 *</Label>
+                <Input
+                  id="edit-name"
+                  value={editingUser?.name || ''}
+                  onChange={(e) => handleEditInputChange('name', e.target.value)}
+                  placeholder="사용자 이름을 입력하세요"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-role">역할 *</Label>
+                <Select
+                  value={editingUser?.role || ''}
+                  onValueChange={(value) => handleEditInputChange('role', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="역할을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">관리자</SelectItem>
+                    <SelectItem value="owner">원장</SelectItem>
+                    <SelectItem value="teacher">선생님</SelectItem>
+                    <SelectItem value="tutor">튜터</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsEditUserOpen(false);
+                  setEditingUser(null);
+                }}
+                disabled={isSubmitting}
+              >
+                취소
+              </Button>
+              <Button
+                onClick={handleUpdateUser}
+                disabled={isSubmitting || !editingUser?.name || !editingUser?.role}
+              >
+                {isSubmitting ? '수정 중...' : '수정'}
               </Button>
             </DialogFooter>
           </DialogContent>

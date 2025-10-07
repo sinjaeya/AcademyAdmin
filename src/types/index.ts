@@ -114,7 +114,6 @@ export interface Academy {
 export interface UserRole {
   id: string;
   user_id: string;
-  role_id: string;
   name: string;
   role: 'admin' | 'owner' | 'teacher' | 'tutor';
   academy_id?: string;

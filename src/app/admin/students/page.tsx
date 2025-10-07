@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GRADE_OPTIONS, SCHOOL_OPTIONS, ACADEMY_OPTIONS, STATUS_OPTIONS } from '@/config/constants';
+import { GRADE_OPTIONS, SCHOOL_OPTIONS, STATUS_OPTIONS } from '@/config/constants';
 import { 
   Table, 
   TableBody, 
@@ -68,6 +68,34 @@ interface NewStudentForm {
   status: string;
 }
 
+// 학생 수정 폼 데이터 타입
+interface EditStudentForm {
+  id: string;
+  name: string;
+  phone_number: string;
+  phone_middle_4: string;
+  school: string;
+  grade: string;
+  parent_phone: string;
+  currentAcademy: string;
+  status: string;
+}
+
+// 학원 데이터 타입
+interface Academy {
+  id: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  description?: string;
+  logo_url?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // 데이터 포맷팅 함수
 const formatDateTime = (dateString: string) => {
   if (!dateString) return 'N/A';
@@ -105,9 +133,11 @@ const extractMiddle4Digits = (phoneNumber: string): string => {
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
+  const [academies, setAcademies] = useState<Academy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
+  const [isEditStudentOpen, setIsEditStudentOpen] = useState(false);
   const [newStudent, setNewStudent] = useState<NewStudentForm>({
     name: '',
     phone_number: '',
@@ -118,7 +148,40 @@ export default function StudentsPage() {
     currentAcademy: '',
     status: ''
   });
+  const [editStudent, setEditStudent] = useState<EditStudentForm>({
+    id: '',
+    name: '',
+    phone_number: '',
+    phone_middle_4: '',
+    school: '',
+    grade: '',
+    parent_phone: '',
+    currentAcademy: '',
+    status: ''
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 학원 데이터 가져오기
+  const fetchAcademies = async () => {
+    try {
+      if (!supabase) {
+        throw new Error('Supabase client is not available');
+      }
+
+      const { data: academies, error } = await supabase
+        .from('academy')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      setAcademies(academies || []);
+    } catch (err) {
+      console.error('Error fetching academies:', err);
+    }
+  };
 
   // 데이터 가져오기
   const fetchStudents = async () => {
@@ -150,6 +213,7 @@ export default function StudentsPage() {
 
   useEffect(() => {
     fetchStudents();
+    fetchAcademies();
   }, []);
 
   const handleDeleteStudent = async (studentId: string) => {
@@ -218,7 +282,7 @@ export default function StudentsPage() {
     }
   };
 
-  // 폼 입력 핸들러
+  // 새 학생 폼 입력 핸들러
   const handleInputChange = (field: keyof NewStudentForm, value: string) => {
     setNewStudent(prev => {
       const updatedStudent = {
@@ -234,6 +298,87 @@ export default function StudentsPage() {
       
       return updatedStudent;
     });
+  };
+
+  // 수정 폼 입력 핸들러
+  const handleEditInputChange = (field: keyof EditStudentForm, value: string) => {
+    setEditStudent(prev => {
+      const updatedStudent = {
+        ...prev,
+        [field]: value
+      };
+      
+      // 핸드폰 번호가 변경되면 중간 4자리 자동 추출
+      if (field === 'phone_number') {
+        const middle4 = extractMiddle4Digits(value);
+        updatedStudent.phone_middle_4 = middle4;
+      }
+      
+      return updatedStudent;
+    });
+  };
+
+  // 학생 수정 모달 열기
+  const handleEditStudent = (student: Student) => {
+    setEditStudent({
+      id: student.id,
+      name: student.name,
+      phone_number: student.phone_number,
+      phone_middle_4: student.phone_middle_4,
+      school: student.school,
+      grade: student.grade,
+      parent_phone: student.parent_phone,
+      currentAcademy: student.currentAcademy,
+      status: student.status
+    });
+    setIsEditStudentOpen(true);
+  };
+
+  // 학생 수정 함수
+  const handleUpdateStudent = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      const response = await fetch(`/api/admin/students/${editStudent.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: editStudent.name,
+          phone_number: editStudent.phone_number,
+          phone_middle_4: editStudent.phone_middle_4,
+          school: editStudent.school,
+          grade: editStudent.grade,
+          parent_phone: editStudent.parent_phone,
+          currentAcademy: editStudent.currentAcademy,
+          status: editStudent.status
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || '학생 정보 업데이트 중 오류가 발생했습니다.');
+      }
+
+      // 성공적으로 업데이트되면 목록에서 해당 학생 정보 업데이트
+      setStudents(prev => 
+        prev.map(student => 
+          student.id === editStudent.id 
+            ? { ...student, ...result.data }
+            : student
+        )
+      );
+      
+      setIsEditStudentOpen(false);
+      alert('학생 정보가 성공적으로 업데이트되었습니다.');
+    } catch (err) {
+      console.error('Error updating student:', err);
+      alert(err instanceof Error ? err.message : '학생 정보 업데이트 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -351,7 +496,11 @@ export default function StudentsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleEditStudent(student)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button 
@@ -479,11 +628,17 @@ export default function StudentsPage() {
                     <SelectValue placeholder="학원을 선택하세요" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ACADEMY_OPTIONS.map((academy) => (
-                      <SelectItem key={academy} value={academy}>
-                        {academy}
+                    {academies.length > 0 ? (
+                      academies.map((academy) => (
+                        <SelectItem key={academy.id} value={academy.name}>
+                          {academy.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="loading" disabled>
+                        학원 목록을 불러오는 중...
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -521,6 +676,166 @@ export default function StudentsPage() {
                 disabled={isSubmitting || !newStudent.name || !newStudent.phone_number || !newStudent.phone_middle_4 || newStudent.phone_middle_4.length !== 4 || !newStudent.school || !newStudent.grade || !newStudent.parent_phone || !newStudent.currentAcademy || !newStudent.status}
               >
                 {isSubmitting ? '추가 중...' : '추가'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 학생 수정 다이얼로그 */}
+        <Dialog open={isEditStudentOpen} onOpenChange={setIsEditStudentOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit className="h-5 w-5" />
+                학생 정보 수정
+              </DialogTitle>
+              <DialogDescription>
+                학생 정보를 수정해주세요.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">학생명 *</Label>
+                <Input
+                  id="edit-name"
+                  value={editStudent.name}
+                  onChange={(e) => handleEditInputChange('name', e.target.value)}
+                  placeholder="학생 이름을 입력하세요"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone_number">핸드폰번호 *</Label>
+                <Input
+                  id="edit-phone_number"
+                  value={editStudent.phone_number}
+                  onChange={(e) => handleEditInputChange('phone_number', e.target.value)}
+                  placeholder="010-1234-5678"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone_middle_4">중간4자리 *</Label>
+                <Input
+                  id="edit-phone_middle_4"
+                  value={editStudent.phone_middle_4}
+                  onChange={(e) => handleEditInputChange('phone_middle_4', e.target.value)}
+                  placeholder="1234"
+                  maxLength={4}
+                  className="font-mono"
+                />
+                <p className="text-xs text-gray-500">
+                  핸드폰번호 입력 시 자동으로 추출됩니다
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-school">학교 *</Label>
+                <Select
+                  value={editStudent.school}
+                  onValueChange={(value) => handleEditInputChange('school', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="학교를 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SCHOOL_OPTIONS.map((school) => (
+                      <SelectItem key={school} value={school}>
+                        {school}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-grade">학년 *</Label>
+                <Select
+                  value={editStudent.grade}
+                  onValueChange={(value) => handleEditInputChange('grade', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="학년을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GRADE_OPTIONS.map((grade) => (
+                      <SelectItem key={grade} value={grade}>
+                        {grade}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-parent_phone">부모연락처 *</Label>
+                <Input
+                  id="edit-parent_phone"
+                  value={editStudent.parent_phone}
+                  onChange={(e) => handleEditInputChange('parent_phone', e.target.value)}
+                  placeholder="010-1234-5678"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-currentAcademy">학원 *</Label>
+                <Select
+                  value={editStudent.currentAcademy}
+                  onValueChange={(value) => handleEditInputChange('currentAcademy', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="학원을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {academies.length > 0 ? (
+                      academies.map((academy) => (
+                        <SelectItem key={academy.id} value={academy.name}>
+                          {academy.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="loading" disabled>
+                        학원 목록을 불러오는 중...
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-status">상태 *</Label>
+                <Select
+                  value={editStudent.status}
+                  onValueChange={(value) => handleEditInputChange('status', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="상태를 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsEditStudentOpen(false)}
+                disabled={isSubmitting}
+              >
+                취소
+              </Button>
+              <Button
+                onClick={handleUpdateStudent}
+                disabled={isSubmitting || !editStudent.name || !editStudent.phone_number || !editStudent.phone_middle_4 || editStudent.phone_middle_4.length !== 4 || !editStudent.school || !editStudent.grade || !editStudent.parent_phone || !editStudent.currentAcademy || !editStudent.status}
+              >
+                {isSubmitting ? '수정 중...' : '수정'}
               </Button>
             </DialogFooter>
           </DialogContent>

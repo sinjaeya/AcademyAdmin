@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@/lib/supabase/server';
 
 // GET: 학원 목록 조회
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const supabase = createServerClient();
     
     // 모든 학원 조회 (관리자용)
     const { data: academies, error } = await supabase
@@ -60,11 +57,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    console.log('Supabase Anon 클라이언트 사용');
+    const supabase = createServerClient();
+    console.log('Supabase 서버 클라이언트 사용');
 
     // 새 학원 추가
     const insertData = {
