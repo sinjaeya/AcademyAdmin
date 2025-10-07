@@ -93,3 +93,46 @@ export interface SignUpFormData {
   password: string;
   name?: string;
 }
+
+// 학원 정보 타입
+export interface Academy {
+  id: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  description?: string;
+  logo_url?: string;
+  settings?: Record<string, any>;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// 사용자 역할 정보 타입
+export interface UserRole {
+  id: string;
+  user_id: string;
+  role_id: string;
+  name: string;
+  role: 'admin' | 'owner' | 'teacher' | 'tutor';
+  academy_id?: string;
+  academy?: Academy;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// 확장된 사용자 타입 (학원 정보 포함)
+export interface ExtendedUser extends User {
+  user_role?: UserRole;
+  academy?: Academy;
+}
+
+// 서버 사이드 사용자 컨텍스트 타입
+export interface UserContext {
+  user: ExtendedUser;
+  academy: Academy | null;
+  isAdmin: boolean;
+}

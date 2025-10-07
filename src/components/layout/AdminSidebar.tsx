@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { 
@@ -18,7 +18,8 @@ import {
   Shield,
   CreditCard,
   GraduationCap,
-  BookOpen
+  BookOpen,
+  Building2
 } from 'lucide-react';
 
 const navigation = [
@@ -34,6 +35,7 @@ const navigation = [
     href: '/admin/settings', 
     icon: Settings,
     children: [
+      { name: '학원관리', href: '/admin/settings/academy', icon: Building2 },
       { name: '사이트 사용자 관리', href: '/admin/settings/users', icon: Users },
       { name: '사용자 권한 관리', href: '/admin/settings/permissions', icon: Shield }
     ]
@@ -55,12 +57,49 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
   };
 
   const toggleExpanded = (itemName: string) => {
-    setExpandedItems(prev => 
-      prev.includes(itemName) 
-        ? prev.filter(name => name !== itemName)
-        : [...prev, itemName]
-    );
+    setExpandedItems(prev => {
+      // 현재 클릭한 아이템이 이미 확장되어 있는 경우
+      if (prev.includes(itemName)) {
+        // 하위 메뉴가 열린 상태에서는 접히지 않음 (아무것도 하지 않음)
+        return prev;
+      } else {
+        // 새로운 아이템을 확장하고 다른 확장된 아이템들을 확인하여 닫기
+        // 단, 현재 활성화된 하위 메뉴가 있는 상위 메뉴는 닫지 않음
+        const newExpandedItems = [itemName];
+        
+        // 기존에 확장된 아이템들 중에서 현재 활성화된 하위 메뉴가 있는 것들은 유지
+        prev.forEach(expandedItemName => {
+          const expandedItem = navigation.find(item => item.name === expandedItemName);
+          if (expandedItem && hasActiveChild(expandedItem)) {
+            newExpandedItems.push(expandedItemName);
+          }
+        });
+        
+        return newExpandedItems;
+      }
+    });
   };
+
+  // 현재 활성화된 상위 메뉴가 있는지 확인하는 함수
+  const hasActiveChild = (item: { children?: { href: string }[] }) => {
+    if (!item.children) return false;
+    return item.children.some((child) => child.href === pathname);
+  };
+
+  // 페이지 로드 시 현재 활성화된 하위 메뉴가 있는 상위 메뉴를 자동으로 열기
+  useEffect(() => {
+    const activeParentItems = navigation
+      .filter(item => hasActiveChild(item))
+      .map(item => item.name);
+    
+    if (activeParentItems.length > 0) {
+      setExpandedItems(prev => {
+        // 기존에 열린 메뉴와 현재 활성화된 부모 메뉴들을 합치기
+        const newExpandedItems = [...new Set([...prev, ...activeParentItems])];
+        return newExpandedItems;
+      });
+    }
+  }, [pathname]);
 
   const isItemActive = (item: { href: string; children?: { href: string }[] }) => {
     if (item.href === pathname) return true;
