@@ -399,13 +399,7 @@ export default function StudyReportsPage() {
               {/* 중앙: 학습정보 입력 */}
               <div className="col-span-4">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>학습정보 입력</CardTitle>
-                    <CardDescription>
-                      {selectedStudent ? `${students.find(s => s.id === selectedStudent)?.name} 학생의 학습정보를 입력하세요` : '학생을 선택해주세요'}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
+                  <CardContent className="space-y-6 pt-0">
                     {/* 출결사항 */}
                     <div className="space-y-3">
                       <Label>출결사항</Label>
@@ -579,8 +573,8 @@ export default function StudyReportsPage() {
 
                     {/* 테스트점수 */}
                     <div className="space-y-2">
-                      <Label htmlFor="testScore">테스트점수</Label>
                       <div className="flex items-center space-x-2">
+                        <Label htmlFor="testScore">테스트 점수 :</Label>
                         <Input
                           id="testScore"
                           type="number"
@@ -594,7 +588,7 @@ export default function StudyReportsPage() {
                     </div>
 
                     {/* 미리보기 작성 버튼 */}
-                    <div className="pt-4">
+                    <div className="pt-2">
                       <button 
                         className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-200 cursor-pointer"
                         onClick={handlePreviewCreate}

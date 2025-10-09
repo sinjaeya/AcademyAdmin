@@ -383,7 +383,7 @@ export default function StudentsPage() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="h-full flex flex-col space-y-6">
         {/* 헤더 */}
         <div className="flex items-center justify-between">
           <div>
@@ -400,8 +400,8 @@ export default function StudentsPage() {
         </div>
 
         {/* 학생 목록 */}
-        <Card>
-          <CardHeader>
+        <Card className="flex-1 flex flex-col min-h-0">
+          <CardHeader className="flex-shrink-0">
             <CardTitle className="flex items-center gap-2">
               <GraduationCap className="h-5 w-5" />
               학생 목록
@@ -410,7 +410,7 @@ export default function StudentsPage() {
               총 {students.length}명의 학생이 있습니다
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-y-auto min-h-0 p-0" style={{ scrollbarWidth: 'thin' }}>
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-center">
@@ -424,7 +424,7 @@ export default function StudentsPage() {
                 <Button onClick={fetchStudents}>다시 시도</Button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto p-6">
                 <Table>
                   <TableHeader>
                     <TableRow>

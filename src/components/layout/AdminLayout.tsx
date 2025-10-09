@@ -13,7 +13,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     <ProtectedRoute>
       <div className="flex h-screen bg-gray-100">
         {/* 사이드바 - 항상 표시 */}
-        <div className="w-64 flex-shrink-0">
+        <div className="w-56 flex-shrink-0">
           <AdminSidebar />
         </div>
 
