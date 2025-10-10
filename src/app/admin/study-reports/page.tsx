@@ -82,6 +82,35 @@ export default function StudyReportsPage() {
     }));
   };
 
+  // 웹훅 로그 저장 헬퍼 함수
+  const saveWebhookLog = async (logData: {
+    studentId: number;
+    studentName: string;
+    webhookUrl: string;
+    requestPayload: any;
+    responseStatus?: number;
+    responseBody?: string;
+    errorMessage?: string;
+  }) => {
+    try {
+      if (!supabase) {
+        console.error('Supabase client is not available');
+        return;
+      }
+      await supabase.from('webhook_log').insert({
+        student_id: logData.studentId,
+        student_name: logData.studentName,
+        webhook_url: logData.webhookUrl,
+        request_payload: logData.requestPayload,
+        response_status: logData.responseStatus,
+        response_body: logData.responseBody,
+        error_message: logData.errorMessage
+      });
+    } catch (error) {
+      console.error('웹훅 로그 저장 실패:', error);
+    }
+  };
+
   // 미리보기 작성 핸들러
   const handlePreviewCreate = () => {
     if (!selectedStudent) {
@@ -99,7 +128,12 @@ export default function StudyReportsPage() {
     const studentName = student?.name || '알 수 없음';
     
     // 라벨 매핑 객체
-    const labelMappings = {
+    const labelMappings: {
+      attendance: { [key: string]: string };
+      classAttitude: { [key: string]: string };
+      homeworkSubmission: { [key: string]: string };
+      homeworkQuality: { [key: string]: string };
+    } = {
       attendance: {
         'attendance': '출석',
         'late': '지각',
@@ -133,7 +167,6 @@ export default function StudyReportsPage() {
 과제성실도 : ${labelMappings.homeworkQuality[learningInfo.homeworkQuality] || learningInfo.homeworkQuality}
 
 테스트 점수 : ${learningInfo.testScore ? learningInfo.testScore + '점' : ''}`;
-
     // 메시지 텍스트 영역에 설정
     setMessageText(previewText);
     
@@ -169,7 +202,104 @@ export default function StudyReportsPage() {
             throw new Error('선택된 학생을 찾을 수 없습니다');
           }
 
-          // 메시지 히스토리에 저장
+          // === Make.com 웹훅 전송 ===
+          const webhookUrl = 'https://hook.us2.make.com/q46vjxgc89g8ne27f6kpht08pzb6n6a5';
+          
+          const webhookPayload = {
+            academy: student.currentAcademy,
+            student_name: student.name,
+            parent_phone: student.parent_phone,
+            message: messageText
+          };
+
+          // 타임아웃을 포함한 fetch 요청 (10초)
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+          try {
+            const webhookResponse = await fetch(webhookUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(webhookPayload),
+              signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            const responseBody = await webhookResponse.text();
+
+            if (!webhookResponse.ok) {
+              // 웹훅 실패 로그 저장
+              await saveWebhookLog({
+                studentId: parseInt(selectedStudent),
+                studentName: student.name,
+                webhookUrl,
+                requestPayload: webhookPayload,
+                responseStatus: webhookResponse.status,
+                responseBody,
+                errorMessage: `HTTP ${webhookResponse.status}: ${webhookResponse.statusText}`
+              });
+
+              throw new Error(`웹훅 요청 실패: ${webhookResponse.status} ${webhookResponse.statusText}`);
+            }
+
+            // 웹훅 성공 로그 저장
+            await saveWebhookLog({
+              studentId: parseInt(selectedStudent),
+              studentName: student.name,
+              webhookUrl,
+              requestPayload: webhookPayload,
+              responseStatus: webhookResponse.status,
+              responseBody
+            });
+
+            console.log('웹훅 전송 성공:', webhookPayload);
+
+          } catch (webhookError: any) {
+            clearTimeout(timeoutId);
+            
+            // 에러 타입별 메시지
+            let errorMessage = '카카오톡 전송 중 오류가 발생했습니다.';
+            
+            if (webhookError.name === 'AbortError') {
+              errorMessage = '카카오톡 전송 시간이 초과되었습니다. 다시 시도해주세요.';
+            } else if (webhookError.message.includes('Failed to fetch') || webhookError.message.includes('fetch')) {
+              errorMessage = '네트워크 연결을 확인해주세요.';
+            } else if (webhookError.message.includes('웹훅 요청 실패')) {
+              errorMessage = webhookError.message.replace('웹훅 요청 실패:', '카카오톡 전송 실패:');
+            }
+            
+            // 웹훅 실패 로그 저장 (네트워크 오류나 타임아웃의 경우)
+            if (webhookError.name === 'AbortError' || webhookError.message.includes('fetch')) {
+              await saveWebhookLog({
+                studentId: parseInt(selectedStudent),
+                studentName: student.name,
+                webhookUrl,
+                requestPayload: webhookPayload,
+                errorMessage: webhookError.message
+              });
+            }
+            
+            console.error('웹훅 전송 오류:', webhookError);
+            
+            setAlertMessage(errorMessage);
+            setShowAlert(true);
+            setTimeout(() => {
+              setShowAlert(false);
+            }, 1000);
+            
+            // 웹훅 실패 시 DB 저장 안 하고 중단
+            return;
+          }
+          // === 웹훅 전송 끝 ===
+
+          // 메시지 히스토리에 저장 (웹훅 성공 후에만 실행)
+          if (!supabase) {
+            throw new Error('Supabase client is not available');
+          }
+
           const { error } = await supabase
             .from('message_history')
             .insert({
