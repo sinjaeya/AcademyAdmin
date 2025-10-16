@@ -745,7 +745,8 @@ export default function StudyReportsPage() {
                         <Label htmlFor="message">메시지 내용</Label>
                         <Textarea
                           id="message"
-                          placeholder="학생을 선택하고 학습정보를 입력하면 자동으로 메시지가 생성됩니다."
+                          placeholder="1) 학생 목록에서 학생 선택
+                          2) 학습 정보 선택"
                           value={messageText}
                           onChange={(e) => setMessageText(e.target.value)}
                           className="min-h-[300px] resize-none"

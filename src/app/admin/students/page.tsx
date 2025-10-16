@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
-import { supabase } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +49,7 @@ interface Student {
   school: string;
   grade: string;
   parent_phone: string;
+  email?: string;
   currentAcademy: string;
   status: string;
   created_at: string;
@@ -64,6 +64,7 @@ interface NewStudentForm {
   school: string;
   grade: string;
   parent_phone: string;
+  email: string;
   currentAcademy: string;
   status: string;
 }
@@ -77,6 +78,7 @@ interface EditStudentForm {
   school: string;
   grade: string;
   parent_phone: string;
+  email: string;
   currentAcademy: string;
   status: string;
 }
@@ -145,6 +147,7 @@ export default function StudentsPage() {
     school: '',
     grade: '',
     parent_phone: '',
+    email: '',
     currentAcademy: '',
     status: ''
   });
@@ -156,6 +159,7 @@ export default function StudentsPage() {
     school: '',
     grade: '',
     parent_phone: '',
+    email: '',
     currentAcademy: '',
     status: ''
   });
@@ -164,20 +168,14 @@ export default function StudentsPage() {
   // 학원 데이터 가져오기
   const fetchAcademies = async () => {
     try {
-      if (!supabase) {
-        throw new Error('Supabase client is not available');
+      const response = await fetch('/api/admin/academy');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || '학원 데이터를 가져오는 중 오류가 발생했습니다.');
       }
 
-      const { data: academies, error } = await supabase
-        .from('academy')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      setAcademies(academies || []);
+      setAcademies(result.academies || []);
     } catch (err) {
       console.error('Error fetching academies:', err);
     }
@@ -189,20 +187,14 @@ export default function StudentsPage() {
       setLoading(true);
       setError(null);
       
-      if (!supabase) {
-        throw new Error('Supabase client is not available');
+      const response = await fetch('/api/admin/students');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || '데이터를 가져오는 중 오류가 발생했습니다.');
       }
 
-      const { data, error: fetchError } = await supabase
-        .from('student')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      setStudents(data || []);
+      setStudents(result || []);
     } catch (err) {
       console.error('Error fetching students:', err);
       setError(err instanceof Error ? err.message : '데이터를 가져오는 중 오류가 발생했습니다.');
@@ -219,17 +211,14 @@ export default function StudentsPage() {
   const handleDeleteStudent = async (studentId: string) => {
     if (confirm('정말로 이 학생을 삭제하시겠습니까?')) {
       try {
-        if (!supabase) {
-          throw new Error('Supabase client is not available');
-        }
+        const response = await fetch(`/api/admin/students/${studentId}`, {
+          method: 'DELETE',
+        });
 
-        const { error } = await supabase
-          .from('student')
-          .delete()
-          .eq('id', studentId);
+        const result = await response.json();
 
-        if (error) {
-          throw error;
+        if (!response.ok) {
+          throw new Error(result.error || '학생 삭제 중 오류가 발생했습니다.');
         }
 
         // 성공적으로 삭제되면 목록에서 제거
@@ -246,22 +235,23 @@ export default function StudentsPage() {
     try {
       setIsSubmitting(true);
       
-      if (!supabase) {
-        throw new Error('Supabase client is not available');
-      }
+      const response = await fetch('/api/admin/students', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newStudent),
+      });
 
-      const { data, error } = await supabase
-        .from('student')
-        .insert([newStudent])
-        .select();
+      const result = await response.json();
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        throw new Error(result.error || '학생 추가 중 오류가 발생했습니다.');
       }
 
       // 성공적으로 추가되면 목록에 추가
-      if (data && data.length > 0) {
-        setStudents(prev => [data[0], ...prev]);
+      if (result && result.length > 0) {
+        setStudents(prev => [result[0], ...prev]);
         setNewStudent({
           name: '',
           phone_number: '',
@@ -269,6 +259,7 @@ export default function StudentsPage() {
           school: '',
           grade: '',
           parent_phone: '',
+          email: '',
           currentAcademy: '',
           status: ''
         });
@@ -328,6 +319,7 @@ export default function StudentsPage() {
       school: student.school,
       grade: student.grade,
       parent_phone: student.parent_phone,
+      email: student.email || '',
       currentAcademy: student.currentAcademy,
       status: student.status
     });
@@ -351,6 +343,7 @@ export default function StudentsPage() {
           school: editStudent.school,
           grade: editStudent.grade,
           parent_phone: editStudent.parent_phone,
+          email: editStudent.email,
           currentAcademy: editStudent.currentAcademy,
           status: editStudent.status
         }),
@@ -434,6 +427,7 @@ export default function StudentsPage() {
                       <TableHead>학교</TableHead>
                       <TableHead>학년</TableHead>
                       <TableHead>부모연락처</TableHead>
+                      <TableHead>이메일</TableHead>
                       <TableHead>학원</TableHead>
                       <TableHead>상태</TableHead>
                       <TableHead>등록일</TableHead>
@@ -474,6 +468,9 @@ export default function StudentsPage() {
                         </TableCell>
                         <TableCell className="text-sm text-gray-600">
                           {student.parent_phone || 'N/A'}
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-600">
+                          {student.email || 'N/A'}
                         </TableCell>
                         <TableCell>
                           <Badge variant="default">{student.currentAcademy || 'N/A'}</Badge>
@@ -615,6 +612,17 @@ export default function StudentsPage() {
                   value={newStudent.parent_phone}
                   onChange={(e) => handleInputChange('parent_phone', e.target.value)}
                   placeholder="010-1234-5678"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">이메일 (선택)</Label>
+                <Input
+                  id="email"
+                  type="text"
+                  value={newStudent.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  placeholder="example@gmail.com"
                 />
               </div>
               
@@ -775,6 +783,17 @@ export default function StudentsPage() {
                   value={editStudent.parent_phone}
                   onChange={(e) => handleEditInputChange('parent_phone', e.target.value)}
                   placeholder="010-1234-5678"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">이메일 (선택)</Label>
+                <Input
+                  id="edit-email"
+                  type="text"
+                  value={editStudent.email}
+                  onChange={(e) => handleEditInputChange('email', e.target.value)}
+                  placeholder="example@gmail.com"
                 />
               </div>
               
