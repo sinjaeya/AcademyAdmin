@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
-import { supabase } from '@/lib/supabase/client';
+// Supabase 클라이언트 직접 사용 제거 - 서버 사이드 API 사용
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -94,24 +94,19 @@ export default function SettingsUsersPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 데이터 가져오기
+  // 데이터 가져오기 - 서버 사이드 API 사용
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      if (!supabase) {
-        throw new Error('Supabase client is not available');
+      const response = await fetch('/api/admin/users');
+      
+      if (!response.ok) {
+        throw new Error('사용자 목록을 가져오는데 실패했습니다.');
       }
-
-      // RPC 함수를 사용하여 사용자와 이메일 정보를 함께 가져오기
-      const { data, error: fetchError } = await supabase.rpc('get_users_with_email');
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      // RPC 함수에서 반환된 데이터를 그대로 사용
+      
+      const data = await response.json();
       setUsers(data || []);
     } catch (err) {
       console.error('Error fetching users:', err);
@@ -129,17 +124,12 @@ export default function SettingsUsersPage() {
   const handleDeleteUser = async (userId: string) => {
     if (confirm('정말로 이 사용자를 삭제하시겠습니까?')) {
       try {
-        if (!supabase) {
-          throw new Error('Supabase client is not available');
-        }
+        const response = await fetch(`/api/admin/users/${userId}`, {
+          method: 'DELETE'
+        });
 
-        const { error } = await supabase
-          .from('user_role')
-          .delete()
-          .eq('id', userId);
-
-        if (error) {
-          throw error;
+        if (!response.ok) {
+          throw new Error('사용자 삭제에 실패했습니다.');
         }
 
         // 성공적으로 삭제되면 목록에서 제거
@@ -151,27 +141,28 @@ export default function SettingsUsersPage() {
     }
   };
 
-  // 새 사용자 추가 함수
+  // 새 사용자 추가 함수 - 서버 사이드 API 사용
   const handleAddUser = async () => {
     try {
       setIsSubmitting(true);
       
-      if (!supabase) {
-        throw new Error('Supabase client is not available');
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newUser)
+      });
+
+      if (!response.ok) {
+        throw new Error('사용자 추가에 실패했습니다.');
       }
 
-      const { data, error } = await supabase
-        .from('user_role')
-        .insert([newUser])
-        .select();
-
-      if (error) {
-        throw error;
-      }
-
+      const result = await response.json();
+      
       // 성공적으로 추가되면 목록에 추가
-      if (data && data.length > 0) {
-        setUsers(prev => [data[0], ...prev]);
+      if (result.data) {
+        setUsers(prev => [result.data, ...prev]);
         setNewUser({
           user_id: '',
           name: '',
@@ -201,32 +192,33 @@ export default function SettingsUsersPage() {
     setIsEditUserOpen(true);
   };
 
-  // 사용자 수정 함수
+  // 사용자 수정 함수 - 서버 사이드 API 사용
   const handleUpdateUser = async () => {
     if (!editingUser) return;
 
     try {
       setIsSubmitting(true);
       
-      if (!supabase) {
-        throw new Error('Supabase client is not available');
-      }
-
-      const { error } = await supabase
-        .from('user_role')
-        .update({
+      const response = await fetch(`/api/admin/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           name: editingUser.name,
           role: editingUser.role
         })
-        .eq('id', editingUser.id);
+      });
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        throw new Error('사용자 수정에 실패했습니다.');
       }
+
+      const result = await response.json();
 
       // 성공적으로 수정되면 목록 업데이트
       setUsers(prev => prev.map(user => 
-        user.id === editingUser.id ? editingUser : user
+        user.id === editingUser.id ? result.data : user
       ));
       
       setIsEditUserOpen(false);
