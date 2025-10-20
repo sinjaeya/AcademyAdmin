@@ -142,67 +142,70 @@ export default function Home() {
                 )}
               </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full mt-2"
-                onClick={async () => {
-                  // 폼 데이터 설정
-                  setFormData({
-                    email: 'admin@example.com',
-                    password: 'password1234'
-                  });
-                  
-                  // 잠시 대기 후 자동 로그인 실행
-                  setTimeout(async () => {
-                    setError(null);
-                    setIsLoading(true);
+              {/* 개발자 로그인 버튼 - 개발 환경에서만 표시 */}
+              {process.env.NODE_ENV === 'development' && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full mt-2"
+                  onClick={async () => {
+                    // 폼 데이터 설정
+                    setFormData({
+                      email: 'admin@example.com',
+                      password: 'password1234'
+                    });
+                    
+                    // 잠시 대기 후 자동 로그인 실행
+                    setTimeout(async () => {
+                      setError(null);
+                      setIsLoading(true);
 
-                    try {
-                      // Supabase 인증 사용
-                      const { createClient } = await import('@supabase/supabase-js');
-                      
-                      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-                      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-                      
-                      if (!supabaseUrl || !supabaseKey) {
-                        throw new Error('Supabase 설정이 필요합니다. npm run setup을 실행해주세요.');
-                      }
-                      
-                      const supabase = createClient(supabaseUrl, supabaseKey);
-                      
-                      const { data, error } = await supabase.auth.signInWithPassword({
-                        email: 'admin@example.com',
-                        password: 'password1234',
-                      });
+                      try {
+                        // Supabase 인증 사용
+                        const { createClient } = await import('@supabase/supabase-js');
+                        
+                        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+                        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+                        
+                        if (!supabaseUrl || !supabaseKey) {
+                          throw new Error('Supabase 설정이 필요합니다. npm run setup을 실행해주세요.');
+                        }
+                        
+                        const supabase = createClient(supabaseUrl, supabaseKey);
+                        
+                        const { data, error } = await supabase.auth.signInWithPassword({
+                          email: 'admin@example.com',
+                          password: 'password1234',
+                        });
 
-                      if (error) {
-                        setError(error.message);
+                        if (error) {
+                          setError(error.message);
+                          setIsLoading(false);
+                          return;
+                        }
+
+                        if (data.user) {
+                          // 로그인 성공 - 어드민 페이지로 이동
+                          router.push('/admin');
+                        }
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : '개발자 로그인 중 오류가 발생했습니다.');
                         setIsLoading(false);
-                        return;
                       }
-
-                      if (data.user) {
-                        // 로그인 성공 - 어드민 페이지로 이동
-                        router.push('/admin');
-                      }
-                    } catch (err) {
-                      setError(err instanceof Error ? err.message : '개발자 로그인 중 오류가 발생했습니다.');
-                      setIsLoading(false);
-                    }
-                  }, 100); // 100ms 후 실행
-                }}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    개발자 로그인 중...
-                  </>
-                ) : (
-                  '개발자 로그인'
-                )}
-              </Button>
+                    }, 100); // 100ms 후 실행
+                  }}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      개발자 로그인 중...
+                    </>
+                  ) : (
+                    '개발자 로그인'
+                  )}
+                </Button>
+              )}
             </form>
 
             <div className="mt-6 text-center">
