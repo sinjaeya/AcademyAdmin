@@ -42,21 +42,26 @@ src/
    npm install
    ```
 
-2. **Supabase 설정**
+2. **환경변수 설정**
 
-   **대화형 설정 (추천)**
+   **방법 1: 환경변수 파일 복사 (추천)**
    ```bash
-   npm run setup
+   cp .env.example .env.local
    ```
-   - 터미널에서 대화형으로 Supabase 정보 입력
-   - 자동으로 .env.local 파일 생성
+   - `.env.local` 파일을 편집하여 실제 Supabase 값으로 변경
+   - 자세한 설정 방법은 [ENVIRONMENT_SETUP.md](./ENVIRONMENT_SETUP.md) 참조
 
-   **빠른 설정**
+   **방법 2: 수동 설정**
    ```bash
-   npm run setup:quick
+   # .env.local 파일 생성
+   touch .env.local
    ```
-   - .env.local.example 파일 생성
-   - 수동으로 .env.local 파일 생성 및 수정
+   다음 내용을 추가:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+   ```
 
 3. **개발 서버 실행**
    ```bash

@@ -26,17 +26,12 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      // Supabase 인증 사용
-      const { createClient } = await import('@supabase/supabase-js');
+      // Supabase 클라이언트 가져오기
+      const { supabase } = await import('@/lib/supabase/client');
       
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase 설정이 필요합니다. npm run setup을 실행해주세요.');
+      if (!supabase) {
+        throw new Error('Supabase 설정이 필요합니다. .env.local 파일을 확인해주세요.');
       }
-      
-      const supabase = createClient(supabaseUrl, supabaseKey);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
@@ -161,17 +156,12 @@ export default function Home() {
                       setIsLoading(true);
 
                       try {
-                        // Supabase 인증 사용
-                        const { createClient } = await import('@supabase/supabase-js');
+                        // Supabase 클라이언트 가져오기
+                        const { supabase } = await import('@/lib/supabase/client');
                         
-                        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-                        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-                        
-                        if (!supabaseUrl || !supabaseKey) {
-                          throw new Error('Supabase 설정이 필요합니다. npm run setup을 실행해주세요.');
+                        if (!supabase) {
+                          throw new Error('Supabase 설정이 필요합니다. .env.local 파일을 확인해주세요.');
                         }
-                        
-                        const supabase = createClient(supabaseUrl, supabaseKey);
                         
                         const { data, error } = await supabase.auth.signInWithPassword({
                           email: 'admin@example.com',
