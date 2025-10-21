@@ -36,11 +36,13 @@ export function validateEnvironment() {
       ...errors.map(error => `  - ${error}`),
       '',
       '📋 해결 방법:',
-      '1. .env.local 파일을 생성하세요',
-      '2. .env.example 파일을 참고하여 필요한 환경변수를 설정하세요',
-      '3. Supabase 프로젝트에서 URL과 키를 확인하세요',
+      '1. 로컬 개발: .env.local 파일을 생성하세요',
+      '2. 배포 환경: Vercel 환경변수를 설정하세요',
+      '3. .env.example 파일을 참고하여 필요한 환경변수를 설정하세요',
+      '4. Supabase 프로젝트에서 URL과 키를 확인하세요',
       '',
-      '🔗 Supabase 설정: https://supabase.com/dashboard'
+      '🔗 Supabase 설정: https://supabase.com/dashboard',
+      '🔗 Vercel 환경변수: https://vercel.com/dashboard'
     ].join('\n');
     
     throw new Error(errorMessage);

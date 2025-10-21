@@ -30,7 +30,7 @@ export default function Home() {
       const { supabase } = await import('@/lib/supabase/client');
       
       if (!supabase) {
-        throw new Error('Supabase 설정이 필요합니다. .env.local 파일을 확인해주세요.');
+        throw new Error('Supabase 설정이 필요합니다. 환경변수를 확인해주세요.');
       }
       
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -160,7 +160,7 @@ export default function Home() {
                         const { supabase } = await import('@/lib/supabase/client');
                         
                         if (!supabase) {
-                          throw new Error('Supabase 설정이 필요합니다. .env.local 파일을 확인해주세요.');
+                          throw new Error('Supabase 설정이 필요합니다. 환경변수를 확인해주세요.');
                         }
                         
                         const { data, error } = await supabase.auth.signInWithPassword({
