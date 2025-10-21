@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,32 +11,35 @@ import {
   Users, 
   Settings, 
   BarChart3, 
-  FileText,
   LogOut,
   Clock,
-  ChevronDown,
-  ChevronRight,
   Shield,
   CreditCard,
   GraduationCap,
   BookOpen,
   Building2,
-  Home,
-  Building,
   Folder,
-  Package,
-  ShoppingCart,
-  UserCheck,
   Wallet,
-  Receipt,
-  CreditCard as PaymentIcon,
-  FileImage,
   Search,
   HelpCircle,
   ChevronDown as ChevronDownIcon
 } from 'lucide-react';
 
-const navigationCategories = [
+// 네비게이션 아이템 타입 정의
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
+  badgeType?: 'new' | 'default';
+}
+
+interface NavigationCategory {
+  title: string;
+  items: NavigationItem[];
+}
+
+const navigationCategories: NavigationCategory[] = [
   {
     title: 'OVERVIEW',
     items: [
@@ -105,11 +108,11 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
   };
 
   // 설정 메뉴의 하위 메뉴들
-  const settingsSubMenus = [
+  const settingsSubMenus = useMemo(() => [
     { name: '학원관리', href: '/admin/settings/academy', icon: Building2 },
     { name: '사용자 관리', href: '/admin/settings/users', icon: Users },
     { name: '권한 관리', href: '/admin/settings/permissions', icon: Shield }
-  ];
+  ], []);
 
   // 현재 활성화된 하위 메뉴가 있는 상위 메뉴를 자동으로 열기
   useEffect(() => {
@@ -122,7 +125,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
         return prev;
       });
     }
-  }, [pathname]);
+  }, [pathname, settingsSubMenus]);
 
   return (
     <div className={cn('flex h-full w-56 flex-col bg-white border-r border-gray-200', className)}>
@@ -146,7 +149,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
 
       {/* 네비게이션 메뉴 */}
       <nav className="flex-1 px-3.5 py-5 space-y-5">
-        {navigationCategories.map((category, categoryIndex) => (
+        {navigationCategories.map((category) => (
           <div key={category.title}>
             {/* 카테고리 헤더 */}
             <div className="px-2 py-1.5">

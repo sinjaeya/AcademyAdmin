@@ -36,8 +36,7 @@ import {
   Plus,
   Edit,
   Trash2,
-  Phone,
-  X
+  Phone
 } from 'lucide-react';
 
 // 학생 데이터 타입 정의

@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import { AcademyManagement } from './AcademyManagement';
-import { Academy } from '@/types';
 
 export async function AcademyManagementServer() {
   try {

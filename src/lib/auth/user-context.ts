@@ -42,6 +42,8 @@ export async function getUserContext(): Promise<UserContext | null> {
     // 타입 변환
     const extendedUser: ExtendedUser = {
       ...user,
+      email: user.email || '',
+      role: userRoleData.role as 'admin' | 'moderator' | 'user',
       user_role: userRoleData as UserRole,
       academy: userRoleData.academy as Academy
     }
@@ -91,6 +93,8 @@ export async function getUserById(userId: string): Promise<UserContext | null> {
 
     const extendedUser: ExtendedUser = {
       ...authUser.user,
+      email: authUser.user.email || '',
+      role: userRoleData.role as 'admin' | 'moderator' | 'user',
       user_role: userRoleData as UserRole,
       academy: userRoleData.academy as Academy
     }

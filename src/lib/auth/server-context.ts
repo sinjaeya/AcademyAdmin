@@ -33,7 +33,7 @@ export async function getServerUserContext(): Promise<UserContext | null> {
       user: {
         id: userId,
         role: userRoleData.role as 'admin' | 'owner' | 'teacher' | 'tutor'
-      } as any,
+      } as UserContext['user'],
       academy: userRoleData.academy as Academy,
       isAdmin: userRoleData.role === 'admin' || userRoleData.role === 'owner'
     }

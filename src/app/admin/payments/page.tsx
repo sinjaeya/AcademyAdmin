@@ -36,7 +36,6 @@ import {
   Edit,
   Trash2,
   Phone,
-  X,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,

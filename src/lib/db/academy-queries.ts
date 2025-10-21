@@ -59,7 +59,7 @@ export class AcademyQueryBuilder {
   /**
    * 특정 학원의 데이터 삽입
    */
-  insert(data: any) {
+  insert(data: Record<string, unknown>) {
     const dataWithAcademy = {
       ...data,
       academy_id: this.academyId
@@ -71,7 +71,7 @@ export class AcademyQueryBuilder {
   /**
    * 특정 학원의 데이터 업데이트
    */
-  update(data: any) {
+  update(data: Record<string, unknown>) {
     let query = this.supabase.from(this.tableName).update(data)
     
     if (this.academyId) {

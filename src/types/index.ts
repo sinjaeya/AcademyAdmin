@@ -104,7 +104,7 @@ export interface Academy {
   website?: string;
   description?: string;
   logo_url?: string;
-  settings?: Record<string, any>;
+  settings?: Record<string, unknown>;
   is_active: boolean;
   created_at: string;
   updated_at: string;

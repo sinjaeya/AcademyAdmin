@@ -35,8 +35,7 @@ import {
   Users,
   Plus,
   Edit,
-  Trash2,
-  X
+  Trash2
 } from 'lucide-react';
 
 // 사용자 데이터 타입 정의 (user_role + auth.users 조인)
@@ -52,7 +51,7 @@ interface User {
   // auth.users에서 가져온 이메일 정보
   email?: string;
   // 추가 컬럼들이 있을 수 있으므로 모든 컬럼을 포함
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }
 
 // 새 사용자 추가 폼 데이터 타입 (user_role 테이블)
@@ -61,7 +60,7 @@ interface NewUserForm {
   name: string;
   role: string;
   // 추가 필드들이 있을 수 있음
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }
 
 // 데이터 포맷팅 함수

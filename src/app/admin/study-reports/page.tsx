@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { supabase } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { 
   Table, 
   TableBody, 
@@ -38,20 +37,20 @@ interface Student {
 }
 
 
-// 데이터 포맷팅 함수
-const formatDateTime = (dateString: string) => {
-  if (!dateString) return 'N/A';
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  }).format(date);
-};
+// 데이터 포맷팅 함수 (현재 사용되지 않지만 향후 사용을 위해 유지)
+// const formatDateTime = (dateString: string) => {
+//   if (!dateString) return 'N/A';
+//   const date = new Date(dateString);
+//   return new Intl.DateTimeFormat('ko-KR', {
+//     year: 'numeric',
+//     month: '2-digit',
+//     day: '2-digit',
+//     hour: '2-digit',
+//     minute: '2-digit',
+//     second: '2-digit',
+//     hour12: false
+//   }).format(date);
+// };
 
 
 export default function StudyReportsPage() {
@@ -87,7 +86,7 @@ export default function StudyReportsPage() {
     studentId: number;
     studentName: string;
     webhookUrl: string;
-    requestPayload: any;
+    requestPayload: Record<string, unknown>;
     responseStatus?: number;
     responseBody?: string;
     errorMessage?: string;
@@ -257,29 +256,31 @@ export default function StudyReportsPage() {
 
             console.log('웹훅 전송 성공:', webhookPayload);
 
-          } catch (webhookError: any) {
+          } catch (webhookError: unknown) {
             clearTimeout(timeoutId);
             
             // 에러 타입별 메시지
             let errorMessage = '카카오톡 전송 중 오류가 발생했습니다.';
             
-            if (webhookError.name === 'AbortError') {
-              errorMessage = '카카오톡 전송 시간이 초과되었습니다. 다시 시도해주세요.';
-            } else if (webhookError.message.includes('Failed to fetch') || webhookError.message.includes('fetch')) {
-              errorMessage = '네트워크 연결을 확인해주세요.';
-            } else if (webhookError.message.includes('웹훅 요청 실패')) {
-              errorMessage = webhookError.message.replace('웹훅 요청 실패:', '카카오톡 전송 실패:');
-            }
-            
-            // 웹훅 실패 로그 저장 (네트워크 오류나 타임아웃의 경우)
-            if (webhookError.name === 'AbortError' || webhookError.message.includes('fetch')) {
-              await saveWebhookLog({
-                studentId: parseInt(selectedStudent),
-                studentName: student.name,
-                webhookUrl,
-                requestPayload: webhookPayload,
-                errorMessage: webhookError.message
-              });
+            if (webhookError instanceof Error) {
+              if (webhookError.name === 'AbortError') {
+                errorMessage = '카카오톡 전송 시간이 초과되었습니다. 다시 시도해주세요.';
+              } else if (webhookError.message.includes('Failed to fetch') || webhookError.message.includes('fetch')) {
+                errorMessage = '네트워크 연결을 확인해주세요.';
+              } else if (webhookError.message.includes('웹훅 요청 실패')) {
+                errorMessage = webhookError.message.replace('웹훅 요청 실패:', '카카오톡 전송 실패:');
+              }
+              
+              // 웹훅 실패 로그 저장 (네트워크 오류나 타임아웃의 경우)
+              if (webhookError.name === 'AbortError' || webhookError.message.includes('fetch')) {
+                await saveWebhookLog({
+                  studentId: parseInt(selectedStudent),
+                  studentName: student.name,
+                  webhookUrl,
+                  requestPayload: webhookPayload,
+                  errorMessage: webhookError.message
+                });
+              }
             }
             
             console.error('웹훅 전송 오류:', webhookError);
