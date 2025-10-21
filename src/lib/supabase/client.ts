@@ -7,7 +7,7 @@ if (typeof window === 'undefined') {
   try {
     validateEnvironment()
   } catch (error) {
-    console.error(error.message)
+    console.error(error instanceof Error ? error.message : '환경변수 검증 실패')
   }
 } else {
   // 클라이언트 사이드에서는 상태만 로그
