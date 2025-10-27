@@ -147,8 +147,8 @@ export default function StudentsPage() {
     grade: '',
     parent_phone: '',
     email: '',
-    currentAcademy: '',
-    status: ''
+    currentAcademy: '이지수학교습소',
+    status: '재원'
   });
   const [editStudent, setEditStudent] = useState<EditStudentForm>({
     id: '',
@@ -259,8 +259,8 @@ export default function StudentsPage() {
           grade: '',
           parent_phone: '',
           email: '',
-          currentAcademy: '',
-          status: ''
+          currentAcademy: '이지수학교습소',
+          status: '재원'
         });
         setIsAddStudentOpen(false);
       }
@@ -567,7 +567,7 @@ export default function StudentsPage() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="school">학교 *</Label>
+                <Label htmlFor="school">학교</Label>
                 <Select
                   value={newStudent.school}
                   onValueChange={(value) => handleInputChange('school', value)}
@@ -586,7 +586,7 @@ export default function StudentsPage() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="grade">학년 *</Label>
+                <Label htmlFor="grade">학년</Label>
                 <Select
                   value={newStudent.grade}
                   onValueChange={(value) => handleInputChange('grade', value)}
@@ -680,7 +680,7 @@ export default function StudentsPage() {
               </Button>
               <Button
                 onClick={handleAddStudent}
-                disabled={isSubmitting || !newStudent.name || !newStudent.phone_number || !newStudent.phone_middle_4 || newStudent.phone_middle_4.length !== 4 || !newStudent.school || !newStudent.grade || !newStudent.parent_phone || !newStudent.currentAcademy || !newStudent.status}
+                disabled={isSubmitting || !newStudent.name || !newStudent.phone_number || !newStudent.phone_middle_4 || newStudent.phone_middle_4.length !== 4 || !newStudent.parent_phone || !newStudent.currentAcademy || !newStudent.status}
               >
                 {isSubmitting ? '추가 중...' : '추가'}
               </Button>

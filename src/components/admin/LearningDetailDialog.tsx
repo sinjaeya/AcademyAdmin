@@ -109,18 +109,20 @@ export function LearningDetailDialog({
                 
                 <div className="flex gap-2">
                   <Button
-                    variant="outline"
+                    variant={!passage.originalContent ? "secondary" : "outline"}
                     onClick={() => handlePrintContent(index, 'original')}
                     disabled={!passage.originalContent}
+                    className={!passage.originalContent ? "text-gray-500 cursor-not-allowed" : ""}
                   >
                     <FileText className="w-4 h-4 mr-2" />
                     원문 데이터 출력
                   </Button>
                   
                   <Button
-                    variant="outline"
+                    variant={!passage.aiContent ? "secondary" : "outline"}
                     onClick={() => handlePrintContent(index, 'ai')}
                     disabled={!passage.aiContent}
+                    className={!passage.aiContent ? "text-gray-500 cursor-not-allowed" : ""}
                   >
                     <Sparkles className="w-4 h-4 mr-2" />
                     AI 콘텐츠 출력

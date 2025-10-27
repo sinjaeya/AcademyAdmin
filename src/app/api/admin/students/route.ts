@@ -37,10 +37,23 @@ export async function POST(request: NextRequest) {
     
     const supabase = createServerClient();
 
+    // 필드명 매핑 (정확한 컬럼명 사용)
+    const studentToInsert = {
+      name: body.name,
+      phone_number: body.phone_number || null,
+      phone_middle_4: body.phone_middle_4 || null,
+      school: body.school || null,
+      grade: body.grade || null,
+      parent_phone: body.parent_phone || null,
+      email: body.email || null,
+      currentAcademy: body.currentAcademy || null,  // DB에서 camelCase 사용
+      status: body.status || 'active',
+    };
+
     // 1단계: student 테이블에 학생 정보 추가
     const { data: studentData, error: studentError } = await supabase
       .from('student')
-      .insert([body])
+      .insert([studentToInsert])
       .select();
 
     if (studentError) {

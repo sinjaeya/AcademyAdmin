@@ -8,9 +8,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar } from 'lucide-react';
+import { Calendar, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { LearningDetailDialog } from '@/components/admin/LearningDetailDialog';
+import { useToast } from '@/components/ui/toast';
 
 interface DailyActivity {
   totalXp: number;
@@ -55,12 +57,15 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
   const [searchQuery, setSearchQuery] = useState('');
   const [students, setStudents] = useState(initialStudents);
   const [loading, setLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<{ id: number | null; name: string; date: string }>({
     id: null,
     name: '',
     date: ''
   });
+
+  const { toast } = useToast();
   
   // 월 파싱
   const [year, month] = selectedMonth.split('-').map(Number);
@@ -111,6 +116,58 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
     setSelectedStudent({ id: studentId, name: studentName, date: dateStr });
     setDialogOpen(true);
   };
+
+  // 학습 데이터 동기화 핸들러
+  const handleSync = async () => {
+    setIsSyncing(true);
+    
+    try {
+      const response = await fetch('/api/admin/learning/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year, month })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: '동기화 시작',
+          description: '학습 데이터 동기화가 시작되었습니다.',
+          type: 'info',
+          duration: 5000
+        });
+        
+        // 3초 후 데이터 새로고침
+        setTimeout(async () => {
+          const [y, m] = selectedMonth.split('-').map(Number);
+          try {
+            const refreshResponse = await fetch(`/api/admin/learning?year=${y}&month=${m}`);
+            const refreshResult = await refreshResponse.json();
+            if (refreshResult.data) {
+              setStudents(refreshResult.data);
+              toast({
+                title: '동기화 완료',
+                description: '학습 데이터가 업데이트되었습니다.',
+                type: 'success'
+              });
+            }
+          } catch (error) {
+            console.error('데이터 새로고침 실패:', error);
+          }
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('동기화 실패:', error);
+      toast({
+        title: '동기화 실패',
+        description: '데이터 동기화 중 오류가 발생했습니다.',
+        type: 'error'
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
   
   // 월 선택 옵션 생성
   const monthOptions = useMemo(() => {
@@ -138,7 +195,7 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
 
       {/* 필터 영역 */}
       <Card className="p-4">
-        <div className="flex items-center">
+        <div className="flex items-center gap-3">
           {/* 월 선택기 */}
           <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors">
             <Calendar className="w-4 h-4 text-gray-500" />
@@ -155,6 +212,16 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
               </SelectContent>
             </Select>
           </div>
+
+          {/* 학습 데이터 동기화 버튼 */}
+          <Button
+            variant="outline"
+            onClick={handleSync}
+            disabled={loading || isSyncing}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+            학습 데이터 동기화
+          </Button>
         </div>
       </Card>
 
