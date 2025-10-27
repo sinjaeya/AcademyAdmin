@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -9,8 +8,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { LearningDetailDialog } from '@/components/admin/LearningDetailDialog';
 
 interface DailyActivity {
   totalXp: number;
@@ -55,6 +55,12 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
   const [searchQuery, setSearchQuery] = useState('');
   const [students, setStudents] = useState(initialStudents);
   const [loading, setLoading] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<{ id: number | null; name: string; date: string }>({
+    id: null,
+    name: '',
+    date: ''
+  });
   
   // 월 파싱
   const [year, month] = selectedMonth.split('-').map(Number);
@@ -99,6 +105,12 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
       return true;
     });
   }, [students, searchQuery]);
+
+  const handleCellClick = (studentId: number, studentName: string, day: number) => {
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    setSelectedStudent({ id: studentId, name: studentName, date: dateStr });
+    setDialogOpen(true);
+  };
   
   // 월 선택 옵션 생성
   const monthOptions = useMemo(() => {
@@ -126,8 +138,8 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
 
       {/* 필터 영역 */}
       <Card className="p-4">
-        <div className="flex gap-3 items-center flex-wrap">
-          {/* 월 선택기 - 개선된 디자인 */}
+        <div className="flex items-center">
+          {/* 월 선택기 */}
           <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors">
             <Calendar className="w-4 h-4 text-gray-500" />
             <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={loading}>
@@ -143,72 +155,6 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
               </SelectContent>
             </Select>
           </div>
-
-        <Select defaultValue="all">
-          <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="담당 선생님" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">전체</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select defaultValue="all">
-          <SelectTrigger className="w-[100px]">
-            <SelectValue placeholder="반 전체" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">반 전체</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select defaultValue="all">
-          <SelectTrigger className="w-[100px]">
-            <SelectValue placeholder="레벨" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">전체</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select defaultValue="all">
-          <SelectTrigger className="w-[100px]">
-            <SelectValue placeholder="레벨단계" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">전체</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select defaultValue="all">
-          <SelectTrigger className="w-[100px]">
-            <SelectValue placeholder="학년선택" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">전체</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select defaultValue="active">
-          <SelectTrigger className="w-[120px]">
-            <SelectValue placeholder="사용중 학생" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="active">사용중 학생</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <div className="flex-1 max-w-[200px]">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input 
-              placeholder="검색..." 
-              className="pl-9"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
         </div>
       </Card>
 
@@ -217,6 +163,15 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
           데이터를 불러오는 중...
         </div>
       )}
+
+      {/* 학습 상세 Dialog */}
+      <LearningDetailDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        studentId={selectedStudent.id}
+        studentName={selectedStudent.name}
+        studyDate={selectedStudent.date}
+      />
 
       {/* 학생 데이터 테이블 */}
       <div className="bg-white rounded-lg border">
@@ -244,7 +199,10 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
                     return (
                       <td key={day} className="px-2 py-2 text-center min-w-[40px] border-r">
                         {activity ? (
-                          <div className={`px-1 py-0.5 rounded text-xs font-medium ${getScoreColor(activity.totalXp, activity.maxXp)}`}>
+                          <div 
+                            className={`px-1 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 ${getScoreColor(activity.totalXp, activity.maxXp)}`}
+                            onClick={() => handleCellClick(student.id, student.name, day)}
+                          >
                             {activity.scoreDisplay?.replace(/\s*UP\s*/i, '').trim() || activity.totalXp}
                           </div>
                         ) : (
