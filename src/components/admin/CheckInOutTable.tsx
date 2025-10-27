@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   Table, 
   TableBody, 
@@ -13,7 +15,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, X } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -21,6 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { format, startOfDay, endOfDay } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 // CheckInOut 데이터 타입 정의
 interface CheckInOut {
@@ -45,6 +49,10 @@ export function CheckInOutTable({ }: CheckInOutTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  
+  // 날짜 필터 상태 - 기본값은 오늘 날짜
+  const todayString = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState<string>(todayString);
 
   // 페이지네이션 계산
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -77,10 +85,17 @@ export function CheckInOutTable({ }: CheckInOutTableProps) {
         throw new Error('Supabase client is not available');
       }
 
-      // check_in_board 테이블에서 데이터 조회 (created_at 내림차순)
+      // 선택된 날짜에 맞는 시간 범위 설정
+      const dateObj = new Date(selectedDate);
+      const startDate = startOfDay(dateObj).toISOString();
+      const endDate = endOfDay(dateObj).toISOString();
+
+      // check_in_board 테이블에서 선택한 날짜의 데이터만 조회
       const { data: checkInOutData, error: fetchError } = await supabase
         .from('check_in_board')
         .select('*')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate)
         .order('created_at', { ascending: false });
 
       if (fetchError) {
@@ -134,7 +149,7 @@ export function CheckInOutTable({ }: CheckInOutTableProps) {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedDate]);
 
   const formatTime = (dateString: string) => {
     if (!dateString) return '-';
@@ -193,13 +208,44 @@ export function CheckInOutTable({ }: CheckInOutTableProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Clock className="h-5 w-5" />
-          등/하원 기록
-        </CardTitle>
-        <CardDescription>
-          총 {totalCount}건의 등/하원 기록이 있습니다 (페이지 {currentPage}/{totalPages})
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              등/하원 기록
+            </CardTitle>
+            <CardDescription>
+              총 {totalCount}건의 등/하원 기록이 있습니다 (페이지 {currentPage}/{totalPages})
+            </CardDescription>
+          </div>
+          
+          {/* 날짜 필터 */}
+          <div className="flex items-center gap-2">
+            <Label htmlFor="date-filter" className="text-sm font-medium text-gray-700">
+              날짜 선택:
+            </Label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                id="date-filter"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="pl-10 pr-8 w-[180px]"
+              />
+            </div>
+            {selectedDate !== todayString && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                오늘
+              </Button>
+            )}
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (

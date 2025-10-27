@@ -45,7 +45,6 @@ const navigationCategories: NavigationCategory[] = [
     title: 'OVERVIEW',
     items: [
       { name: '대시보드', href: '/admin', icon: LayoutDashboard, badge: '3' },
-      { name: '학습관리', href: '/admin/learning', icon: BookText },
       { name: '통계', href: '/admin/analytics', icon: BarChart3 },
       { name: '학원관리', href: '/admin/settings/academy', icon: Building2 },
       { name: '프로젝트', href: '/admin/projects', icon: Folder, badge: '12' }

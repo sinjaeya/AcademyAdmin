@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { CheckInOutTable } from '@/components/admin/CheckInOutTable';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Download } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 export default function CheckInOutPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -13,11 +13,6 @@ export default function CheckInOutPage() {
     setIsLoading(true);
     // 테이블 새로고침 로직은 CheckInOutTable 컴포넌트에서 처리
     setTimeout(() => setIsLoading(false), 1000);
-  };
-
-  const handleExport = () => {
-    // 데이터 내보내기 기능 (추후 구현)
-    alert('데이터 내보내기 기능은 준비 중입니다.');
   };
 
   return (
@@ -37,13 +32,6 @@ export default function CheckInOutPage() {
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               새로고침
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleExport}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              내보내기
             </Button>
           </div>
         </div>
