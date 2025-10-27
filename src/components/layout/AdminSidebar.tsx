@@ -22,7 +22,8 @@ import {
   Wallet,
   Search,
   HelpCircle,
-  ChevronDown as ChevronDownIcon
+  ChevronDown as ChevronDownIcon,
+  BookText
 } from 'lucide-react';
 
 // 네비게이션 아이템 타입 정의
@@ -54,6 +55,7 @@ const navigationCategories: NavigationCategory[] = [
     items: [
       { name: '학생 관리', href: '/admin/students', icon: GraduationCap },
       { name: '등/하원 조회', href: '/admin/checkinout', icon: Clock, badge: '5' },
+      { name: '학습관리', href: '/admin/learning', icon: BookText },
       { name: '학습리포트', href: '/admin/study-reports', icon: BookOpen }
     ]
   },
