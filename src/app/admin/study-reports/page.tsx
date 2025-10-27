@@ -402,11 +402,13 @@ export default function StudyReportsPage() {
     }
   }, [academyName]);
 
-  // 학원별 필터링된 학생 목록
-  const filteredStudents = students.filter(student => {
-    if (selectedAcademy === '전체') return true;
-    return student.currentAcademy === selectedAcademy;
-  });
+  // 학원별 필터링된 학생 목록 (가나다 순 정렬)
+  const filteredStudents = students
+    .filter(student => {
+      if (selectedAcademy === '전체') return true;
+      return student.currentAcademy === selectedAcademy;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
 
 
 
