@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { supabase } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
   BookOpen,
   MessageCircle
@@ -35,6 +36,21 @@ interface Student {
   status: string;
   created_at: string;
   updated_at: string;
+  messageCount?: number; // 최근 30일 메시지 수
+}
+
+// 메시지 히스토리 타입 정의
+interface MessageHistory {
+  id: string;
+  student_id: number;
+  student_name: string;
+  message_content: string;
+  attendance: string;
+  class_attitude: string;
+  homework_submission: string;
+  homework_quality: string;
+  test_score: number | null;
+  created_at: string;
 }
 
 
@@ -75,6 +91,10 @@ export default function StudyReportsPage() {
   const [alertMessage, setAlertMessage] = useState('');
   const [showAlert, setShowAlert] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [messageHistory, setMessageHistory] = useState<MessageHistory[]>([]);
+  const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [studentMessageCounts, setStudentMessageCounts] = useState<Record<string, number>>({});
 
   // 학습정보 변경 핸들러
   const handleLearningInfoChange = (field: string, value: string) => {
@@ -402,6 +422,97 @@ export default function StudyReportsPage() {
     }
   }, [academyName]);
 
+  // 학생별 메시지 수 가져오기
+  const fetchMessageCounts = useCallback(async () => {
+    if (!supabase || students.length === 0) {
+      return;
+    }
+
+    try {
+      // 30일 전 날짜 계산
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const dateString = thirtyDaysAgo.toISOString().split('T')[0];
+
+      // 모든 학생의 최근 30일 메시지 수 조회
+      const studentIds = students.map(s => parseInt(s.id));
+      
+      const { data, error } = await supabase
+        .from('message_history')
+        .select('student_id, created_at')
+        .in('student_id', studentIds)
+        .gte('created_at', dateString);
+
+      if (error) {
+        console.error('메시지 수 조회 오류:', error);
+        return;
+      }
+
+      // 학생별 메시지 수 카운트
+      const counts: Record<string, number> = {};
+      studentIds.forEach(id => {
+        counts[id.toString()] = 0;
+      });
+
+      data?.forEach((msg: any) => {
+        const studentId = msg.student_id.toString();
+        if (counts.hasOwnProperty(studentId)) {
+          counts[studentId]++;
+        }
+      });
+
+      setStudentMessageCounts(counts);
+    } catch (err) {
+      console.error('메시지 수 조회 중 오류:', err);
+    }
+  }, [supabase, students]);
+
+  useEffect(() => {
+    if (students.length > 0) {
+      fetchMessageCounts();
+    }
+  }, [students, fetchMessageCounts]);
+
+  // 학생 메시지 히스토리 가져오기
+  const fetchMessageHistory = useCallback(async (studentId: string) => {
+    if (!supabase) {
+      return;
+    }
+
+    try {
+      setLoadingHistory(true);
+      const { data, error } = await supabase
+        .from('message_history')
+        .select('*')
+        .eq('student_id', parseInt(studentId))
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('메시지 히스토리 조회 오류:', error);
+        return;
+      }
+
+      setMessageHistory(data || []);
+    } catch (err) {
+      console.error('메시지 히스토리 조회 중 오류:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [supabase]);
+
+  // 학생 클릭 핸들러
+  const handleStudentClick = useCallback((studentId: string) => {
+    const newSelected = selectedStudent === studentId ? null : studentId;
+    setSelectedStudent(newSelected);
+    
+    if (newSelected) {
+      fetchMessageHistory(newSelected);
+    } else {
+      setMessageHistory([]);
+      setSelectedMessage(null);
+    }
+  }, [selectedStudent, fetchMessageHistory]);
+
   // 학원별 필터링된 학생 목록 (가나다 순 정렬)
   const filteredStudents = students
     .filter(student => {
@@ -420,6 +531,16 @@ export default function StudyReportsPage() {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">학습리포트</h1>
                 <p className="text-gray-600 mt-2">학생을 선택하고 학습정보를 입력하여 학부모 문자 메시지를 작성합니다</p>
+                
+                {/* 뱃지 표시 기준 */}
+                <div className="flex items-center gap-4 mt-3 text-sm">
+                  <span className="text-gray-700 font-medium">학생별 메시지 발송 횟수 (최근 30일):</span>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-blue-500 text-white h-5 px-2 text-xs font-bold">20회 이상</Badge>
+                    <Badge className="bg-yellow-500 text-white h-5 px-2 text-xs font-bold">10~19회</Badge>
+                    <Badge className="bg-red-500 text-white h-5 px-2 text-xs font-bold">10회 미만</Badge>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -515,7 +636,7 @@ export default function StudyReportsPage() {
                         </button>
                       </div>
                     ) : (
-                      <div className="overflow-x-auto h-[calc(100vh-280px)] min-h-[300px] max-h-[700px] overflow-y-auto">
+                      <div className="overflow-x-auto h-[400px] overflow-y-auto">
                         <Table className="w-auto border border-gray-200">
                           <TableHeader className="sticky top-0 bg-white z-10">
                             <TableRow>
@@ -523,31 +644,45 @@ export default function StudyReportsPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {filteredStudents.map((student) => (
-                              <TableRow key={student.id}>
-                                <TableCell className="w-[150px] max-w-[150px]">
-                                  <div 
-                                    className={`flex items-center space-x-2 cursor-pointer hover:bg-gray-50 transition-colors duration-200 p-2 rounded ${
-                                      selectedStudent === student.id ? 'bg-blue-100 border-l-4 border-blue-500' : ''
-                                    }`}
-                                    onClick={() => setSelectedStudent(selectedStudent === student.id ? null : student.id)}
-                                  >
-                                    <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                      <span className="text-xs font-medium text-blue-600">
-                                        {student.name?.charAt(0) || '?'}
-                                      </span>
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <div className={`font-medium text-sm truncate ${
-                                        selectedStudent === student.id ? 'text-blue-700' : 'text-gray-900'
-                                      }`}>
-                                        {student.name || 'N/A'}
+                            {filteredStudents.map((student) => {
+                              const messageCount = studentMessageCounts[student.id] || 0;
+                              const getBadgeColor = (count: number) => {
+                                if (count >= 20) return 'bg-blue-500 text-white';
+                                if (count >= 10) return 'bg-yellow-500 text-white';
+                                return 'bg-red-500 text-white';
+                              };
+                              
+                              return (
+                                <TableRow key={student.id}>
+                                  <TableCell className="w-auto py-1">
+                                    <div 
+                                      className={`flex items-center space-x-2 cursor-pointer hover:bg-gray-50 transition-colors duration-200 p-1 rounded ${
+                                        selectedStudent === student.id ? 'bg-blue-100 border-l-4 border-blue-500' : ''
+                                      }`}
+                                      onClick={() => handleStudentClick(student.id)}
+                                    >
+                                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <span className="text-xs font-medium text-blue-600">
+                                          {student.name?.charAt(0) || '?'}
+                                        </span>
                                       </div>
+                                      <div className="min-w-0 flex-1">
+                                        <div className={`font-medium text-xs truncate ${
+                                          selectedStudent === student.id ? 'text-blue-700' : 'text-gray-900'
+                                        }`}>
+                                          {student.name || 'N/A'}
+                                        </div>
+                                      </div>
+                                      {messageCount > 0 && (
+                                        <Badge className={`h-5 min-w-[20px] px-1.5 text-[10px] font-bold rounded-full ${getBadgeColor(messageCount)}`}>
+                                          {messageCount}
+                                        </Badge>
+                                      )}
                                     </div>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
                           </TableBody>
                         </Table>
                       </div>
@@ -803,6 +938,83 @@ export default function StudyReportsPage() {
                 </Card>
               </div>
             </div>
+
+            {/* 발송된 메시지 영역 - 학생 선택 시 전체 너비로 표시 */}
+            {selectedStudent && (
+              <div className="mt-6">
+                <div className="grid grid-cols-12 gap-6">
+                  {/* 좌측: 메시지 목록 */}
+                  <div className="col-span-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <MessageCircle className="h-5 w-5" />
+                          발송된 메시지
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {loadingHistory ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                          </div>
+                        ) : messageHistory.length === 0 ? (
+                          <div className="text-center py-8 text-gray-500 text-sm">
+                            발송된 메시지가 없습니다
+                          </div>
+                        ) : (
+                          <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                            {messageHistory.map((msg) => (
+                              <div
+                                key={msg.id}
+                                onClick={() => setSelectedMessage(selectedMessage === msg.id ? null : msg.id)}
+                                className={`p-3 rounded border cursor-pointer transition-colors ${
+                                  selectedMessage === msg.id 
+                                    ? 'bg-blue-50 border-blue-300' 
+                                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                                }`}
+                              >
+                                <div className="text-sm font-medium text-gray-700">
+                                  {new Date(msg.created_at).toLocaleDateString('ko-KR')} {new Date(msg.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* 우측: 메시지 내용 */}
+                  {selectedMessage && (
+                    <div className="col-span-8">
+                      <Card>
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm flex items-center gap-2">
+                              <MessageCircle className="h-4 w-4" />
+                              메시지 내용
+                            </CardTitle>
+                            <button
+                              onClick={() => setSelectedMessage(null)}
+                              className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {messageHistory.find(msg => msg.id === selectedMessage) && (
+                            <div className="text-sm text-gray-700 whitespace-pre-line p-4 bg-gray-50 rounded border border-gray-200 min-h-[400px]">
+                              {messageHistory.find(msg => msg.id === selectedMessage)?.message_content}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </AdminLayout>
   );
