@@ -20,6 +20,7 @@ import {
   BookOpen,
   MessageCircle
 } from 'lucide-react';
+import { useAuthStore } from '@/store/auth';
 
 // 학생 데이터 타입 정의 (student 테이블 사용)
 interface Student {
@@ -54,11 +55,12 @@ interface Student {
 
 
 export default function StudyReportsPage() {
+  const { academyName } = useAuthStore();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
-  const [selectedAcademy, setSelectedAcademy] = useState<string>('전체');
+  const [selectedAcademy, setSelectedAcademy] = useState<string>(academyName || '전체');
   
       // 학습정보 상태
       const [learningInfo, setLearningInfo] = useState({
@@ -392,6 +394,13 @@ export default function StudyReportsPage() {
   useEffect(() => {
     fetchStudents();
   }, []);
+
+  // academyName이 변경되면 selectedAcademy도 업데이트
+  useEffect(() => {
+    if (academyName) {
+      setSelectedAcademy(academyName);
+    }
+  }, [academyName]);
 
   // 학원별 필터링된 학생 목록
   const filteredStudents = students.filter(student => {
