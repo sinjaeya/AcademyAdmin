@@ -11,9 +11,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Bell, Search, User, Settings, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/auth';
 
 export function AdminHeader() {
   const router = useRouter();
+  const { academyName } = useAuthStore();
 
   const handleLogout = () => {
     // 간단한 로그아웃 - 로그인 페이지로 이동
@@ -36,6 +38,13 @@ export function AdminHeader() {
 
       {/* 우측 메뉴 */}
       <div className="flex items-center space-x-4">
+        {/* 학원 정보 */}
+        {academyName && (
+          <div className="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 text-sm font-medium">
+            {academyName}
+          </div>
+        )}
+        
         {/* 알림 */}
         <Button variant="ghost" size="icon">
           <Bell className="h-5 w-5" />

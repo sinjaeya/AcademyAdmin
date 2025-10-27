@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { LoginFormData } from '@/types';
+import { useAuthStore } from '@/store/auth';
 
 export default function Home() {
   const [formData, setFormData] = useState<LoginFormData>({
@@ -19,6 +20,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { login } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,27 +28,13 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      // Supabase 클라이언트 가져오기
-      const { supabase } = await import('@/lib/supabase/client');
+      const result = await login(formData.email, formData.password);
       
-      if (!supabase) {
-        throw new Error('Supabase 설정이 필요합니다. 환경변수를 확인해주세요.');
-      }
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (error) {
-        setError(error.message);
-        setIsLoading(false);
-        return;
-      }
-
-      if (data.user) {
+      if (result.success) {
         // 로그인 성공 - 어드민 페이지로 이동
         router.push('/admin');
+      } else {
+        setError(result.error?.message || '로그인에 실패했습니다.');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '로그인 중 오류가 발생했습니다.');
@@ -156,30 +144,17 @@ export default function Home() {
                       setIsLoading(true);
 
                       try {
-                        // Supabase 클라이언트 가져오기
-                        const { supabase } = await import('@/lib/supabase/client');
+                        const result = await login('admin@example.com', 'password1234');
                         
-                        if (!supabase) {
-                          throw new Error('Supabase 설정이 필요합니다. 환경변수를 확인해주세요.');
-                        }
-                        
-                        const { data, error } = await supabase.auth.signInWithPassword({
-                          email: 'admin@example.com',
-                          password: 'password1234',
-                        });
-
-                        if (error) {
-                          setError(error.message);
-                          setIsLoading(false);
-                          return;
-                        }
-
-                        if (data.user) {
+                        if (result.success) {
                           // 로그인 성공 - 어드민 페이지로 이동
                           router.push('/admin');
+                        } else {
+                          setError(result.error?.message || '개발자 로그인에 실패했습니다.');
                         }
                       } catch (err) {
                         setError(err instanceof Error ? err.message : '개발자 로그인 중 오류가 발생했습니다.');
+                      } finally {
                         setIsLoading(false);
                       }
                     }, 100); // 100ms 후 실행

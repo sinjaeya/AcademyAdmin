@@ -117,6 +117,12 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
     { name: '권한 관리', href: '/admin/settings/permissions', icon: Shield }
   ], []);
 
+  // 학습관리 서브메뉴들
+  const learningSubMenus = useMemo(() => [
+    { name: '국어', href: '/admin/learning', icon: BookText },
+    { name: '수학', href: '/admin/learning/math', icon: BookText }
+  ], []);
+
   // 현재 활성화된 하위 메뉴가 있는 상위 메뉴를 자동으로 열기
   useEffect(() => {
     const hasActiveSubMenu = settingsSubMenus.some(subItem => subItem.href === pathname);
@@ -128,7 +134,17 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
         return prev;
       });
     }
-  }, [pathname, settingsSubMenus]);
+
+    const hasActiveLearningSubMenu = learningSubMenus.some(subItem => subItem.href === pathname);
+    if (hasActiveLearningSubMenu) {
+      setExpandedItems(prev => {
+        if (!prev.includes('학습관리')) {
+          return [...prev, '학습관리'];
+        }
+        return prev;
+      });
+    }
+  }, [pathname, settingsSubMenus, learningSubMenus]);
 
   return (
     <div className={cn('flex h-full w-56 flex-col bg-white border-r border-gray-200', className)}>
@@ -166,6 +182,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
               {category.items.map((item) => {
                 const isActive = isItemActive(item.href);
                 const isSettings = item.name === '설정';
+                const isLearningManagement = item.name === '학습관리';
                 const isExpanded = expandedItems.includes(item.name);
                 
                 return (
@@ -219,6 +236,54 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
                           </div>
                         )}
                       </div>
+                    ) : isLearningManagement ? (
+                      <div>
+                        <div
+                          className={cn(
+                            'flex items-center justify-between px-2.5 py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer',
+                            isActive
+                              ? 'bg-blue-50 text-blue-700'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          )}
+                          onClick={() => toggleExpanded(item.name)}
+                        >
+                          <div className="flex items-center space-x-2.5">
+                            <item.icon className="h-[18px] w-[18px]" />
+                            <span>{item.name}</span>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <ChevronDownIcon className={cn(
+                              'h-3.5 w-3.5 text-gray-400 transition-transform',
+                              isExpanded ? 'rotate-180' : ''
+                            )} />
+                          </div>
+                        </div>
+                        
+                        {/* 하위 메뉴 */}
+                        {isExpanded && (
+                          <div className="ml-3.5 mt-1.5 space-y-1">
+                            {learningSubMenus.map((subItem) => {
+                              const isSubActive = isItemActive(subItem.href);
+                              return (
+                                <Link key={subItem.name} href={subItem.href}>
+                                  <div
+                                    className={cn(
+                                      'flex items-center px-2.5 py-2 rounded-lg text-[13px] font-medium transition-colors',
+                                      isSubActive
+                                        ? 'bg-blue-50 text-blue-700'
+                                        : 'text-gray-600 hover:bg-gray-50'
+                                    )}
+                                  >
+                                    <subItem.icon className="h-3.5 w-3.5 mr-2.5" />
+                                    <span>{subItem.name}</span>
+                                  </div>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <Link href={item.href}>
                         <div
@@ -252,6 +317,12 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
                             
                             {/* 드롭다운 화살표 - 하위 메뉴가 있을 때만 표시 */}
                             {isSettings && (
+                              <ChevronDownIcon className={cn(
+                                'h-3.5 w-3.5 text-gray-400 transition-transform',
+                                isExpanded ? 'rotate-180' : ''
+                              )} />
+                            )}
+                            {isLearningManagement && (
                               <ChevronDownIcon className={cn(
                                 'h-3.5 w-3.5 text-gray-400 transition-transform',
                                 isExpanded ? 'rotate-180' : ''

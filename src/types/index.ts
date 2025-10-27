@@ -34,6 +34,8 @@ export interface AuthState {
   session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  academyId?: string | null;
+  academyName?: string | null;
 }
 
 // 대시보드 통계 타입

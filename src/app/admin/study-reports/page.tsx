@@ -58,6 +58,7 @@ export default function StudyReportsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [selectedAcademy, setSelectedAcademy] = useState<string>('전체');
   
       // 학습정보 상태
       const [learningInfo, setLearningInfo] = useState({
@@ -392,6 +393,12 @@ export default function StudyReportsPage() {
     fetchStudents();
   }, []);
 
+  // 학원별 필터링된 학생 목록
+  const filteredStudents = students.filter(student => {
+    if (selectedAcademy === '전체') return true;
+    return student.currentAcademy === selectedAcademy;
+  });
+
 
 
   return (
@@ -464,7 +471,18 @@ export default function StudyReportsPage() {
                       학생 목록
                     </CardTitle>
                     <CardDescription>
-                      총 {students.length}명의 학생이 있습니다
+                      <div className="flex items-center gap-2">
+                        <Label>학원:</Label>
+                        <select
+                          value={selectedAcademy}
+                          onChange={(e) => setSelectedAcademy(e.target.value)}
+                          className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="전체">전체</option>
+                          <option value="이지국어교습소">이지국어교습소</option>
+                          <option value="이지수학교습소">이지수학교습소</option>
+                        </select>
+                      </div>
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -494,22 +512,22 @@ export default function StudyReportsPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {students.map((student) => (
+                            {filteredStudents.map((student) => (
                               <TableRow key={student.id}>
-                                <TableCell className="w-auto">
+                                <TableCell className="w-[150px] max-w-[150px]">
                                   <div 
-                                    className={`flex items-center space-x-3 cursor-pointer hover:bg-gray-50 transition-colors duration-200 p-2 rounded ${
+                                    className={`flex items-center space-x-2 cursor-pointer hover:bg-gray-50 transition-colors duration-200 p-2 rounded ${
                                       selectedStudent === student.id ? 'bg-blue-100 border-l-4 border-blue-500' : ''
                                     }`}
                                     onClick={() => setSelectedStudent(selectedStudent === student.id ? null : student.id)}
                                   >
-                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                                       <span className="text-xs font-medium text-blue-600">
                                         {student.name?.charAt(0) || '?'}
                                       </span>
                                     </div>
-                                    <div>
-                                      <div className={`font-medium text-sm ${
+                                    <div className="min-w-0 flex-1">
+                                      <div className={`font-medium text-sm truncate ${
                                         selectedStudent === student.id ? 'text-blue-700' : 'text-gray-900'
                                       }`}>
                                         {student.name || 'N/A'}

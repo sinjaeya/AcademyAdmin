@@ -12,6 +12,7 @@ interface AuthStore extends AuthState {
   setLoading: (loading: boolean) => void;
   setUser: (user: User | null) => void;
   setSession: (session: Session | null) => void;
+  setAcademy: (academyId: string | null, academyName: string | null) => void;
   initializeAuth: () => Promise<void>;
 }
 
@@ -22,6 +23,8 @@ export const useAuthStore = create<AuthStore>()(
       session: null,
       isLoading: false,
       isAuthenticated: false,
+      academyId: null,
+      academyName: null,
 
       setLoading: (loading: boolean) => set({ isLoading: loading }),
 
@@ -34,6 +37,11 @@ export const useAuthStore = create<AuthStore>()(
         session, 
         user: session?.user || null,
         isAuthenticated: !!session 
+      }),
+
+      setAcademy: (academyId: string | null, academyName: string | null) => set({ 
+        academyId, 
+        academyName 
       }),
 
 
@@ -68,11 +76,36 @@ export const useAuthStore = create<AuthStore>()(
           }
 
           if (data.user && data.session) {
+            // user_role 조회하여 학원 정보 가져오기
+            let academyId = null;
+            let academyName = null;
+            
+            try {
+              const { data: userRoleData } = await supabase
+                .from('user_role')
+                .select('academy_id, academy:academy_id(id, name)')
+                .eq('user_id', data.user.id)
+                .single();
+              
+              if (userRoleData) {
+                academyId = userRoleData.academy_id;
+                if (userRoleData.academy && Array.isArray(userRoleData.academy) && userRoleData.academy[0]) {
+                  academyName = (userRoleData.academy[0] as any).name;
+                } else if (userRoleData.academy && typeof userRoleData.academy === 'object' && 'name' in userRoleData.academy) {
+                  academyName = (userRoleData.academy as any).name;
+                }
+              }
+            } catch (error) {
+              console.error('Failed to fetch academy info:', error);
+            }
+
             set({ 
               user: data.user as User,
               session: data.session as Session,
               isAuthenticated: true,
-              isLoading: false 
+              isLoading: false,
+              academyId,
+              academyName
             });
             return { success: true };
           }
@@ -101,7 +134,9 @@ export const useAuthStore = create<AuthStore>()(
             user: null,
             session: null, 
             isAuthenticated: false, 
-            isLoading: false 
+            isLoading: false,
+            academyId: null,
+            academyName: null
           });
         } catch {
           set({ isLoading: false });
@@ -204,7 +239,9 @@ export const useAuthStore = create<AuthStore>()(
               user: null,
               session: null, 
               isAuthenticated: false, 
-              isLoading: false 
+              isLoading: false,
+              academyId: null,
+              academyName: null
             });
             return;
           }
@@ -212,34 +249,88 @@ export const useAuthStore = create<AuthStore>()(
           const { data: { session } } = await supabase.auth.getSession();
           
           if (session) {
+            // user_role 조회하여 학원 정보 가져오기
+            let academyId = null;
+            let academyName = null;
+            
+            try {
+              const { data: userRoleData } = await supabase
+                .from('user_role')
+                .select('academy_id, academy:academy_id(id, name)')
+                .eq('user_id', session.user.id)
+                .single();
+              
+              if (userRoleData) {
+                academyId = userRoleData.academy_id;
+                if (userRoleData.academy && Array.isArray(userRoleData.academy) && userRoleData.academy[0]) {
+                  academyName = (userRoleData.academy[0] as any).name;
+                } else if (userRoleData.academy && typeof userRoleData.academy === 'object' && 'name' in userRoleData.academy) {
+                  academyName = (userRoleData.academy as any).name;
+                }
+              }
+            } catch (error) {
+              console.error('Failed to fetch academy info:', error);
+            }
+
             set({
               user: session.user as User,
               session: session as Session,
               isAuthenticated: true,
-              isLoading: false
+              isLoading: false,
+              academyId,
+              academyName
             });
           } else {
             set({ 
               user: null,
               session: null, 
               isAuthenticated: false, 
-              isLoading: false 
+              isLoading: false,
+              academyId: null,
+              academyName: null
             });
           }
 
           // 인증 상태 변화 감지
           supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'SIGNED_IN' && session) {
+              // user_role 조회하여 학원 정보 가져오기
+              let academyId = null;
+              let academyName = null;
+              
+              try {
+                const { data: userRoleData } = await supabase
+                  .from('user_role')
+                  .select('academy_id, academy:academy_id(id, name)')
+                  .eq('user_id', session.user.id)
+                  .single();
+                
+                if (userRoleData) {
+                  academyId = userRoleData.academy_id;
+                  if (userRoleData.academy && Array.isArray(userRoleData.academy) && userRoleData.academy[0]) {
+                    academyName = (userRoleData.academy[0] as any).name;
+                  } else if (userRoleData.academy && typeof userRoleData.academy === 'object' && 'name' in userRoleData.academy) {
+                    academyName = (userRoleData.academy as any).name;
+                  }
+                }
+              } catch (error) {
+                console.error('Failed to fetch academy info:', error);
+              }
+
               set({
                 user: session.user as User,
                 session: session as Session,
-                isAuthenticated: true
+                isAuthenticated: true,
+                academyId,
+                academyName
               });
             } else if (event === 'SIGNED_OUT') {
               set({ 
                 user: null,
                 session: null, 
-                isAuthenticated: false 
+                isAuthenticated: false,
+                academyId: null,
+                academyName: null
               });
             }
           });
@@ -257,7 +348,9 @@ export const useAuthStore = create<AuthStore>()(
       name: 'auth-storage',
       partialize: (state) => ({ 
         user: state.user,
-        isAuthenticated: state.isAuthenticated 
+        isAuthenticated: state.isAuthenticated,
+        academyId: state.academyId,
+        academyName: state.academyName
       }),
     }
   )
