@@ -1,0 +1,34 @@
+# 모든 텍스트 파일의 줄바꿈을 자동으로 정규화
+* text=auto
+
+# 소스 코드 파일은 LF로 통일
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# 설정 파일
+*.config.* text eol=lf
+.gitignore text eol=lf
+.eslintrc* text eol=lf
+.prettierrc* text eol=lf
+
+# 바이너리 파일
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+

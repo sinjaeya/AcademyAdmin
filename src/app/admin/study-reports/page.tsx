@@ -17,9 +17,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import {
+import { 
   BookOpen,
-  MessageCircle
+  MessageCircle,
+  X
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 
@@ -53,6 +54,19 @@ interface MessageHistory {
   created_at: string;
 }
 
+// 학습지 데이터 타입 정의
+interface Worksheet {
+  id: number;
+  student_name: string;
+  grade: string;
+  worksheet_name: string;
+  score: string;
+  issued_date: string;
+  crawled_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
 
 // 데이터 포맷팅 함수 (현재 사용되지 않지만 향후 사용을 위해 유지)
 // const formatDateTime = (dateString: string) => {
@@ -78,14 +92,19 @@ export default function StudyReportsPage() {
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [selectedAcademy, setSelectedAcademy] = useState<string>(academyName || '전체');
   
-      // 학습정보 상태
-      const [learningInfo, setLearningInfo] = useState({
-        attendance: 'attendance', // 출결사항 - 출석
-        classAttitude: 'average', // 수업태도 - 보통
-        homeworkSubmission: 'submitted', // 과제제출 - 제출
-        homeworkQuality: 'average', // 과제성실도 - 보통
-        testScore: '' // 테스트점수
-      });
+  // 학습정보 상태
+  const [learningInfo, setLearningInfo] = useState({
+    attendance: 'attendance', // 출결사항 - 출석
+    classAttitude: 'average', // 수업태도 - 보통
+    homeworkSubmission: 'submitted', // 과제제출 - 제출
+    homeworkQuality: 'average', // 과제성실도 - 보통
+    testScore: '' // 테스트점수
+  });
+  
+  // 학습지 모달 상태
+  const [showWorksheetModal, setShowWorksheetModal] = useState(false);
+  const [worksheets, setWorksheets] = useState<Worksheet[]>([]);
+  const [loadingWorksheets, setLoadingWorksheets] = useState(false);
   
   const [messageText, setMessageText] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
@@ -102,6 +121,66 @@ export default function StudyReportsPage() {
       ...prev,
       [field]: value
     }));
+  };
+
+  // 학습지 데이터 가져오기
+  const fetchWorksheets = async () => {
+    if (!selectedStudent) {
+      setAlertMessage('학생을 먼저 선택해 주세요');
+      setShowAlert(true);
+      setTimeout(() => setShowAlert(false), 1000);
+      return;
+    }
+
+    try {
+      setLoadingWorksheets(true);
+      const student = students.find(s => s.id === selectedStudent);
+      const studentName = student?.name;
+      
+      if (!studentName) {
+        throw new Error('학생 정보를 찾을 수 없습니다');
+      }
+
+      const response = await fetch(`/api/admin/learning/worksheets?student_name=${encodeURIComponent(studentName)}`);
+      
+      if (!response.ok) {
+        throw new Error('학습지 데이터를 가져오는데 실패했습니다');
+      }
+      
+      const data = await response.json();
+      setWorksheets(data || []);
+      setShowWorksheetModal(true);
+    } catch (err) {
+      console.error('학습지 조회 오류:', err);
+      setAlertMessage('학습지 데이터를 가져오는데 실패했습니다');
+      setShowAlert(true);
+      setTimeout(() => setShowAlert(false), 1000);
+    } finally {
+      setLoadingWorksheets(false);
+    }
+  };
+
+  // 학습지를 메시지에 넣기
+  const handleAddWorksheetToMessage = () => {
+    if (worksheets.length === 0) return;
+
+    const student = students.find(s => s.id === selectedStudent);
+    const studentName = student?.name || '';
+    
+    // 최근 5개의 학습지 정보 생성
+    const recentWorksheets = worksheets.slice(0, 5);
+    let worksheetText = '\n\n[매쓰플랫 학습지 현황]\n';
+    
+    recentWorksheets.forEach((ws, index) => {
+      const date = ws.issued_date 
+        ? new Date(ws.issued_date).toLocaleDateString('ko-KR')
+        : new Date(ws.crawled_at).toLocaleDateString('ko-KR');
+      worksheetText += `${index + 1}. ${date} - ${ws.worksheet_name} (${ws.score})\n`;
+    });
+
+    // 메시지 텍스트에 추가
+    setMessageText(prev => prev + worksheetText);
+    setShowWorksheetModal(false);
   };
 
   // 웹훅 로그 저장 헬퍼 함수
@@ -879,6 +958,13 @@ export default function StudyReportsPage() {
                           className="w-24"
                         />
                         <span className="text-sm text-gray-500">점</span>
+                        <button
+                          onClick={fetchWorksheets}
+                          disabled={loadingWorksheets || !selectedStudent}
+                          className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm cursor-pointer"
+                        >
+                          {loadingWorksheets ? '로딩 중...' : '매쓰플랫'}
+                        </button>
                       </div>
                     </div>
 
@@ -1012,6 +1098,89 @@ export default function StudyReportsPage() {
                       </Card>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* 학습지 모달 */}
+            {showWorksheetModal && (
+              <div 
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+                onClick={() => setShowWorksheetModal(false)}
+              >
+                <div 
+                  className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] mx-4 flex flex-col"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* 모달 헤더 */}
+                  <div className="flex items-center justify-between p-6 border-b">
+                    <h2 className="text-2xl font-bold text-gray-900">매쓰플랫 학습지 현황</h2>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleAddWorksheetToMessage}
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
+                      >
+                        메시지 넣기
+                      </button>
+                      <button
+                        onClick={() => setShowWorksheetModal(false)}
+                        className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                      >
+                        <X className="h-6 w-6" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 모달 내용 */}
+                  <div className="flex-1 overflow-y-auto p-6">
+                    {worksheets.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        학습지 데이터가 없습니다
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-16">번호</TableHead>
+                            <TableHead>출제일</TableHead>
+                            <TableHead>학년</TableHead>
+                            <TableHead>학습지명</TableHead>
+                            <TableHead className="w-24">점수</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {worksheets.map((ws, index) => (
+                            <TableRow key={ws.id}>
+                              <TableCell className="text-center">{index + 1}</TableCell>
+                              <TableCell>
+                                {ws.issued_date 
+                                  ? new Date(ws.issued_date).toLocaleDateString('ko-KR')
+                                  : new Date(ws.crawled_at).toLocaleDateString('ko-KR')}
+                              </TableCell>
+                              <TableCell>{ws.grade}</TableCell>
+                              <TableCell className="max-w-md truncate">{ws.worksheet_name}</TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant="outline" className={
+                                  (() => {
+                                    if (ws.score === '채점' || ws.score === '이어 채점' || ws.score.includes('채점')) {
+                                      return 'bg-gray-500 text-white';
+                                    }
+                                    const scoreNum = parseInt(ws.score);
+                                    if (isNaN(scoreNum)) return 'bg-gray-400 text-white';
+                                    if (scoreNum >= 90) return 'bg-green-500 text-white';
+                                    if (scoreNum >= 70) return 'bg-yellow-500 text-white';
+                                    return 'bg-red-500 text-white';
+                                  })()
+                                }>
+                                  {ws.score}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
