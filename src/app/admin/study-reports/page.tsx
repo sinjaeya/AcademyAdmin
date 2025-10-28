@@ -169,13 +169,38 @@ export default function StudyReportsPage() {
     
     // 최근 5개의 학습지 정보 생성
     const recentWorksheets = worksheets.slice(0, 5);
-    let worksheetText = '\n\n[매쓰플랫 학습지 현황]\n';
     
+    // 통계 수집
+    let notDoneCount = 0;
+    let doneCount = 0;
+    const scores: string[] = [];
+    
+    recentWorksheets.forEach((ws) => {
+      if (ws.score === '채점' || ws.score === '이어 채점' || ws.score.includes('채점')) {
+        notDoneCount++;
+      } else {
+        doneCount++;
+        scores.push(ws.score);
+      }
+    });
+    
+    // 메시지 생성
+    let worksheetText = '\n\n[숙제 현황(최근 5개)]\n';
+    worksheetText += `- 숙제안함 : ${notDoneCount}개\n`;
+    worksheetText += `- 숙제함 : ${doneCount}개`;
+    if (scores.length > 0) {
+      worksheetText += ` (${scores.join('/')})`;
+    }
+    worksheetText += '\n\n';
+    
+    // 상세 리스트
     recentWorksheets.forEach((ws, index) => {
-      const date = ws.issued_date 
-        ? new Date(ws.issued_date).toLocaleDateString('ko-KR')
-        : new Date(ws.crawled_at).toLocaleDateString('ko-KR');
-      worksheetText += `${index + 1}. ${date} - ${ws.worksheet_name} (${ws.score})\n`;
+      let scoreDisplay = ws.score;
+      if (ws.score === '채점' || ws.score === '이어 채점' || ws.score.includes('채점')) {
+        scoreDisplay = '숙제 안함';
+      }
+      
+      worksheetText += `(${scoreDisplay}) ${index + 1}. ${ws.worksheet_name}\n`;
     });
 
     // 메시지 텍스트에 추가
