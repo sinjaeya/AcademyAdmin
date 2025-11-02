@@ -153,3 +153,176 @@ COMMENT ON COLUMN students.updated_at IS '레코드 최종 수정 일시';
 ## 사용자 안내
 위 예외 사항이 아닌 경우, git 작업은 사용자가 직접 터미널에서 수행하도록 안내합니다.
 
+---
+
+# 사용자 피드백 표시 규칙
+
+## 기본 원칙
+**모든 사용자 피드백은 브라우저 기본 함수 대신 UI 컴포넌트를 사용해야 합니다.**
+
+## 금지 사항
+- ❌ `alert()` 함수 사용 금지
+- ❌ `confirm()` 함수 사용 금지 (Dialog 컴포넌트 사용)
+- ❌ `prompt()` 함수 사용 금지
+
+## 필수 사항
+- ✅ 성공/에러 메시지는 `useToast()` hook을 사용한 Toast 컴포넌트로 표시
+- ✅ 확인 다이얼로그는 shadcn/ui의 Dialog 컴포넌트 사용
+- ✅ Toast 타입: 'success', 'error', 'warning', 'info'
+
+## 사용 예시
+
+### Toast 사용법
+```typescript
+import { useToast } from '@/components/ui/toast';
+
+const { toast } = useToast();
+
+// 성공 메시지
+toast({
+  type: 'success',
+  description: '작업이 성공적으로 완료되었습니다.'
+});
+
+// 에러 메시지
+toast({
+  type: 'error',
+  description: '작업 중 오류가 발생했습니다.'
+});
+
+// 경고 메시지
+toast({
+  type: 'warning',
+  description: '주의가 필요합니다.'
+});
+
+// 정보 메시지
+toast({
+  type: 'info',
+  description: '알림 메시지입니다.'
+});
+```
+
+### Dialog 사용법 (confirm 대체)
+```typescript
+import { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+
+const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+// Dialog 열기
+const handleDelete = () => {
+  setIsDialogOpen(true);
+};
+
+// 확인 처리
+const handleConfirm = () => {
+  // 삭제 로직 실행
+  setIsDialogOpen(false);
+};
+
+<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>정말로 삭제하시겠습니까?</DialogTitle>
+      <DialogDescription>
+        이 작업은 되돌릴 수 없습니다.
+      </DialogDescription>
+    </DialogHeader>
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+        취소
+      </Button>
+      <Button variant="destructive" onClick={handleConfirm}>
+        삭제
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
+
+## 체크리스트
+새로운 코드를 작성할 때 다음 사항을 확인하세요:
+
+- [ ] `alert()` 사용 없음
+- [ ] `confirm()` 사용 없음 (Dialog 컴포넌트 사용)
+- [ ] `prompt()` 사용 없음
+- [ ] 모든 성공/에러 메시지는 Toast 사용
+- [ ] 모든 확인 다이얼로그는 Dialog 컴포넌트 사용
+
+---
+
+# UI 인터랙션 요소 커서 스타일 규칙
+
+## 기본 원칙
+**모든 클릭 가능한 요소는 마우스 포인터가 손모양(cursor: pointer)으로 표시되어야 합니다.**
+
+## 필수 사항
+- ✅ 모든 Button 컴포넌트는 `cursor-pointer` 클래스 포함 (Button 컴포넌트에 기본 적용됨)
+- ✅ 모든 DialogTrigger, DialogClose는 `cursor-pointer` 클래스 포함
+- ✅ 모든 SelectTrigger는 `cursor-pointer` 클래스 포함
+- ✅ 기타 클릭 가능한 요소(링크, 카드 등)에도 `cursor-pointer` 적용
+
+## 적용 예시
+
+### Button 컴포넌트
+Button 컴포넌트는 이미 `cursor-pointer`가 기본 클래스에 포함되어 있습니다:
+```typescript
+// src/components/ui/button.tsx
+const buttonVariants = cva(
+  "inline-flex ... cursor-pointer ...",
+  // ...
+)
+```
+
+### Dialog 컴포넌트
+```typescript
+<DialogTrigger className="cursor-pointer">
+  버튼
+</DialogTrigger>
+
+<DialogClose className="cursor-pointer">
+  닫기
+</DialogClose>
+```
+
+### Select 컴포넌트
+SelectTrigger는 이미 `cursor-pointer`가 기본 클래스에 포함되어 있습니다.
+
+### 커스텀 클릭 가능한 요소
+```typescript
+<div 
+  onClick={handleClick}
+  className="cursor-pointer hover:bg-accent"
+>
+  클릭 가능한 영역
+</div>
+
+<Card 
+  onClick={handleCardClick}
+  className="cursor-pointer"
+>
+  클릭 가능한 카드
+</Card>
+```
+
+## 주의사항
+- `disabled` 상태인 요소는 `cursor-not-allowed` 사용
+- 기본적으로 Button, DialogTrigger, DialogClose, SelectTrigger에는 이미 `cursor-pointer`가 적용되어 있습니다.
+- 새로운 클릭 가능한 UI 컴포넌트를 만들 때는 반드시 `cursor-pointer`를 포함해야 합니다.
+
+## 체크리스트
+새로운 클릭 가능한 요소를 작성할 때 다음 사항을 확인하세요:
+
+- [ ] 클릭 가능한 요소에 `cursor-pointer` 클래스 포함
+- [ ] disabled 상태에서는 `cursor-not-allowed` 사용
+- [ ] Button, Dialog, Select 등 기본 컴포넌트는 이미 적용됨
+

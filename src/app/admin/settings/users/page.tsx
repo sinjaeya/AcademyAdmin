@@ -39,6 +39,7 @@ import {
   Trash2,
   AlertCircle
 } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 
 // 사용자 데이터 타입 정의 (admin_users + roles 조인)
 interface User {
@@ -103,9 +104,12 @@ export default function SettingsUsersPage() {
     academy_id: null,
     academy_name: null
   });
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addUserError, setAddUserError] = useState<string | null>(null);
   const [updateUserError, setUpdateUserError] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
   // 데이터 가져오기 - 서버 사이드 API 사용
   const fetchUsers = async () => {
@@ -151,23 +155,37 @@ export default function SettingsUsersPage() {
   }, []);
 
 
-  const handleDeleteUser = async (userId: string) => {
-    if (confirm('정말로 이 사용자를 삭제하시겠습니까?')) {
-      try {
-        const response = await fetch(`/api/admin/users/${userId}`, {
-          method: 'DELETE'
-        });
+  const handleDeleteClick = (userId: string) => {
+    setUserToDelete(userId);
+    setIsDeleteDialogOpen(true);
+  };
 
-        if (!response.ok) {
-          throw new Error('사용자 삭제에 실패했습니다.');
-        }
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
 
-        // 성공적으로 삭제되면 목록에서 제거
-        setUsers(prev => prev.filter(user => user.id !== userId));
-      } catch (err) {
-        console.error('Error deleting user:', err);
-        alert('사용자 삭제 중 오류가 발생했습니다.');
+    try {
+      const response = await fetch(`/api/admin/users/${userToDelete}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('사용자 삭제에 실패했습니다.');
       }
+
+      // 성공적으로 삭제되면 목록에서 제거
+      setUsers(prev => prev.filter(user => user.id !== userToDelete));
+      setIsDeleteDialogOpen(false);
+      setUserToDelete(null);
+      toast({
+        type: 'success',
+        description: '사용자가 성공적으로 삭제되었습니다.'
+      });
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      toast({
+        type: 'error',
+        description: err instanceof Error ? err.message : '사용자 삭제 중 오류가 발생했습니다.'
+      });
     }
   };
 
@@ -175,12 +193,18 @@ export default function SettingsUsersPage() {
   const handleAddUser = async () => {
     // 클라이언트 사이드 유효성 검증
     if (!newUser.email || !newUser.password || !newUser.name || !newUser.role_id) {
-      alert('모든 필수 필드를 입력해주세요.');
+      toast({
+        type: 'error',
+        description: '모든 필수 필드를 입력해주세요.'
+      });
       return;
     }
 
     if (newUser.password.length < 8) {
-      alert('비밀번호는 최소 8자 이상이어야 합니다.');
+      toast({
+        type: 'error',
+        description: '비밀번호는 최소 8자 이상이어야 합니다.'
+      });
       return;
     }
 
@@ -217,11 +241,19 @@ export default function SettingsUsersPage() {
         });
         setAddUserError(null);
         setIsAddUserOpen(false);
+        toast({
+          type: 'success',
+          description: '사용자가 성공적으로 추가되었습니다.'
+        });
       }
     } catch (err) {
       console.error('Error adding user:', err);
       const errorMessage = err instanceof Error ? err.message : '사용자 추가 중 오류가 발생했습니다.';
       setAddUserError(errorMessage);
+      toast({
+        type: 'error',
+        description: errorMessage
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -247,12 +279,18 @@ export default function SettingsUsersPage() {
 
     // 클라이언트 사이드 유효성 검증
     if (!editingUser.email || !editingUser.name || !editingUser.role_id) {
-      alert('모든 필수 필드를 입력해주세요.');
+      toast({
+        type: 'error',
+        description: '모든 필수 필드를 입력해주세요.'
+      });
       return;
     }
 
     if (editPassword && editPassword.length < 8) {
-      alert('비밀번호는 최소 8자 이상이어야 합니다.');
+      toast({
+        type: 'error',
+        description: '비밀번호는 최소 8자 이상이어야 합니다.'
+      });
       return;
     }
 
@@ -296,10 +334,18 @@ export default function SettingsUsersPage() {
       setIsEditUserOpen(false);
       setEditingUser(null);
       setEditPassword('');
+      toast({
+        type: 'success',
+        description: '사용자 정보가 성공적으로 수정되었습니다.'
+      });
     } catch (err) {
       console.error('Error updating user:', err);
       const errorMessage = err instanceof Error ? err.message : '사용자 수정 중 오류가 발생했습니다.';
       setUpdateUserError(errorMessage);
+      toast({
+        type: 'error',
+        description: errorMessage
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -419,7 +465,7 @@ export default function SettingsUsersPage() {
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => handleDeleteUser(user.id)}
+                              onClick={() => handleDeleteClick(user.id)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -628,6 +674,35 @@ export default function SettingsUsersPage() {
                 disabled={isSubmitting || !editingUser?.email || !editingUser?.name || !editingUser?.role_id || (editPassword.length > 0 && editPassword.length < 8)}
               >
                 {isSubmitting ? '수정 중...' : '수정'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 사용자 삭제 확인 다이얼로그 */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>사용자 삭제 확인</DialogTitle>
+              <DialogDescription>
+                정말로 이 사용자를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDeleteDialogOpen(false);
+                  setUserToDelete(null);
+                }}
+              >
+                취소
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteUser}
+              >
+                삭제
               </Button>
             </DialogFooter>
           </DialogContent>

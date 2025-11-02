@@ -38,6 +38,7 @@ import {
   Trash2,
   Phone
 } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 
 // 학생 데이터 타입 정의
 interface Student {
@@ -136,12 +137,15 @@ const extractMiddle4Digits = (phoneNumber: string): string => {
 };
 
 export default function StudentsPage() {
+  const { toast } = useToast();
   const [students, setStudents] = useState<Student[]>([]);
   const [academies, setAcademies] = useState<Academy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [isEditStudentOpen, setIsEditStudentOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
   const [newStudent, setNewStudent] = useState<NewStudentForm>({
     name: '',
     phone_number: '',
@@ -212,25 +216,39 @@ export default function StudentsPage() {
     fetchAcademies();
   }, []);
 
-  const handleDeleteStudent = async (studentId: string) => {
-    if (confirm('정말로 이 학생을 삭제하시겠습니까?')) {
-      try {
-        const response = await fetch(`/api/admin/students/${studentId}`, {
-          method: 'DELETE',
-        });
+  const handleDeleteClick = (studentId: string) => {
+    setStudentToDelete(studentId);
+    setIsDeleteDialogOpen(true);
+  };
 
-        const result = await response.json();
+  const handleDeleteStudent = async () => {
+    if (!studentToDelete) return;
 
-        if (!response.ok) {
-          throw new Error(result.error || '학생 삭제 중 오류가 발생했습니다.');
-        }
+    try {
+      const response = await fetch(`/api/admin/students/${studentToDelete}`, {
+        method: 'DELETE',
+      });
 
-        // 성공적으로 삭제되면 목록에서 제거
-        setStudents(prev => prev.filter(student => student.id !== studentId));
-      } catch (err) {
-        console.error('Error deleting student:', err);
-        alert('학생 삭제 중 오류가 발생했습니다.');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || '학생 삭제 중 오류가 발생했습니다.');
       }
+
+      // 성공적으로 삭제되면 목록에서 제거
+      setStudents(prev => prev.filter(student => student.id !== studentToDelete));
+      setIsDeleteDialogOpen(false);
+      setStudentToDelete(null);
+      toast({
+        type: 'success',
+        description: '학생이 성공적으로 삭제되었습니다.'
+      });
+    } catch (err) {
+      console.error('Error deleting student:', err);
+      toast({
+        type: 'error',
+        description: err instanceof Error ? err.message : '학생 삭제 중 오류가 발생했습니다.'
+      });
     }
   };
 
@@ -269,10 +287,17 @@ export default function StudentsPage() {
           status: '재원'
         });
         setIsAddStudentOpen(false);
+        toast({
+          type: 'success',
+          description: '학생이 성공적으로 추가되었습니다.'
+        });
       }
     } catch (err) {
       console.error('Error adding student:', err);
-      alert('학생 추가 중 오류가 발생했습니다.');
+      toast({
+        type: 'error',
+        description: err instanceof Error ? err.message : '학생 추가 중 오류가 발생했습니다.'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -387,10 +412,16 @@ export default function StudentsPage() {
       }
       
       setIsEditStudentOpen(false);
-      alert('학생 정보가 성공적으로 업데이트되었습니다.');
+      toast({
+        type: 'success',
+        description: '학생 정보가 성공적으로 업데이트되었습니다.'
+      });
     } catch (err) {
       console.error('Error updating student:', err);
-      alert(err instanceof Error ? err.message : '학생 정보 업데이트 중 오류가 발생했습니다.');
+      toast({
+        type: 'error',
+        description: err instanceof Error ? err.message : '학생 정보 업데이트 중 오류가 발생했습니다.'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -531,7 +562,7 @@ export default function StudentsPage() {
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => handleDeleteStudent(student.id)}
+                              onClick={() => handleDeleteClick(student.id)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -921,6 +952,35 @@ export default function StudentsPage() {
                 disabled={isSubmitting || !editStudent.name || !editStudent.phone_number || !editStudent.phone_middle_4 || editStudent.phone_middle_4.length !== 4 || !editStudent.school || !editStudent.grade || !editStudent.parent_phone || !editStudent.currentAcademy || !editStudent.status}
               >
                 {isSubmitting ? '수정 중...' : '수정'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 학생 삭제 확인 다이얼로그 */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>학생 삭제 확인</DialogTitle>
+              <DialogDescription>
+                정말로 이 학생을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDeleteDialogOpen(false);
+                  setStudentToDelete(null);
+                }}
+              >
+                취소
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteStudent}
+              >
+                삭제
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -6,20 +6,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Edit, Trash2, Building2, MapPin, Phone, Mail, Globe, FileText } from 'lucide-react';
 import { Academy } from '@/types';
+import { useToast } from '@/components/ui/toast';
 
 interface AcademyManagementProps {
   initialAcademies?: Academy[];
 }
 
 export function AcademyManagement({ initialAcademies = [] }: AcademyManagementProps) {
+  const { toast } = useToast();
   const [academies, setAcademies] = useState<Academy[]>(initialAcademies);
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [academyToDelete, setAcademyToDelete] = useState<string | null>(null);
   const [editingAcademy, setEditingAcademy] = useState<Academy | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -73,35 +77,64 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
         await fetchAcademies();
         resetForm();
         setIsDialogOpen(false);
-        alert('학원이 성공적으로 저장되었습니다.');
+        toast({
+          type: 'success',
+          description: '학원이 성공적으로 저장되었습니다.'
+        });
       } else {
         console.error('학원 저장 실패:', responseData);
-        alert(`학원 저장 실패: ${responseData.error || responseData.details || '알 수 없는 오류'}`);
+        const errorMessage = responseData.error || responseData.details || '알 수 없는 오류';
+        toast({
+          type: 'error',
+          description: `학원 저장 실패: ${errorMessage}`
+        });
       }
     } catch (error) {
       console.error('학원 저장 오류:', error);
-      alert(`학원 저장 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+      toast({
+        type: 'error',
+        description: `학원 저장 중 오류가 발생했습니다: ${errorMessage}`
+      });
     }
   };
 
-  // 학원 삭제
-  const handleDelete = async (id: string) => {
-    if (!confirm('정말로 이 학원을 삭제하시겠습니까?')) {
-      return;
-    }
+  // 학원 삭제 클릭
+  const handleDeleteClick = (id: string) => {
+    setAcademyToDelete(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // 학원 삭제 실행
+  const handleDelete = async () => {
+    if (!academyToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/academy/${id}`, {
+      const response = await fetch(`/api/admin/academy/${academyToDelete}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
         await fetchAcademies();
+        setIsDeleteDialogOpen(false);
+        setAcademyToDelete(null);
+        toast({
+          type: 'success',
+          description: '학원이 성공적으로 삭제되었습니다.'
+        });
       } else {
         console.error('학원 삭제 실패');
+        toast({
+          type: 'error',
+          description: '학원 삭제에 실패했습니다.'
+        });
       }
     } catch (error) {
       console.error('학원 삭제 오류:', error);
+      toast({
+        type: 'error',
+        description: error instanceof Error ? error.message : '학원 삭제 중 오류가 발생했습니다.'
+      });
     }
   };
 
@@ -340,7 +373,7 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleDelete(academy.id)}
+                  onClick={() => handleDeleteClick(academy.id)}
                   className="text-red-600 hover:text-red-700"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -364,6 +397,35 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
           </CardContent>
         </Card>
       )}
+
+      {/* 학원 삭제 확인 다이얼로그 */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>학원 삭제 확인</DialogTitle>
+            <DialogDescription>
+              정말로 이 학원을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setAcademyToDelete(null);
+              }}
+            >
+              취소
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+            >
+              삭제
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
