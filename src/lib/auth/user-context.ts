@@ -1,60 +1,18 @@
 import { createServerClient } from '@/lib/supabase/server'
-import { ExtendedUser, Academy, UserRole, UserContext } from '@/types'
+import { User, Academy, UserContext } from '@/types'
 
 /**
  * 서버 사이드에서 현재 사용자의 전체 정보를 가져옵니다 (학원 정보 포함)
+ * 참고: 현재는 세션 기반 인증이 없으므로 null을 반환합니다.
+ * 실제 구현 시에는 세션에서 사용자 ID를 가져와야 합니다.
  */
 export async function getUserContext(): Promise<UserContext | null> {
   try {
     const supabase = createServerClient()
     
-    // 현재 사용자 세션 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      console.error('사용자 인증 오류:', authError)
-      return null
-    }
-
-    // 사용자의 역할 정보와 학원 정보를 함께 조회
-    const { data: userRoleData, error: userRoleError } = await supabase
-      .from('user_role')
-      .select(`
-        *,
-        academy:academy_id (
-          *
-        )
-      `)
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .single()
-
-    if (userRoleError) {
-      console.error('사용자 역할 정보 조회 오류:', userRoleError)
-      return null
-    }
-
-    if (!userRoleData) {
-      console.error('사용자 역할 정보가 없습니다.')
-      return null
-    }
-
-    // 타입 변환
-    const extendedUser: ExtendedUser = {
-      ...user,
-      email: user.email || '',
-      role: userRoleData.role as 'admin' | 'moderator' | 'user',
-      user_role: userRoleData as UserRole,
-      academy: userRoleData.academy as Academy
-    }
-
-    const userContext: UserContext = {
-      user: extendedUser,
-      academy: userRoleData.academy as Academy,
-      isAdmin: userRoleData.role === 'admin' || userRoleData.role === 'owner'
-    }
-
-    return userContext
+    // TODO: 실제로는 세션에서 사용자 ID를 가져와야 함
+    // 현재는 구현되지 않았으므로 null 반환
+    return null
   } catch (error) {
     console.error('사용자 컨텍스트 조회 중 오류:', error)
     return null
@@ -68,41 +26,70 @@ export async function getUserById(userId: string): Promise<UserContext | null> {
   try {
     const supabase = createServerClient()
     
-    const { data: userRoleData, error: userRoleError } = await supabase
-      .from('user_role')
+    // admin_users 테이블에서 사용자 정보와 역할 정보를 조회
+    const { data: userData, error: userError } = await supabase
+      .from('admin_users')
       .select(`
-        *,
+        id,
+        email,
+        name,
+        role_id,
+        academy_id,
+        roles!inner (
+          id,
+          name,
+          level
+        ),
         academy:academy_id (
-          *
+          id,
+          name,
+          address,
+          phone,
+          email,
+          website,
+          description,
+          logo_url,
+          settings,
+          is_active,
+          created_at,
+          updated_at
         )
       `)
-      .eq('user_id', userId)
-      .eq('is_active', true)
+      .eq('id', userId)
       .single()
 
-    if (userRoleError || !userRoleData) {
+    if (userError || !userData) {
       return null
     }
 
-    // auth.users에서 기본 사용자 정보 가져오기
-    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId)
-    
-    if (authError || !authUser.user) {
-      return null
-    }
+    // roles는 배열이거나 단일 객체일 수 있음
+    const rolesData = Array.isArray(userData.roles) 
+      ? userData.roles[0] 
+      : userData.roles
+    const roleName = rolesData?.name || ''
+    const roleLevel = rolesData?.level || 0
+    const isAdmin = roleName.includes('관리자') || roleLevel === 1
 
-    const extendedUser: ExtendedUser = {
-      ...authUser.user,
-      email: authUser.user.email || '',
-      role: userRoleData.role as 'admin' | 'moderator' | 'user',
-      user_role: userRoleData as UserRole,
-      academy: userRoleData.academy as Academy
+    // academy도 배열이거나 단일 객체일 수 있음
+    const academyData = Array.isArray(userData.academy)
+      ? userData.academy[0]
+      : userData.academy
+    const academy = academyData ? (academyData as Academy) : null
+
+    const user: User = {
+      id: userData.id,
+      email: userData.email,
+      name: userData.name,
+      role_id: userData.role_id,
+      role_name: roleName,
+      academy_id: userData.academy_id,
+      academy_name: academy?.name || null
     }
 
     const userContext: UserContext = {
-      user: extendedUser,
-      academy: userRoleData.academy as Academy,
-      isAdmin: userRoleData.role === 'admin' || userRoleData.role === 'owner'
+      user,
+      academy,
+      isAdmin
     }
 
     return userContext
