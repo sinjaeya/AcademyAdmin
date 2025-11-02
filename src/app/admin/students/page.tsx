@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GRADE_OPTIONS, SCHOOL_OPTIONS, STATUS_OPTIONS } from '@/config/constants';
+import { GRADE_OPTIONS, SCHOOL_OPTIONS, STATUS_OPTIONS, PARENT_TYPE_OPTIONS } from '@/config/constants';
 import { 
   Table, 
   TableBody, 
@@ -48,6 +48,7 @@ interface Student {
   school: string;
   grade: string;
   parent_phone: string;
+  parent_type: string;
   email?: string;
   currentAcademy: string;
   status: string;
@@ -63,6 +64,7 @@ interface NewStudentForm {
   school: string;
   grade: string;
   parent_phone: string;
+  parent_type: string;
   email: string;
   currentAcademy: string;
   status: string;
@@ -77,6 +79,7 @@ interface EditStudentForm {
   school: string;
   grade: string;
   parent_phone: string;
+  parent_type: string;
   email: string;
   currentAcademy: string;
   status: string;
@@ -146,6 +149,7 @@ export default function StudentsPage() {
     school: '',
     grade: '',
     parent_phone: '',
+    parent_type: '엄마',
     email: '',
     currentAcademy: '이지수학교습소',
     status: '재원'
@@ -158,6 +162,7 @@ export default function StudentsPage() {
     school: '',
     grade: '',
     parent_phone: '',
+    parent_type: '엄마',
     email: '',
     currentAcademy: '',
     status: ''
@@ -258,6 +263,7 @@ export default function StudentsPage() {
           school: '',
           grade: '',
           parent_phone: '',
+          parent_type: '엄마',
           email: '',
           currentAcademy: '이지수학교습소',
           status: '재원'
@@ -318,6 +324,7 @@ export default function StudentsPage() {
       school: student.school,
       grade: student.grade,
       parent_phone: student.parent_phone,
+      parent_type: student.parent_type || '엄마',
       email: student.email || '',
       currentAcademy: student.currentAcademy,
       status: student.status
@@ -342,6 +349,7 @@ export default function StudentsPage() {
           school: editStudent.school,
           grade: editStudent.grade,
           parent_phone: editStudent.parent_phone,
+          parent_type: editStudent.parent_type,
           email: editStudent.email,
           currentAcademy: editStudent.currentAcademy,
           status: editStudent.status
@@ -350,18 +358,33 @@ export default function StudentsPage() {
 
       const result = await response.json();
 
+      // 디버깅: 응답 상태와 내용 확인
       if (!response.ok) {
+        console.error('Response not OK:', response.status, result);
         throw new Error(result.error || '학생 정보 업데이트 중 오류가 발생했습니다.');
       }
 
+      // 성공 응답 확인
+      if (result.error) {
+        console.error('Result has error:', result);
+        throw new Error(result.error);
+      }
+
+      // 성공 케이스
+      if (result.success && result.data) {
+        console.log('Update successful:', result);
+      }
+
       // 성공적으로 업데이트되면 목록에서 해당 학생 정보 업데이트
-      setStudents(prev => 
-        prev.map(student => 
-          student.id === editStudent.id 
-            ? { ...student, ...result.data }
-            : student
-        )
-      );
+      if (result.data) {
+        setStudents(prev => 
+          prev.map(student => 
+            student.id === editStudent.id 
+              ? { ...student, ...result.data }
+              : student
+          )
+        );
+      }
       
       setIsEditStudentOpen(false);
       alert('학생 정보가 성공적으로 업데이트되었습니다.');
@@ -426,6 +449,7 @@ export default function StudentsPage() {
                       <TableHead>학교</TableHead>
                       <TableHead>학년</TableHead>
                       <TableHead>부모연락처</TableHead>
+                      <TableHead>보호자 타입</TableHead>
                       <TableHead>이메일</TableHead>
                       <TableHead>학원</TableHead>
                       <TableHead>상태</TableHead>
@@ -467,6 +491,11 @@ export default function StudentsPage() {
                         </TableCell>
                         <TableCell className="text-sm text-gray-600">
                           {student.parent_phone || 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {student.parent_type || 'N/A'}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-sm text-gray-600">
                           {student.email || 'N/A'}
@@ -615,6 +644,25 @@ export default function StudentsPage() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="parent_type">보호자 타입 *</Label>
+                <Select
+                  value={newStudent.parent_type}
+                  onValueChange={(value) => handleInputChange('parent_type', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="보호자 타입을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PARENT_TYPE_OPTIONS.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="email">이메일 (선택)</Label>
                 <Input
                   id="email"
@@ -680,7 +728,7 @@ export default function StudentsPage() {
               </Button>
               <Button
                 onClick={handleAddStudent}
-                disabled={isSubmitting || !newStudent.name || !newStudent.phone_number || !newStudent.phone_middle_4 || newStudent.phone_middle_4.length !== 4 || !newStudent.parent_phone || !newStudent.currentAcademy || !newStudent.status}
+                disabled={isSubmitting || !newStudent.name || !newStudent.phone_number || !newStudent.phone_middle_4 || newStudent.phone_middle_4.length !== 4 || !newStudent.parent_phone || !newStudent.parent_type || !newStudent.currentAcademy || !newStudent.status}
               >
                 {isSubmitting ? '추가 중...' : '추가'}
               </Button>
@@ -783,6 +831,25 @@ export default function StudentsPage() {
                   onChange={(e) => handleEditInputChange('parent_phone', e.target.value)}
                   placeholder="010-1234-5678"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-parent_type">보호자 타입 *</Label>
+                <Select
+                  value={editStudent.parent_type}
+                  onValueChange={(value) => handleEditInputChange('parent_type', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="보호자 타입을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PARENT_TYPE_OPTIONS.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">

@@ -38,9 +38,19 @@ export const STATUS_OPTIONS = [
     '해지'
   ] as const;
 
+// 보호자 타입 옵션
+export const PARENT_TYPE_OPTIONS = [
+  '엄마',
+  '아빠',
+  '할아버지',
+  '할머니',
+  '기타'
+] as const;
+
 // 타입 정의
 export type GradeOption = typeof GRADE_OPTIONS[number];
 export type SchoolOption = typeof SCHOOL_OPTIONS[number];
 export type AcademyOption = typeof ACADEMY_OPTIONS[number];
 export type StatusOption = typeof STATUS_OPTIONS[number];
+export type ParentType = typeof PARENT_TYPE_OPTIONS[number];
 

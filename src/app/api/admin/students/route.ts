@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       school: body.school || null,
       grade: body.grade || null,
       parent_phone: body.parent_phone || null,
+      parent_type: body.parent_type || '엄마',  // 기본값: '엄마'
       email: body.email || null,
       currentAcademy: body.currentAcademy || null,  // DB에서 camelCase 사용
       status: body.status || 'active',
