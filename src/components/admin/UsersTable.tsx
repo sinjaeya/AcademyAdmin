@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -27,63 +27,47 @@ const mockUsers: User[] = [
     id: '1',
     name: '김관리',
     email: 'admin@example.com',
-    role: 'admin',
-    avatar: '/avatars/admin.jpg',
-    created_at: '2024-01-15',
-    updated_at: '2024-10-05',
+    role_id: '1',
+    role_name: '관리자',
+    academy_id: null,
+    academy_name: null,
   },
   {
     id: '2',
     name: '박사용',
     email: 'user1@example.com',
-    role: 'user',
-    avatar: '/avatars/user1.jpg',
-    created_at: '2024-02-20',
-    updated_at: '2024-10-04',
+    role_id: '2',
+    role_name: '사용자',
+    academy_id: '1',
+    academy_name: '이지수학교습소',
   },
   {
     id: '3',
     name: '이중재',
     email: 'moderator@example.com',
-    role: 'moderator',
-    avatar: '/avatars/moderator.jpg',
-    created_at: '2024-03-10',
-    updated_at: '2024-10-03',
+    role_id: '3',
+    role_name: '중재자',
+    academy_id: '1',
+    academy_name: '이지수학교습소',
   },
   {
     id: '4',
     name: '최사용',
     email: 'user2@example.com',
-    role: 'user',
-    avatar: '/avatars/user2.jpg',
-    created_at: '2024-04-05',
-    updated_at: '2024-10-02',
+    role_id: '2',
+    role_name: '사용자',
+    academy_id: '1',
+    academy_name: '이지수학교습소',
   },
 ];
 
-const getRoleBadgeVariant = (role: string) => {
-  switch (role) {
-    case 'admin':
-      return 'destructive';
-    case 'moderator':
-      return 'default';
-    case 'user':
-      return 'secondary';
-    default:
-      return 'outline';
-  }
-};
-
-const getRoleLabel = (role: string) => {
-  switch (role) {
-    case 'admin':
-      return '관리자';
-    case 'moderator':
-      return '중재자';
-    case 'user':
-      return '사용자';
-    default:
-      return role;
+const getRoleBadgeVariant = (roleName: string) => {
+  if (roleName.includes('관리자')) {
+    return 'destructive';
+  } else if (roleName.includes('중재')) {
+    return 'default';
+  } else {
+    return 'secondary';
   }
 };
 
@@ -109,7 +93,6 @@ export function UsersTable() {
               <TableCell>
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar} alt={user.name || 'User'} />
                     <AvatarFallback>
                       {user.name?.charAt(0) || 'U'}
                     </AvatarFallback>
@@ -121,15 +104,15 @@ export function UsersTable() {
               </TableCell>
               <TableCell>{user.email}</TableCell>
               <TableCell>
-                <Badge variant={getRoleBadgeVariant(user.role || 'user')}>
-                  {getRoleLabel(user.role || 'user')}
+                <Badge variant={getRoleBadgeVariant(user.role_name || '사용자')}>
+                  {user.role_name || '사용자'}
                 </Badge>
               </TableCell>
               <TableCell>
-                {user.created_at ? new Date(user.created_at).toLocaleDateString('ko-KR') : '-'}
+                {user.academy_name || '-'}
               </TableCell>
               <TableCell>
-                {user.updated_at ? new Date(user.updated_at).toLocaleDateString('ko-KR') : '-'}
+                -
               </TableCell>
               <TableCell>
                 <DropdownMenu>
