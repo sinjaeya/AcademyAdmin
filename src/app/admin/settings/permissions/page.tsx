@@ -254,7 +254,7 @@ export default function PermissionsManagementPage() {
           <div className="text-sm text-blue-800">
             <p className="font-semibold mb-1">권한 변경 시 주의사항</p>
             <ul className="list-disc list-inside space-y-1">
-              <li>권한 변경은 즉시 적용되지 않습니다. 반드시 "저장" 버튼을 클릭하세요.</li>
+              <li>권한 변경은 즉시 적용되지 않습니다. 반드시 &quot;저장&quot; 버튼을 클릭하세요.</li>
               <li>변경 사항은 사용자가 다음 로그인 시 또는 페이지 새로고침 시 반영됩니다.</li>
               <li>시스템 관리자(admin) 역할의 권한을 제거하지 마세요.</li>
             </ul>
