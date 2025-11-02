@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +14,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar, X } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -23,8 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { format, startOfDay, endOfDay } from 'date-fns';
-import { ko } from 'date-fns/locale';
 
 // CheckInOut 데이터 타입 정의
 interface CheckInOut {
@@ -40,9 +37,10 @@ interface CheckInOut {
 
 interface CheckInOutTableProps {
   isLoading?: boolean;
+  refreshKey?: number;
 }
 
-export function CheckInOutTable({ }: CheckInOutTableProps) {
+export function CheckInOutTable({ isLoading: externalLoading, refreshKey }: CheckInOutTableProps) {
   const [data, setData] = useState<CheckInOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,81 +73,37 @@ export function CheckInOutTable({ }: CheckInOutTableProps) {
   const goToPreviousPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
   const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
 
-  // Supabase에서 데이터 가져오기
+  // API에서 데이터 가져오기
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
+
+      // API 라우트 호출
+      const response = await fetch(`/api/admin/checkinout?date=${selectedDate}`);
       
-      if (!supabase) {
-        throw new Error('Supabase client is not available');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || '데이터를 불러오는 중 오류가 발생했습니다.');
       }
 
-      // 선택된 날짜에 맞는 시간 범위 설정
-      const dateObj = new Date(selectedDate);
-      const startDate = startOfDay(dateObj).toISOString();
-      const endDate = endOfDay(dateObj).toISOString();
-
-      // check_in_board 테이블에서 선택한 날짜의 데이터만 조회
-      const { data: checkInOutData, error: fetchError } = await supabase
-        .from('check_in_board')
-        .select('*')
-        .gte('created_at', startDate)
-        .lte('created_at', endDate)
-        .order('created_at', { ascending: false });
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      setData(checkInOutData || []);
-      setTotalCount(checkInOutData?.length || 0);
+      const result = await response.json();
+      setData(result.data || []);
+      setTotalCount(result.total || 0);
     } catch (err) {
       console.error('데이터 조회 오류:', err);
       setError(err instanceof Error ? err.message : '데이터를 불러오는 중 오류가 발생했습니다.');
-      
-      // 테스트용 더미 데이터
-      setData([
-        {
-          id: '1',
-          student_name: '김철수',
-          check_in_time: '2024-01-15T09:00:00Z',
-          check_in_status: 'CheckIn',
-          check_out_time: '2024-01-15T18:00:00Z',
-          current_academy: '수학학원',
-          created_at: '2024-01-15T09:00:00Z',
-          updated_at: '2024-01-15T18:00:00Z'
-        },
-        {
-          id: '2',
-          student_name: '이영희',
-          check_in_time: '2024-01-15T10:30:00Z',
-          check_in_status: 'CheckOut',
-          check_out_time: '2024-01-15T19:30:00Z',
-          current_academy: '영어학원',
-          created_at: '2024-01-15T10:30:00Z',
-          updated_at: '2024-01-15T19:30:00Z'
-        },
-        {
-          id: '3',
-          student_name: '박민수',
-          check_in_time: '2024-01-15T14:00:00Z',
-          check_in_status: 'CheckIn',
-          check_out_time: '2024-01-15T20:00:00Z',
-          current_academy: '과학학원',
-          created_at: '2024-01-15T14:00:00Z',
-          updated_at: '2024-01-15T20:00:00Z'
-        }
-      ]);
-      setTotalCount(3); // 더미 데이터 개수
+      setData([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
   };
 
+  // 날짜 변경 또는 새로고침 키 변경 시 데이터 조회
   useEffect(() => {
     fetchData();
-  }, [selectedDate]);
+  }, [selectedDate, refreshKey]);
 
   const formatTime = (dateString: string) => {
     if (!dateString) return '-';

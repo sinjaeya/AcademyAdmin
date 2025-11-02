@@ -8,10 +8,12 @@ import { RefreshCw } from 'lucide-react';
 
 export default function CheckInOutPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const handleRefresh = () => {
     setIsLoading(true);
-    // 테이블 새로고침 로직은 CheckInOutTable 컴포넌트에서 처리
+    // refreshKey를 변경하여 CheckInOutTable 컴포넌트의 데이터 새로고침 트리거
+    setRefreshKey(prev => prev + 1);
     setTimeout(() => setIsLoading(false), 1000);
   };
 
@@ -37,7 +39,7 @@ export default function CheckInOutPage() {
         </div>
 
         {/* 등/하원 조회 테이블 */}
-        <CheckInOutTable isLoading={isLoading} />
+        <CheckInOutTable isLoading={isLoading} refreshKey={refreshKey} />
       </div>
     </AdminLayout>
   );
