@@ -48,8 +48,13 @@ export async function getServerUserContext(): Promise<UserContext | null> {
       return null
     }
 
-    const roleName = (userData.roles as { name: string })?.name || ''
-    const isAdmin = roleName.includes('관리자') || (userData.roles as { level: number })?.level === 1
+    // roles는 배열이거나 단일 객체일 수 있음
+    const rolesData = Array.isArray(userData.roles) 
+      ? userData.roles[0] 
+      : userData.roles
+    const roleName = rolesData?.name || ''
+    const roleLevel = rolesData?.level || 0
+    const isAdmin = roleName.includes('관리자') || roleLevel === 1
 
     const user: User = {
       id: userData.id,
