@@ -1,5 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
-import { UserContext, Academy } from '@/types'
+import { UserContext, Academy, User } from '@/types'
 
 /**
  * 서버 컴포넌트에서 현재 사용자의 컨텍스트를 가져옵니다
@@ -12,30 +12,59 @@ export async function getServerUserContext(): Promise<UserContext | null> {
     
     const supabase = createServerClient()
     
-    // 사용자의 역할 정보와 학원 정보를 함께 조회
-    const { data: userRoleData, error: userRoleError } = await supabase
-      .from('user_role')
+    // admin_users 테이블에서 사용자 정보와 역할 정보를 조회
+    const { data: userData, error: userError } = await supabase
+      .from('admin_users')
       .select(`
-        *,
+        id,
+        email,
+        name,
+        role_id,
+        academy_id,
+        roles!inner (
+          id,
+          name,
+          level
+        ),
         academy:academy_id (
-          *
+          id,
+          name,
+          address,
+          phone,
+          email,
+          website,
+          description,
+          logo_url,
+          settings,
+          is_active,
+          created_at,
+          updated_at
         )
       `)
-      .eq('user_id', userId)
-      .eq('is_active', true)
+      .eq('id', userId)
       .single()
 
-    if (userRoleError || !userRoleData) {
+    if (userError || !userData) {
       return null
     }
 
+    const roleName = (userData.roles as { name: string })?.name || ''
+    const isAdmin = roleName.includes('관리자') || (userData.roles as { level: number })?.level === 1
+
+    const user: User = {
+      id: userData.id,
+      email: userData.email,
+      name: userData.name,
+      role_id: userData.role_id,
+      role_name: roleName,
+      academy_id: userData.academy_id,
+      academy_name: userData.academy ? (userData.academy as Academy).name : null
+    }
+
     const userContext: UserContext = {
-      user: {
-        id: userId,
-        role: userRoleData.role as 'admin' | 'owner' | 'teacher' | 'tutor'
-      } as UserContext['user'],
-      academy: userRoleData.academy as Academy,
-      isAdmin: userRoleData.role === 'admin' || userRoleData.role === 'owner'
+      user,
+      academy: userData.academy as Academy | null,
+      isAdmin
     }
 
     return userContext
@@ -77,7 +106,7 @@ export async function isServerUserAdmin(): Promise<boolean> {
 export async function getServerUserRole(): Promise<string | null> {
   try {
     const userContext = await getServerUserContext()
-    return userContext?.user.role || null
+    return userContext?.user.role_name || null
   } catch (error) {
     console.error('서버 사용자 역할 조회 오류:', error)
     return null
