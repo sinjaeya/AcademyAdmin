@@ -46,8 +46,8 @@ export default async function AdminDashboard() {
                 {userContext ? (
                   <>
                     <div>사용자 ID: {userContext.user.id}</div>
-                    <div>역할: {userContext.user.role || '없음'}</div>
-                    <div>활성 상태: {userContext.user.user_role?.is_active ? '활성' : '비활성'}</div>
+                    <div>역할: {userContext.user.role_name || '없음'}</div>
+                    <div>이름: {userContext.user.name || '없음'}</div>
                   </>
                 ) : (
                   <div className="text-red-600">⚠️ 사용자 정보가 없습니다</div>
