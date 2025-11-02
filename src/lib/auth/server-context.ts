@@ -56,6 +56,12 @@ export async function getServerUserContext(): Promise<UserContext | null> {
     const roleLevel = rolesData?.level || 0
     const isAdmin = roleName.includes('관리자') || roleLevel === 1
 
+    // academy도 배열이거나 단일 객체일 수 있음
+    const academyData = Array.isArray(userData.academy)
+      ? userData.academy[0]
+      : userData.academy
+    const academy = academyData ? (academyData as Academy) : null
+
     const user: User = {
       id: userData.id,
       email: userData.email,
@@ -63,12 +69,12 @@ export async function getServerUserContext(): Promise<UserContext | null> {
       role_id: userData.role_id,
       role_name: roleName,
       academy_id: userData.academy_id,
-      academy_name: userData.academy ? (userData.academy as Academy).name : null
+      academy_name: academy?.name || null
     }
 
     const userContext: UserContext = {
       user,
-      academy: userData.academy as Academy | null,
+      academy,
       isAdmin
     }
 
