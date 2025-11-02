@@ -17,10 +17,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { 
+import {
   BookOpen,
   MessageCircle,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 
@@ -92,19 +93,23 @@ export default function StudyReportsPage() {
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [selectedAcademy, setSelectedAcademy] = useState<string>(academyName || '전체');
   
-  // 학습정보 상태
-  const [learningInfo, setLearningInfo] = useState({
-    attendance: 'attendance', // 출결사항 - 출석
-    classAttitude: 'average', // 수업태도 - 보통
-    homeworkSubmission: 'submitted', // 과제제출 - 제출
-    homeworkQuality: 'average', // 과제성실도 - 보통
-    testScore: '' // 테스트점수
-  });
+      // 학습정보 상태
+      const [learningInfo, setLearningInfo] = useState({
+        attendance: 'attendance', // 출결사항 - 출석
+        classAttitude: 'average', // 수업태도 - 보통
+        homeworkSubmission: 'submitted', // 과제제출 - 제출
+        homeworkQuality: 'average', // 과제성실도 - 보통
+        testScore: '' // 테스트점수
+      });
   
   // 학습지 모달 상태
   const [showWorksheetModal, setShowWorksheetModal] = useState(false);
   const [worksheets, setWorksheets] = useState<Worksheet[]>([]);
   const [loadingWorksheets, setLoadingWorksheets] = useState(false);
+  
+  // AI 리포트 상태
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiElapsedTime, setAiElapsedTime] = useState(0);
   
   const [messageText, setMessageText] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
@@ -200,7 +205,16 @@ export default function StudyReportsPage() {
         scoreDisplay = '숙제 안함';
       }
       
-      worksheetText += `(${scoreDisplay}) ${index + 1}. ${ws.worksheet_name}\n`;
+      // 출제일 포맷팅 (YYYY-MM-DD -> MM월 DD일)
+      let issuedDateDisplay = '';
+      if (ws.issued_date) {
+        const date = new Date(ws.issued_date);
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        issuedDateDisplay = `${month}월 ${day}일 `;
+      }
+      
+      worksheetText += `${issuedDateDisplay}(${scoreDisplay}) ${index + 1}. ${ws.worksheet_name}\n`;
     });
 
     // 메시지 텍스트에 추가
@@ -297,6 +311,136 @@ export default function StudyReportsPage() {
     setMessageText(previewText);
     
         console.log('미리보기 작성 완료:', previewText);
+      };
+
+  // 미리보기 + 매쓰플랫 통합 핸들러
+  const handlePreviewWithMathflat = async () => {
+    if (!selectedStudent) {
+      setAlertMessage('학생을 먼저 선택해 주세요');
+      setShowAlert(true);
+      setTimeout(() => {
+        setShowAlert(false);
+      }, 1000);
+      return;
+    }
+    
+    // 1. 먼저 미리보기 생성
+    const student = students.find(s => s.id === selectedStudent);
+    const studentName = student?.name || '알 수 없음';
+    
+    const labelMappings: {
+      attendance: { [key: string]: string };
+      classAttitude: { [key: string]: string };
+      homeworkSubmission: { [key: string]: string };
+      homeworkQuality: { [key: string]: string };
+    } = {
+      attendance: {
+        'attendance': '출석',
+        'late': '지각',
+        'absent': '결석'
+      },
+      classAttitude: {
+        'excellent': '우수',
+        'average': '보통',
+        'poor': '미흡'
+      },
+      homeworkSubmission: {
+        'submitted': '제출',
+        'not_submitted': '미제출'
+      },
+      homeworkQuality: {
+        'excellent': '우수',
+        'average': '보통',
+        'poor': '미흡'
+      }
+    };
+    
+    const previewText = `학생명 : ${studentName}
+
+출결사항 : ${labelMappings.attendance[learningInfo.attendance] || learningInfo.attendance}
+
+수업태도 : ${labelMappings.classAttitude[learningInfo.classAttitude] || learningInfo.classAttitude}
+
+과제제출 : ${labelMappings.homeworkSubmission[learningInfo.homeworkSubmission] || learningInfo.homeworkSubmission}
+
+과제성실도 : ${labelMappings.homeworkQuality[learningInfo.homeworkQuality] || learningInfo.homeworkQuality}
+
+테스트 점수 : ${learningInfo.testScore ? learningInfo.testScore + '점' : ''}`;
+    
+    // 2. 매쓰플랫 학습지 데이터 가져오기
+    try {
+      setLoadingWorksheets(true);
+      const response = await fetch(`/api/admin/learning/worksheets?student_name=${encodeURIComponent(studentName)}`);
+      
+      if (!response.ok) {
+        throw new Error('학습지 데이터를 가져오는데 실패했습니다');
+      }
+      
+      const data = await response.json();
+      
+      // 3. 학습지 정보 생성
+      let worksheetText = '';
+      if (data && data.length > 0) {
+        const recentWorksheets = data.slice(0, 5);
+        
+        // 통계 수집
+        let notDoneCount = 0;
+        let doneCount = 0;
+        const scores: string[] = [];
+        
+        recentWorksheets.forEach((ws: Worksheet) => {
+          if (ws.score === '채점' || ws.score === '이어 채점' || ws.score.includes('채점')) {
+            notDoneCount++;
+          } else {
+            doneCount++;
+            scores.push(ws.score);
+          }
+        });
+        
+        // 메시지 생성
+        worksheetText = '\n\n[숙제 현황(최근 5개)]\n';
+        worksheetText += `- 숙제안함 : ${notDoneCount}개\n`;
+        worksheetText += `- 숙제함 : ${doneCount}개`;
+        if (scores.length > 0) {
+          worksheetText += ` (${scores.join('/')})`;
+        }
+        worksheetText += '\n\n';
+        
+        // 상세 리스트
+        recentWorksheets.forEach((ws: Worksheet, index: number) => {
+          let scoreDisplay = ws.score;
+          if (ws.score === '채점' || ws.score === '이어 채점' || ws.score.includes('채점')) {
+            scoreDisplay = '숙제 안함';
+          }
+          
+          // 출제일 포맷팅 (YYYY-MM-DD -> MM월 DD일)
+          let issuedDateDisplay = '';
+          if (ws.issued_date) {
+            const date = new Date(ws.issued_date);
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            issuedDateDisplay = `${month}월 ${day}일 `;
+          }
+          
+          worksheetText += `${issuedDateDisplay}(${scoreDisplay}) ${index + 1}. ${ws.worksheet_name}\n`;
+        });
+      }
+      
+      // 4. 미리보기 + 학습지 정보를 메시지 텍스트에 설정
+      setMessageText(previewText + worksheetText);
+      
+      console.log('미리보기+매쓰플랫 작성 완료');
+      
+    } catch (err) {
+      console.error('학습지 조회 오류:', err);
+      // 오류 발생 시에도 미리보기는 표시
+      setMessageText(previewText);
+      setAlertMessage('학습지 데이터를 가져오는데 실패했습니다');
+      setShowAlert(true);
+      setTimeout(() => setShowAlert(false), 1000);
+    } finally {
+      setLoadingWorksheets(false);
+    }
       };
 
       // 카카오톡 전송 핸들러
@@ -485,6 +629,76 @@ export default function StudyReportsPage() {
         });
         setMessageText('');
       };
+
+  // AI 리포트 생성 핸들러
+  const handleAIReport = async () => {
+    // 메시지가 비어있는지 확인
+    if (!messageText || messageText.trim() === '') {
+      setAlertMessage('메시지 내용을 먼저 입력해주세요');
+      setShowAlert(true);
+      setTimeout(() => setShowAlert(false), 2000);
+      return;
+    }
+
+    let timerInterval: NodeJS.Timeout | null = null;
+
+    try {
+      setIsGeneratingAI(true);
+      setAiElapsedTime(0);
+      
+      // 타이머 시작
+      const startTime = Date.now();
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setAiElapsedTime(elapsed);
+      }, 1000);
+      
+      console.log('AI 리포트 요청 데이터:', { learningData: messageText });
+      
+      // Next.js API 라우트를 통해 프록시 호출 (CORS 문제 해결)
+      const response = await fetch('/api/admin/ai-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          learningData: messageText
+        })
+      });
+
+      const result = await response.json();
+      console.log('AI 리포트 응답:', result);
+
+      if (!response.ok) {
+        console.error('AI 리포트 에러 상세:', result.error);
+        throw new Error(result.error?.message || 'AI 리포트 생성에 실패했습니다');
+      }
+      
+      if (result.success && result.data?.report) {
+        // AI가 생성한 리포트로 메시지 덮어쓰기
+        setMessageText(result.data.report);
+        
+        setAlertMessage('AI 리포트가 생성되었습니다');
+        setShowAlert(true);
+        setTimeout(() => setShowAlert(false), 1000);
+      } else {
+        throw new Error('AI 리포트 응답 형식이 올바르지 않습니다');
+      }
+
+    } catch (error) {
+      console.error('AI 리포트 생성 오류:', error);
+      setAlertMessage(error instanceof Error ? error.message : 'AI 리포트 생성 중 오류가 발생했습니다');
+      setShowAlert(true);
+      setTimeout(() => setShowAlert(false), 2000);
+    } finally {
+      // 타이머 정지
+      if (timerInterval) {
+        clearInterval(timerInterval);
+      }
+      setIsGeneratingAI(false);
+      setAiElapsedTime(0);
+    }
+  };
 
   // 데이터 가져오기
   const fetchStudents = async () => {
@@ -994,12 +1208,19 @@ export default function StudyReportsPage() {
                     </div>
 
                     {/* 미리보기 작성 버튼 */}
-                    <div className="pt-2">
+                    <div className="pt-2 flex gap-2">
                       <button 
-                        className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-200 cursor-pointer"
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-200 cursor-pointer"
                         onClick={handlePreviewCreate}
                       >
                         미리보기 작성
+                      </button>
+                      <button 
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={handlePreviewWithMathflat}
+                        disabled={loadingWorksheets || !selectedStudent}
+                      >
+                        {loadingWorksheets ? '로딩 중...' : '미리보기+매쓰플랫'}
                       </button>
                     </div>
                   </CardContent>
@@ -1028,13 +1249,23 @@ export default function StudyReportsPage() {
                           className="min-h-[300px] resize-none"
                         />
                       </div>
-                      <div className="flex justify-end space-x-2">
+                      <div className="flex justify-between">
+                        <div className="flex gap-2">
                         <button 
                           className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer transition-colors duration-200"
                           onClick={handleReset}
                         >
                           초기화
                         </button>
+                          <button 
+                            className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 cursor-pointer transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={handleAIReport}
+                            disabled={isGeneratingAI}
+                          >
+                            <Sparkles className="h-4 w-4" />
+                            {isGeneratingAI ? `AI 생성 중... ${aiElapsedTime}초` : 'AI 리포트'}
+                          </button>
+                        </div>
                         <button 
                           className="px-4 py-2 bg-[#FEE500] text-[#3C1E1E] rounded hover:bg-[#FFEB3B] cursor-pointer transition-colors duration-200 flex items-center gap-2 font-medium shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                           onClick={handleKakaoSend}

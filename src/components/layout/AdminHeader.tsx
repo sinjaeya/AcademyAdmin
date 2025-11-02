@@ -12,14 +12,15 @@ import {
 import { Bell, Search, User, Settings, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
+import { UserPermissionButton } from '@/components/admin/UserPermissionButton';
 
 export function AdminHeader() {
   const router = useRouter();
-  const { academyName } = useAuthStore();
+  const { academyName, logout } = useAuthStore();
 
-  const handleLogout = () => {
-    // 간단한 로그아웃 - 로그인 페이지로 이동
-    router.push('/login');
+  const handleLogout = async () => {
+    await logout();
+    router.push('/');
   };
 
   return (
@@ -49,6 +50,9 @@ export function AdminHeader() {
         <Button variant="ghost" size="icon">
           <Bell className="h-5 w-5" />
         </Button>
+
+        {/* 사용자 권한 버튼 */}
+        <UserPermissionButton />
 
         {/* 사용자 메뉴 */}
         <DropdownMenu>

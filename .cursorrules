@@ -1,0 +1,155 @@
+# Database 테이블 생성 규칙
+
+## 테이블 및 컬럼 코멘트 작성 규칙
+
+데이터베이스 테이블을 생성하거나 수정할 때 **반드시** 다음 규칙을 따라야 합니다:
+
+### 1. 테이블 코멘트
+- 모든 테이블에 대해 `COMMENT ON TABLE` 구문을 사용하여 **한글** 코멘트를 추가해야 합니다.
+- 테이블의 목적과 역할을 명확하게 설명합니다.
+- 예시:
+```sql
+COMMENT ON TABLE user_role IS '사용자 역할 정보 테이블';
+COMMENT ON TABLE academy IS '학원 정보 관리 테이블';
+```
+
+### 2. 컬럼 코멘트
+- 모든 컬럼에 대해 `COMMENT ON COLUMN` 구문을 사용하여 **한글** 코멘트를 추가해야 합니다.
+- 컬럼의 의미와 용도를 명확하게 설명합니다.
+- 특수한 제약사항이나 규칙이 있다면 함께 명시합니다.
+- 예시:
+```sql
+COMMENT ON COLUMN user_role.id IS '고유 식별자 (UUID)';
+COMMENT ON COLUMN user_role.user_id IS '사용자 ID (auth.users 참조)';
+COMMENT ON COLUMN user_role.role IS '사용자 역할 (admin, owner, teacher, tutor)';
+COMMENT ON COLUMN user_role.is_active IS '활성화 상태';
+COMMENT ON COLUMN user_role.created_at IS '생성 일시';
+COMMENT ON COLUMN user_role.updated_at IS '수정 일시';
+```
+
+### 3. 테이블 생성 SQL 스크립트 구조
+
+테이블 생성 스크립트는 다음 순서로 작성합니다:
+
+```sql
+-- 1. 테이블 설명 (주석)
+-- [테이블명] 테이블 생성 스크립트
+
+-- 2. 기존 테이블 삭제 (필요시)
+DROP TABLE IF EXISTS [테이블명] CASCADE;
+
+-- 3. 테이블 생성
+CREATE TABLE [테이블명] (
+  -- 컬럼 정의
+);
+
+-- 4. 인덱스 생성 (필요시)
+CREATE INDEX idx_[테이블명]_[컬럼명] ON [테이블명]([컬럼명]);
+
+-- 5. RLS (Row Level Security) 설정 (필요시)
+ALTER TABLE [테이블명] ENABLE ROW LEVEL SECURITY;
+
+-- 6. RLS 정책 생성 (필요시)
+CREATE POLICY "policy_name" ON [테이블명]
+  FOR SELECT USING (조건);
+
+-- 7. 테이블 코멘트 추가 (필수)
+COMMENT ON TABLE [테이블명] IS '테이블 설명 (한글)';
+
+-- 8. 컬럼 코멘트 추가 (필수)
+COMMENT ON COLUMN [테이블명].[컬럼명] IS '컬럼 설명 (한글)';
+COMMENT ON COLUMN [테이블명].[컬럼명] IS '컬럼 설명 (한글)';
+-- ... 모든 컬럼에 대해 반복
+
+-- 9. 초기 데이터 삽입 (필요시)
+INSERT INTO [테이블명] (...) VALUES (...);
+```
+
+### 4. 주의사항
+- 테이블 코멘트와 컬럼 코멘트는 **반드시 한글로 작성**해야 합니다.
+- 모든 컬럼에 대해 누락 없이 코멘트를 추가해야 합니다.
+- 코멘트는 간결하면서도 명확하게 작성합니다.
+- 특수한 제약사항(CHECK, FOREIGN KEY 등)이 있는 경우 코멘트에 명시합니다.
+
+### 5. 기존 테이블에 코멘트 추가
+기존 테이블에 코멘트를 추가할 때도 동일한 규칙을 따릅니다:
+
+```sql
+-- 테이블 코멘트 추가
+COMMENT ON TABLE 기존테이블명 IS '테이블 설명 (한글)';
+
+-- 컬럼 코멘트 추가
+COMMENT ON COLUMN 기존테이블명.컬럼1 IS '컬럼 설명 (한글)';
+COMMENT ON COLUMN 기존테이블명.컬럼2 IS '컬럼 설명 (한글)';
+```
+
+## 예시: 완전한 테이블 생성 스크립트
+
+```sql
+-- students 테이블 생성 스크립트
+
+-- 1. 기존 테이블 삭제
+DROP TABLE IF EXISTS students CASCADE;
+
+-- 2. 테이블 생성
+CREATE TABLE students (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  grade INTEGER NOT NULL,
+  academy_id UUID REFERENCES academy(id) ON DELETE CASCADE,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 3. 인덱스 생성
+CREATE INDEX idx_students_name ON students(name);
+CREATE INDEX idx_students_academy_id ON students(academy_id);
+
+
+-- 6. 테이블 코멘트 추가
+COMMENT ON TABLE students IS '학생 정보 관리 테이블';
+
+-- 7. 컬럼 코멘트 추가
+COMMENT ON COLUMN students.id IS '학생 고유 식별자 (UUID)';
+COMMENT ON COLUMN students.name IS '학생 이름';
+COMMENT ON COLUMN students.grade IS '학년';
+COMMENT ON COLUMN students.academy_id IS '소속 학원 ID (academy 테이블 참조)';
+COMMENT ON COLUMN students.is_active IS '활성화 상태 (true: 재원중, false: 졸업/퇴원)';
+COMMENT ON COLUMN students.created_at IS '레코드 생성 일시';
+COMMENT ON COLUMN students.updated_at IS '레코드 최종 수정 일시';
+```
+
+---
+
+# Git 작업 규칙
+
+## 기본 원칙
+**AI(Cursor)는 git 작업을 직접 수행하지 않습니다.** 사용자가 명시적으로 요청한 경우에만 예외적으로 처리합니다.
+
+## 허용된 Git 작업 (예외)
+
+### 1. Git Tag 작업
+사용자가 git tag 생성을 명시적으로 요청한 경우:
+- git tag 생성 가능
+- 태그 코멘트는 반드시 **한글**로 작성
+- 형식: `git tag -a <tag-name> -m "한글 메시지"`
+
+### 2. 특정 Tag 버전으로 체크아웃
+사용자가 특정 git tag로 돌아가기를 명시적으로 요청한 경우:
+- `git checkout <tag-name>` 또는 `git checkout tags/<tag-name>` 실행 가능
+
+## 금지된 Git 작업
+위 두 가지 예외를 제외한 모든 git 작업:
+- git commit
+- git push
+- git pull
+- git merge
+- git rebase
+- git branch 생성/삭제
+- git stash
+- 그 외 모든 git 명령어
+
+## 사용자 안내
+위 예외 사항이 아닌 경우, git 작업은 사용자가 직접 터미널에서 수행하도록 안내합니다.
+

@@ -29,9 +29,14 @@ export function LearningDetailDialog({
 }: LearningDetailDialogProps) {
   const [passages, setPassages] = useState<Passage[]>([]);
   const [loading, setLoading] = useState(false);
+  // 각 지문별 선택된 버튼 상태 (지문 인덱스 -> 'original' | 'ai' | null)
+  const [selectedButtons, setSelectedButtons] = useState<Record<number, 'original' | 'ai' | null>>({});
 
   useEffect(() => {
     if (!open || !studentId || !studyDate) return;
+
+    // 모달이 열릴 때 선택 상태 초기화
+    setSelectedButtons({});
 
     const loadDetail = async () => {
       setLoading(true);
@@ -58,6 +63,12 @@ export function LearningDetailDialog({
     const content = type === 'original' ? passage.originalContent : passage.aiContent;
     
     if (!content) return;
+
+    // 선택된 버튼 상태 업데이트
+    setSelectedButtons(prev => ({
+      ...prev,
+      [passageIndex]: type
+    }));
 
     // 새 창에서 내용 표시 후 프린트
     const printWindow = window.open('', '_blank');
@@ -112,7 +123,13 @@ export function LearningDetailDialog({
                     variant={!passage.originalContent ? "secondary" : "outline"}
                     onClick={() => handlePrintContent(index, 'original')}
                     disabled={!passage.originalContent}
-                    className={!passage.originalContent ? "text-gray-500 cursor-not-allowed" : ""}
+                    className={
+                      !passage.originalContent 
+                        ? "text-gray-500 cursor-not-allowed" 
+                        : selectedButtons[index] === 'original'
+                        ? "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+                        : "cursor-pointer"
+                    }
                   >
                     <FileText className="w-4 h-4 mr-2" />
                     원문 데이터 출력
@@ -122,7 +139,13 @@ export function LearningDetailDialog({
                     variant={!passage.aiContent ? "secondary" : "outline"}
                     onClick={() => handlePrintContent(index, 'ai')}
                     disabled={!passage.aiContent}
-                    className={!passage.aiContent ? "text-gray-500 cursor-not-allowed" : ""}
+                    className={
+                      !passage.aiContent 
+                        ? "text-gray-500 cursor-not-allowed" 
+                        : selectedButtons[index] === 'ai'
+                        ? "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+                        : "cursor-pointer"
+                    }
                   >
                     <Sparkles className="w-4 h-4 mr-2" />
                     AI 콘텐츠 출력

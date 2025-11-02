@@ -1,26 +1,42 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, Session, AuthState, AuthError } from '@/types';
-import { supabase } from '@/lib/supabase/client';
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  role_id: string;
+  role_name: string;
+  academy_id: string | null;
+  academy_name: string | null;
+}
+
+interface AuthError {
+  message: string;
+  code?: string;
+}
+
+interface AuthState {
+  user: User | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  academyId: string | null;
+  academyName: string | null;
+}
 
 interface AuthStore extends AuthState {
   // Actions
   login: (email: string, password: string) => Promise<{ success: boolean; error?: AuthError }>;
   logout: () => Promise<void>;
-  signUp: (email: string, password: string, name?: string) => Promise<{ success: boolean; error?: AuthError }>;
-  resetPassword: (email: string) => Promise<{ success: boolean; error?: AuthError }>;
   setLoading: (loading: boolean) => void;
   setUser: (user: User | null) => void;
-  setSession: (session: Session | null) => void;
-  setAcademy: (academyId: string | null, academyName: string | null) => void;
-  initializeAuth: () => Promise<void>;
+  initializeAuth: () => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
-      session: null,
       isLoading: false,
       isAuthenticated: false,
       academyId: null,
@@ -30,316 +46,74 @@ export const useAuthStore = create<AuthStore>()(
 
       setUser: (user: User | null) => set({ 
         user, 
-        isAuthenticated: !!user 
+        isAuthenticated: !!user,
+        academyId: user?.academy_id || null,
+        academyName: user?.academy_name || null
       }),
-
-      setSession: (session: Session | null) => set({ 
-        session, 
-        user: session?.user || null,
-        isAuthenticated: !!session 
-      }),
-
-      setAcademy: (academyId: string | null, academyName: string | null) => set({ 
-        academyId, 
-        academyName 
-      }),
-
 
       login: async (email: string, password: string) => {
         try {
           set({ isLoading: true });
-          
-          if (!supabase) {
-            set({ isLoading: false });
-            return { 
-              success: false, 
-              error: { 
-                message: 'Supabase가 설정되지 않았습니다. 환경변수를 확인해주세요.' 
-              } 
-            };
-          }
-          
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
+
+          // 비밀번호 검증 API 호출
+          const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
           });
 
-          if (error) {
+          const result = await response.json();
+
+          if (!response.ok || !result.success) {
             set({ isLoading: false });
             return { 
               success: false, 
               error: { 
-                message: error.message,
-                code: error.message 
+                message: result.error?.message || '로그인에 실패했습니다' 
               } 
             };
           }
 
-          if (data.user && data.session) {
-            // user_role 조회하여 학원 정보 가져오기
-            let academyId = null;
-            let academyName = null;
-            
-            try {
-              const { data: userRoleData } = await supabase
-                .from('user_role')
-                .select('academy_id, academy:academy_id(id, name)')
-                .eq('user_id', data.user.id)
-                .single();
-              
-              if (userRoleData) {
-                academyId = userRoleData.academy_id;
-                if (userRoleData.academy && Array.isArray(userRoleData.academy) && userRoleData.academy[0]) {
-                  academyName = (userRoleData.academy[0] as any).name;
-                } else if (userRoleData.academy && typeof userRoleData.academy === 'object' && 'name' in userRoleData.academy) {
-                  academyName = (userRoleData.academy as any).name;
-                }
-              }
-            } catch (error) {
-              console.error('Failed to fetch academy info:', error);
-            }
+          // 로그인 성공
+          set({ 
+            user: result.user,
+            isAuthenticated: true,
+            isLoading: false,
+            academyId: result.user.academy_id,
+            academyName: result.user.academy_name
+          });
 
-            set({ 
-              user: data.user as User,
-              session: data.session as Session,
-              isAuthenticated: true,
-              isLoading: false,
-              academyId,
-              academyName
-            });
-            return { success: true };
-          }
+          return { success: true };
 
-          return { success: false, error: { message: '로그인에 실패했습니다.' } };
-        } catch {
+        } catch (error) {
           set({ isLoading: false });
           return { 
             success: false, 
             error: { 
-              message: '네트워크 오류가 발생했습니다.' 
+              message: '네트워크 오류가 발생했습니다' 
             } 
           };
         }
       },
 
       logout: async () => {
-        try {
-          set({ isLoading: true });
-          
-          if (supabase) {
-            await supabase.auth.signOut();
-          }
-          
-          set({ 
-            user: null,
-            session: null, 
-            isAuthenticated: false, 
-            isLoading: false,
-            academyId: null,
-            academyName: null
-          });
-        } catch {
-          set({ isLoading: false });
-        }
+        set({ 
+          user: null,
+          isAuthenticated: false, 
+          isLoading: false,
+          academyId: null,
+          academyName: null
+        });
       },
 
-      signUp: async (email: string, password: string, name?: string) => {
-        try {
-          set({ isLoading: true });
-          
-          if (!supabase) {
-            set({ isLoading: false });
-            return { 
-              success: false, 
-              error: { 
-                message: 'Supabase가 설정되지 않았습니다. 환경변수를 확인해주세요.' 
-              } 
-            };
-          }
-          
-          const { error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              data: name ? { name } : undefined
-            }
-          });
-
-          if (error) {
-            set({ isLoading: false });
-            return { 
-              success: false, 
-              error: { 
-                message: error.message,
-                code: error.message 
-              } 
-            };
-          }
-
-          set({ isLoading: false });
-          return { success: true };
-        } catch {
-          set({ isLoading: false });
-          return { 
-            success: false, 
-            error: { 
-              message: '회원가입 중 오류가 발생했습니다.' 
-            } 
-          };
-        }
-      },
-
-      resetPassword: async (email: string) => {
-        try {
-          set({ isLoading: true });
-          
-          if (!supabase) {
-            set({ isLoading: false });
-            return { 
-              success: false, 
-              error: { 
-                message: 'Supabase가 설정되지 않았습니다. 환경변수를 확인해주세요.' 
-              } 
-            };
-          }
-          
-          const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${window.location.origin}/reset-password`,
-          });
-
-          if (error) {
-            set({ isLoading: false });
-            return { 
-              success: false, 
-              error: { 
-                message: error.message 
-              } 
-            };
-          }
-
-          set({ isLoading: false });
-          return { success: true };
-        } catch {
-          set({ isLoading: false });
-          return { 
-            success: false, 
-            error: { 
-              message: '비밀번호 재설정 중 오류가 발생했습니다.' 
-            } 
-          };
-        }
-      },
-
-      initializeAuth: async () => {
-        try {
-          set({ isLoading: true });
-          
-          if (!supabase) {
-            set({ 
-              user: null,
-              session: null, 
-              isAuthenticated: false, 
-              isLoading: false,
-              academyId: null,
-              academyName: null
-            });
-            return;
-          }
-          
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          if (session) {
-            // user_role 조회하여 학원 정보 가져오기
-            let academyId = null;
-            let academyName = null;
-            
-            try {
-              const { data: userRoleData } = await supabase
-                .from('user_role')
-                .select('academy_id, academy:academy_id(id, name)')
-                .eq('user_id', session.user.id)
-                .single();
-              
-              if (userRoleData) {
-                academyId = userRoleData.academy_id;
-                if (userRoleData.academy && Array.isArray(userRoleData.academy) && userRoleData.academy[0]) {
-                  academyName = (userRoleData.academy[0] as any).name;
-                } else if (userRoleData.academy && typeof userRoleData.academy === 'object' && 'name' in userRoleData.academy) {
-                  academyName = (userRoleData.academy as any).name;
-                }
-              }
-            } catch (error) {
-              console.error('Failed to fetch academy info:', error);
-            }
-
-            set({
-              user: session.user as User,
-              session: session as Session,
-              isAuthenticated: true,
-              isLoading: false,
-              academyId,
-              academyName
-            });
-          } else {
-            set({ 
-              user: null,
-              session: null, 
-              isAuthenticated: false, 
-              isLoading: false,
-              academyId: null,
-              academyName: null
-            });
-          }
-
-          // 인증 상태 변화 감지
-          supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' && session) {
-              // user_role 조회하여 학원 정보 가져오기
-              let academyId = null;
-              let academyName = null;
-              
-              try {
-                const { data: userRoleData } = await supabase
-                  .from('user_role')
-                  .select('academy_id, academy:academy_id(id, name)')
-                  .eq('user_id', session.user.id)
-                  .single();
-                
-                if (userRoleData) {
-                  academyId = userRoleData.academy_id;
-                  if (userRoleData.academy && Array.isArray(userRoleData.academy) && userRoleData.academy[0]) {
-                    academyName = (userRoleData.academy[0] as any).name;
-                  } else if (userRoleData.academy && typeof userRoleData.academy === 'object' && 'name' in userRoleData.academy) {
-                    academyName = (userRoleData.academy as any).name;
-                  }
-                }
-              } catch (error) {
-                console.error('Failed to fetch academy info:', error);
-              }
-
-              set({
-                user: session.user as User,
-                session: session as Session,
-                isAuthenticated: true,
-                academyId,
-                academyName
-              });
-            } else if (event === 'SIGNED_OUT') {
-              set({ 
-                user: null,
-                session: null, 
-                isAuthenticated: false,
-                academyId: null,
-                academyName: null
-              });
-            }
-          });
-        } catch {
-          set({ 
-            user: null,
-            session: null, 
-            isAuthenticated: false, 
-            isLoading: false 
+      initializeAuth: () => {
+        // localStorage에서 사용자 정보 복원 (zustand persist가 자동 처리)
+        const state = get();
+        if (state.user) {
+          set({
+            isAuthenticated: true,
+            academyId: state.user.academy_id,
+            academyName: state.user.academy_name
           });
         }
       },

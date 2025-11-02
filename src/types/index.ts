@@ -1,41 +1,50 @@
-// Supabase User 타입 확장
+// Admin User 타입 (자체 인증 시스템)
 export interface User {
   id: string;
   email: string;
-  name?: string;
-  role?: 'admin' | 'moderator' | 'user';
-  avatar?: string;
-  created_at?: string;
-  updated_at?: string;
-  user_metadata?: {
-    name?: string;
-    avatar_url?: string;
-  };
-  app_metadata?: {
-    provider?: string;
-    providers?: string[];
-  };
-}
-
-
-// Supabase Session 타입
-export interface Session {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-  expires_at?: number;
-  token_type: string;
-  user: User;
+  name: string;
+  role_id: string;
+  role_name: string;
+  academy_id: string | null;
+  academy_name: string | null;
 }
 
 // 인증 상태 타입
 export interface AuthState {
   user: User | null;
-  session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  academyId?: string | null;
-  academyName?: string | null;
+  academyId: string | null;
+  academyName: string | null;
+}
+
+// 역할 타입
+export interface Role {
+  id: string;
+  name: string;
+  description: string | null;
+  level: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+// 권한 타입
+export interface Permission {
+  id: string;
+  category: string;
+  action: string;
+  name: string;
+  description: string | null;
+  display_order: number;
+  created_at: string;
+}
+
+// 역할-권한 매핑 타입
+export interface RolePermission {
+  role_id: string;
+  permission_id: string;
+  granted_at: string;
+  granted_by: string | null;
 }
 
 // 대시보드 통계 타입
@@ -89,13 +98,6 @@ export interface LoginFormData {
   password: string;
 }
 
-// 회원가입 폼 데이터 타입
-export interface SignUpFormData {
-  email: string;
-  password: string;
-  name?: string;
-}
-
 // 학원 정보 타입
 export interface Academy {
   id: string;
@@ -112,28 +114,9 @@ export interface Academy {
   updated_at: string;
 }
 
-// 사용자 역할 정보 타입
-export interface UserRole {
-  id: string;
-  user_id: string;
-  name: string;
-  role: 'admin' | 'owner' | 'teacher' | 'tutor';
-  academy_id?: string;
-  academy?: Academy;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-// 확장된 사용자 타입 (학원 정보 포함)
-export interface ExtendedUser extends User {
-  user_role?: UserRole;
-  academy?: Academy;
-}
-
 // 서버 사이드 사용자 컨텍스트 타입
 export interface UserContext {
-  user: ExtendedUser;
+  user: User;
   academy: Academy | null;
   isAdmin: boolean;
 }

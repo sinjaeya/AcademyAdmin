@@ -64,6 +64,10 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
     name: '',
     date: ''
   });
+  const [selectedCell, setSelectedCell] = useState<{ studentId: number | null; day: number | null }>({
+    studentId: null,
+    day: null
+  });
 
   const { toast } = useToast();
   
@@ -80,6 +84,9 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
       setIsInitialLoad(false);
       return;
     }
+
+    // 월 변경 시 선택된 셀 초기화
+    setSelectedCell({ studentId: null, day: null });
 
     const loadData = async () => {
       setLoading(true);
@@ -114,6 +121,7 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
   const handleCellClick = (studentId: number, studentName: string, day: number) => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     setSelectedStudent({ id: studentId, name: studentName, date: dateStr });
+    setSelectedCell({ studentId, day });
     setDialogOpen(true);
   };
 
@@ -262,9 +270,10 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
                   {Array.from({ length: daysInMonth }, (_, i) => {
                     const day = i + 1;
                     const activity = student.dailyActivities[day];
+                    const isSelected = selectedCell.studentId === student.id && selectedCell.day === day;
                     
                     return (
-                      <td key={day} className="px-2 py-2 text-center min-w-[40px] border-r">
+                      <td key={day} className={`px-2 py-2 text-center min-w-[40px] border-r ${isSelected ? 'bg-pink-200' : ''}`}>
                         {activity ? (
                           <div 
                             className={`px-1 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 ${getScoreColor(activity.totalXp, activity.maxXp)}`}

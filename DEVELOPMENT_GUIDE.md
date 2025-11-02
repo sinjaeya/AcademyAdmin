@@ -318,8 +318,91 @@ chcp 65001  # 콘솔 코드페이지 UTF-8로 변경
 - 모달이 닫힐 때 스크롤 복원 `document.body.style.overflow = ''`
 - 여러 모달이 중첩되는 경우 z-index 관리에 주의
 
+## 🗄️ 데이터베이스 테이블 생성 규칙
+
+### ✅ **필수 규칙**
+데이터베이스 테이블을 생성하거나 수정할 때는 **반드시** 다음 규칙을 따릅니다:
+
+#### 1. **테이블 코멘트**
+- 모든 테이블에 대해 `COMMENT ON TABLE` 구문을 사용하여 **한글** 코멘트를 추가합니다.
+- 테이블의 목적과 역할을 명확하게 설명합니다.
+
+```sql
+COMMENT ON TABLE user_role IS '사용자 역할 정보 테이블';
+COMMENT ON TABLE academy IS '학원 정보 관리 테이블';
+```
+
+#### 2. **컬럼 코멘트**
+- 모든 컬럼에 대해 `COMMENT ON COLUMN` 구문을 사용하여 **한글** 코멘트를 추가합니다.
+- 컬럼의 의미와 용도를 명확하게 설명합니다.
+- 특수한 제약사항이나 규칙이 있다면 함께 명시합니다.
+
+```sql
+COMMENT ON COLUMN user_role.id IS '고유 식별자 (UUID)';
+COMMENT ON COLUMN user_role.user_id IS '사용자 ID (auth.users 참조)';
+COMMENT ON COLUMN user_role.role IS '사용자 역할 (admin, owner, teacher, tutor)';
+COMMENT ON COLUMN user_role.is_active IS '활성화 상태';
+COMMENT ON COLUMN user_role.created_at IS '생성 일시';
+COMMENT ON COLUMN user_role.updated_at IS '수정 일시';
+```
+
+#### 3. **테이블 생성 SQL 스크립트 구조**
+
+```sql
+-- 1. 테이블 설명 (주석)
+-- [테이블명] 테이블 생성 스크립트
+
+-- 2. 기존 테이블 삭제 (필요시)
+DROP TABLE IF EXISTS [테이블명] CASCADE;
+
+-- 3. 테이블 생성
+CREATE TABLE [테이블명] (
+  -- 컬럼 정의
+);
+
+-- 4. 인덱스 생성 (필요시)
+CREATE INDEX idx_[테이블명]_[컬럼명] ON [테이블명]([컬럼명]);
+
+-- 5. RLS (Row Level Security) 설정 (필요시)
+ALTER TABLE [테이블명] ENABLE ROW LEVEL SECURITY;
+
+-- 6. RLS 정책 생성 (필요시)
+CREATE POLICY "policy_name" ON [테이블명]
+  FOR SELECT USING (조건);
+
+-- 7. 테이블 코멘트 추가 (필수)
+COMMENT ON TABLE [테이블명] IS '테이블 설명 (한글)';
+
+-- 8. 컬럼 코멘트 추가 (필수)
+COMMENT ON COLUMN [테이블명].[컬럼명] IS '컬럼 설명 (한글)';
+-- ... 모든 컬럼에 대해 반복
+
+-- 9. 초기 데이터 삽입 (필요시)
+INSERT INTO [테이블명] (...) VALUES (...);
+```
+
+#### 📝 **체크리스트**
+새로운 테이블을 추가할 때 다음 사항을 확인하세요:
+
+- [ ] 테이블 코멘트 추가 (한글)
+- [ ] 모든 컬럼에 대한 코멘트 추가 (한글)
+- [ ] 컬럼 코멘트에 제약사항 명시 (해당되는 경우)
+- [ ] 인덱스 생성 (성능 최적화가 필요한 컬럼)
+- [ ] RLS 정책 설정 (보안이 필요한 경우)
+
+#### 🔧 **관련 파일**
+- `.cursorrules`: 자동으로 적용되는 테이블 생성 규칙
+- `scripts/add-comments-to-existing-tables.sql`: 기존 테이블에 코멘트 추가 스크립트
+- `scripts/create-*.sql`: 테이블 생성 스크립트 예시
+
+#### 📚 **참고 예시**
+자세한 예시는 다음 파일들을 참고하세요:
+- `scripts/create-webhook-log-table.sql`: 코멘트가 포함된 테이블 생성 예시
+- `.cursorrules`: 전체 테이블 생성 가이드라인
+
 ## 📚 관련 문서
 - `README.md`: 프로젝트 개요
 - `ENVIRONMENT_SETUP.md`: 환경변수 설정 가이드
 - `src/lib/env.ts`: 환경변수 관리 로직
 - `.env.example`: 환경변수 템플릿
+- `.cursorrules`: 개발 규칙 및 가이드라인
