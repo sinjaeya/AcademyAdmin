@@ -479,8 +479,17 @@ export default function StudentsPage() {
               </div>
             ) : (
               <div className="p-6 h-full flex flex-col">
-                <div className="overflow-x-auto overflow-y-auto flex-1" style={{ scrollbarWidth: 'thin' }}>
-                  <Table>
+                <div 
+                  className="flex-1 overflow-y-auto" 
+                  style={{ 
+                    scrollbarWidth: 'thin',
+                    overflowX: 'scroll',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}
+                >
+                  <div style={{ minWidth: 'max-content', minHeight: '100%' }}>
+                    <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="sticky left-0 z-20 bg-white hover:bg-white border-r min-w-[100px]">학생명</TableHead>
@@ -595,7 +604,8 @@ export default function StudentsPage() {
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
+                    </Table>
+                  </div>
                 </div>
               </div>
             )}

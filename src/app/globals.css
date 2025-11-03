@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* 학생 관리 페이지 테이블 가로 스크롤바 항상 표시 */
+div[data-slot="table-container"] {
+  overflow-x: visible !important;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
