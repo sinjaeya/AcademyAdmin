@@ -318,6 +318,108 @@ chcp 65001  # 콘솔 코드페이지 UTF-8로 변경
 - 모달이 닫힐 때 스크롤 복원 `document.body.style.overflow = ''`
 - 여러 모달이 중첩되는 경우 z-index 관리에 주의
 
+### 📊 **테이블 스크롤바 관리 가이드**
+
+#### ✅ **필수 규칙**
+테이블이 여러 컬럼을 가지고 있어 가로 스크롤이 필요한 경우, 가로 스크롤바를 항상 표시하도록 구현해야 합니다.
+
+#### 🎯 **문제 상황**
+기본적으로 `overflow-x-auto`를 사용하면 가로 스크롤바가 필요한 경우에만 표시됩니다. 하지만 테이블이 세로로 긴 경우, 사용자가 세로 스크롤을 끝까지 내려야만 가로 스크롤바를 볼 수 있는 문제가 발생합니다.
+
+#### 💡 **해결 방법**
+1. **하나의 컨테이너에서 가로/세로 스크롤 모두 처리**
+   - 외부 컨테이너에 `overflow-y-auto`와 인라인 스타일로 `overflowX: 'scroll'` 설정
+   - 내부 컨테이너에 `minWidth: 'max-content'` 설정으로 테이블이 컨테이너를 넘어서도록 함
+
+```tsx
+// ✅ 올바른 예시
+<div className="p-6 h-full flex flex-col">
+  <div 
+    className="flex-1 overflow-y-auto" 
+    style={{ 
+      scrollbarWidth: 'thin',
+      overflowX: 'scroll',  // 가로 스크롤바 항상 표시
+      display: 'flex',
+      flexDirection: 'column'
+    }}
+  >
+    <div style={{ minWidth: 'max-content', minHeight: '100%' }}>
+      <Table>
+        {/* 테이블 내용 */}
+      </Table>
+    </div>
+  </div>
+</div>
+
+// ❌ 잘못된 예시 (가로 스크롤바가 세로 스크롤 하단에만 표시됨)
+<div className="p-6 h-full flex flex-col">
+  <div className="overflow-x-auto overflow-y-auto flex-1">
+    <Table>
+      {/* 테이블 내용 */}
+    </Table>
+  </div>
+</div>
+```
+
+2. **Table 컴포넌트의 내부 overflow 오버라이드**
+   - `src/components/ui/table.tsx`의 `Table` 컴포넌트는 내부적으로 `overflow-x-auto`를 가진 div로 래핑되어 있습니다.
+   - `src/app/globals.css`에 CSS 규칙을 추가하여 오버라이드합니다.
+
+```css
+/* src/app/globals.css */
+div[data-slot="table-container"] {
+  overflow-x: visible !important;
+}
+```
+
+#### 📋 **스티키 컬럼과 함께 사용**
+스티키 컬럼(고정 컬럼)과 함께 사용할 때는 다음과 같이 구현합니다:
+
+```tsx
+<div className="flex-1 overflow-y-auto" style={{ overflowX: 'scroll' }}>
+  <div style={{ minWidth: 'max-content', minHeight: '100%' }}>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="sticky left-0 z-20 bg-white border-r min-w-[100px]">
+            고정 컬럼 1
+          </TableHead>
+          <TableHead className="sticky left-[100px] z-20 bg-white border-r min-w-[120px]">
+            고정 컬럼 2
+          </TableHead>
+          {/* 일반 컬럼들 */}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {data.map((item) => (
+          <TableRow key={item.id}>
+            <TableCell className="sticky left-0 z-10 bg-white border-r min-w-[100px]">
+              {item.column1}
+            </TableCell>
+            <TableCell className="sticky left-[100px] z-10 bg-white border-r min-w-[120px]">
+              {item.column2}
+            </TableCell>
+            {/* 일반 셀들 */}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </div>
+</div>
+```
+
+#### 📝 **체크리스트**
+테이블에 가로 스크롤이 필요한 경우 다음 사항을 확인하세요:
+
+- [ ] 외부 컨테이너에 `overflowX: 'scroll'` 설정 (인라인 스타일)
+- [ ] 내부 컨테이너에 `minWidth: 'max-content'` 설정
+- [ ] `globals.css`에 `div[data-slot="table-container"]` CSS 오버라이드 추가
+- [ ] 스티키 컬럼이 있는 경우 적절한 `left` 오프셋과 `z-index` 설정
+- [ ] 스티키 컬럼의 배경색이 스크롤 시에도 유지되도록 설정
+
+#### 🔍 **적용된 페이지**
+- `src/app/admin/students/page.tsx`: 학생 관리 페이지 테이블
+
 ## 🗄️ 데이터베이스 테이블 생성 규칙
 
 ### ✅ **필수 규칙**
