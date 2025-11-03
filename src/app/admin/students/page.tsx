@@ -56,6 +56,7 @@ interface Student {
   study_time?: string;
   created_at: string;
   updated_at: string;
+  hasPaidThisMonth?: boolean; // 당월 학원비 납부 여부
 }
 
 // 새 학생 추가 폼 데이터 타입
@@ -512,8 +513,16 @@ export default function StudentsPage() {
                       <TableRow key={student.id}>
                         <TableCell className="sticky left-0 z-10 bg-white hover:bg-muted/50 border-r min-w-[100px]">
                           <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                              <span className="text-sm font-medium text-gray-600">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              student.hasPaidThisMonth 
+                                ? 'bg-blue-100' 
+                                : 'bg-gray-200'
+                            }`}>
+                              <span className={`text-sm font-medium ${
+                                student.hasPaidThisMonth 
+                                  ? 'text-blue-600' 
+                                  : 'text-gray-600'
+                              }`}>
                                 {student.name?.charAt(0) || '?'}
                               </span>
                             </div>

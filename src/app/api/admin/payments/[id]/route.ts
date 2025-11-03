@@ -30,6 +30,17 @@ export async function PUT(
       }
       updateData.payment_method = body.payment_method;
     }
+    if (body.study_month !== undefined) {
+      // 해당월 검증
+      const validMonths = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+      if (!validMonths.includes(body.study_month)) {
+        return NextResponse.json(
+          { error: '해당월은 1월부터 12월까지의 값이어야 합니다.' },
+          { status: 400 }
+        );
+      }
+      updateData.study_month = body.study_month;
+    }
     if (body.cash_receipt_issued !== undefined) {
       updateData.cash_receipt_issued = body.cash_receipt_issued === true || body.cash_receipt_issued === 'true';
     }

@@ -6,7 +6,7 @@ export async function GET() {
   try {
     const supabase = createServerClient();
 
-    const { data, error } = await supabase
+    const { data: students, error } = await supabase
       .from('student')
       .select('*')
       .order('created_at', { ascending: false });
@@ -19,7 +19,43 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json(data);
+    // 당월 납부 여부 확인 (study_month 기준)
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // 1-12
+    const currentMonthStr = `${currentMonth}월`; // '1월', '2월', ..., '12월'
+
+    // 학생 ID 목록 수집 (BIGINT - 숫자 타입)
+    const studentIds = (students || []).map((s: any) => {
+      const id = typeof s.id === 'string' ? parseInt(s.id) : s.id;
+      return isNaN(id) ? null : id;
+    }).filter((id): id is number => id !== null);
+    
+    // 해당월 납부 내역 조회 (study_month 컬럼 기준)
+    let paidStudentIds = new Set<number>();
+    if (studentIds.length > 0) {
+      const { data: payments, error: paymentError } = await supabase
+        .from('payment')
+        .select('student_id')
+        .in('student_id', studentIds)
+        .eq('study_month', currentMonthStr);
+
+      if (!paymentError && payments) {
+        payments.forEach((p: any) => {
+          paidStudentIds.add(p.student_id);
+        });
+      }
+    }
+
+    // 학생 목록에 당월 납부 여부 추가 (ID를 숫자로 변환하여 매칭)
+    const studentsWithPaymentStatus = (students || []).map((student: any) => {
+      const studentId = typeof student.id === 'string' ? parseInt(student.id) : student.id;
+      return {
+        ...student,
+        hasPaidThisMonth: !isNaN(studentId) && paidStudentIds.has(studentId)
+      };
+    });
+
+    return NextResponse.json(studentsWithPaymentStatus);
   } catch (error) {
     console.error('API error:', error);
     return NextResponse.json(

@@ -129,6 +129,7 @@ export interface Payment {
   amount: number;
   payment_date: string;
   payment_method: '무통장' | '카드';
+  study_month: '1월' | '2월' | '3월' | '4월' | '5월' | '6월' | '7월' | '8월' | '9월' | '10월' | '11월' | '12월';
   cash_receipt_issued: boolean;
   academy_id?: string;
   created_at: string;

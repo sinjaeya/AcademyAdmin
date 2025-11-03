@@ -53,6 +53,22 @@ export const PAYMENT_METHOD_OPTIONS = [
   '카드'
 ] as const;
 
+// 해당월 옵션
+export const STUDY_MONTH_OPTIONS = [
+  '1월',
+  '2월',
+  '3월',
+  '4월',
+  '5월',
+  '6월',
+  '7월',
+  '8월',
+  '9월',
+  '10월',
+  '11월',
+  '12월'
+] as const;
+
 // 타입 정의
 export type GradeOption = typeof GRADE_OPTIONS[number];
 export type SchoolOption = typeof SCHOOL_OPTIONS[number];
@@ -60,4 +76,5 @@ export type AcademyOption = typeof ACADEMY_OPTIONS[number];
 export type StatusOption = typeof STATUS_OPTIONS[number];
 export type ParentType = typeof PARENT_TYPE_OPTIONS[number];
 export type PaymentMethod = typeof PAYMENT_METHOD_OPTIONS[number];
+export type StudyMonth = typeof STUDY_MONTH_OPTIONS[number];
 

@@ -95,9 +95,9 @@ export async function POST(request: NextRequest) {
     const isAdmin = await isServerUserAdmin();
 
     // 필수 필드 검증
-    if (!body.student_id || !body.amount || !body.payment_method) {
+    if (!body.student_id || !body.amount || !body.payment_method || !body.study_month) {
       return NextResponse.json(
-        { error: '필수 필드가 누락되었습니다. (학생, 금액, 입금방법)' },
+        { error: '필수 필드가 누락되었습니다. (학생, 금액, 입금방법, 해당월)' },
         { status: 400 }
       );
     }
@@ -106,6 +106,15 @@ export async function POST(request: NextRequest) {
     if (body.payment_method !== '무통장' && body.payment_method !== '카드') {
       return NextResponse.json(
         { error: '입금방법은 "무통장" 또는 "카드"여야 합니다.' },
+        { status: 400 }
+      );
+    }
+
+    // 해당월 검증
+    const validMonths = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+    if (!validMonths.includes(body.study_month)) {
+      return NextResponse.json(
+        { error: '해당월은 1월부터 12월까지의 값이어야 합니다.' },
         { status: 400 }
       );
     }
@@ -145,6 +154,7 @@ export async function POST(request: NextRequest) {
       amount: parseInt(body.amount),
       payment_date: paymentDate,
       payment_method: body.payment_method,
+      study_month: body.study_month,
       cash_receipt_issued: body.cash_receipt_issued === true || body.cash_receipt_issued === 'true',
       academy_id: finalAcademyId || null
     };

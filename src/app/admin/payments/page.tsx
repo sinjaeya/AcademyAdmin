@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PAYMENT_METHOD_OPTIONS } from '@/config/constants';
+import { PAYMENT_METHOD_OPTIONS, STUDY_MONTH_OPTIONS } from '@/config/constants';
 import { 
   Table, 
   TableBody, 
@@ -56,6 +56,7 @@ interface NewPaymentForm {
   amount: string;
   payment_date: string;
   payment_method: '무통장' | '카드';
+  study_month: '1월' | '2월' | '3월' | '4월' | '5월' | '6월' | '7월' | '8월' | '9월' | '10월' | '11월' | '12월';
   cash_receipt_issued: boolean;
 }
 
@@ -67,6 +68,7 @@ interface EditPaymentForm {
   amount: string;
   payment_date: string;
   payment_method: '무통장' | '카드';
+  study_month: '1월' | '2월' | '3월' | '4월' | '5월' | '6월' | '7월' | '8월' | '9월' | '10월' | '11월' | '12월';
   cash_receipt_issued: boolean;
 }
 
@@ -82,6 +84,12 @@ const formatDateTime = (dateString: string) => {
     minute: '2-digit',
     hour12: false
   }).format(date);
+};
+
+// 현재 월 가져오기 함수 (클라이언트 시간 기준)
+const getCurrentMonth = (): '1월' | '2월' | '3월' | '4월' | '5월' | '6월' | '7월' | '8월' | '9월' | '10월' | '11월' | '12월' => {
+  const month = new Date().getMonth() + 1; // 1-12
+  return `${month}월` as '1월' | '2월' | '3월' | '4월' | '5월' | '6월' | '7월' | '8월' | '9월' | '10월' | '11월' | '12월';
 };
 
 // ISO 8601 날짜를 datetime-local 형식으로 변환
@@ -137,6 +145,7 @@ export default function PaymentsPage() {
     amount: '',
     payment_date: getCurrentDateTimeLocal(),
     payment_method: '카드',
+    study_month: getCurrentMonth(),
     cash_receipt_issued: false
   });
   const [editPayment, setEditPayment] = useState<EditPaymentForm>({
@@ -146,6 +155,7 @@ export default function PaymentsPage() {
     amount: '',
     payment_date: '',
     payment_method: '카드',
+    study_month: getCurrentMonth(),
     cash_receipt_issued: false
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -277,10 +287,10 @@ export default function PaymentsPage() {
 
   const handleAddPayment = async () => {
     // 필수 필드 검증
-    if (!newPayment.student_id || !newPayment.amount || !newPayment.payment_method) {
+    if (!newPayment.student_id || !newPayment.amount || !newPayment.payment_method || !newPayment.study_month) {
       toast({
         type: 'error',
-        description: '필수 필드를 입력해주세요. (학생, 금액, 입금방법)'
+        description: '필수 필드를 입력해주세요. (학생, 금액, 입금방법, 해당월)'
       });
       return;
     }
@@ -294,6 +304,7 @@ export default function PaymentsPage() {
         amount: parseInt(parseAmountInput(newPayment.amount)), // 쉼표 제거 후 number로 변환
         payment_date: formatDateFromInput(newPayment.payment_date),
         payment_method: newPayment.payment_method,
+        study_month: newPayment.study_month,
         cash_receipt_issued: newPayment.cash_receipt_issued
       };
 
@@ -320,6 +331,7 @@ export default function PaymentsPage() {
         amount: '',
         payment_date: getCurrentDateTimeLocal(),
         payment_method: '카드',
+        study_month: getCurrentMonth(),
         cash_receipt_issued: false
       });
       toast({
@@ -345,6 +357,7 @@ export default function PaymentsPage() {
       amount: formatAmountInput(payment.amount.toString()), // 천 단위 쉼표 추가
       payment_date: formatDateForInput(payment.payment_date),
       payment_method: payment.payment_method,
+      study_month: payment.study_month,
       cash_receipt_issued: payment.cash_receipt_issued
     });
     setIsEditPaymentOpen(true);
@@ -352,10 +365,10 @@ export default function PaymentsPage() {
 
   const handleUpdatePayment = async () => {
     // 필수 필드 검증
-    if (!editPayment.student_id || !editPayment.amount || !editPayment.payment_method) {
+    if (!editPayment.student_id || !editPayment.amount || !editPayment.payment_method || !editPayment.study_month) {
       toast({
         type: 'error',
-        description: '필수 필드를 입력해주세요. (학생, 금액, 입금방법)'
+        description: '필수 필드를 입력해주세요. (학생, 금액, 입금방법, 해당월)'
       });
       return;
     }
@@ -369,6 +382,7 @@ export default function PaymentsPage() {
         amount: parseInt(parseAmountInput(editPayment.amount)), // 쉼표 제거 후 number로 변환
         payment_date: formatDateFromInput(editPayment.payment_date),
         payment_method: editPayment.payment_method,
+        study_month: editPayment.study_month,
         cash_receipt_issued: editPayment.cash_receipt_issued
       };
 
@@ -466,6 +480,7 @@ export default function PaymentsPage() {
                           <TableHead>입금자</TableHead>
                           <TableHead>금액</TableHead>
                           <TableHead>입금일시</TableHead>
+                          <TableHead>해당월</TableHead>
                           <TableHead>입금방법</TableHead>
                           <TableHead>현금영수증</TableHead>
                           <TableHead>등록일</TableHead>
@@ -475,7 +490,7 @@ export default function PaymentsPage() {
                       <TableBody>
                         {payments.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                            <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                               결제 내역이 없습니다.
                             </TableCell>
                           </TableRow>
@@ -488,6 +503,11 @@ export default function PaymentsPage() {
                               <TableCell>{payment.payer_name || 'N/A'}</TableCell>
                               <TableCell>{formatAmount(payment.amount)}원</TableCell>
                               <TableCell>{formatDateTime(payment.payment_date)}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline">
+                                  {payment.study_month}
+                                </Badge>
+                              </TableCell>
                               <TableCell>
                                 <Badge variant="outline">
                                   {payment.payment_method}
@@ -541,101 +561,132 @@ export default function PaymentsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="student_id">학생 *</Label>
-                <Select
-                  value={newPayment.student_id}
-                  onValueChange={(value) => handleInputChange('student_id', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="학생을 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {students.map((student) => (
-                      <SelectItem key={student.id} value={student.id}>
-                        {student.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* 학생과 해당월을 같은 행에 배치 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="student_id">학생 *</Label>
+                  <Select
+                    value={newPayment.student_id}
+                    onValueChange={(value) => handleInputChange('student_id', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="학생을 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {students.map((student) => (
+                        <SelectItem key={student.id} value={student.id}>
+                          {student.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="study_month">해당월 *</Label>
+                  <Select
+                    value={newPayment.study_month}
+                    onValueChange={(value) => handleInputChange('study_month', value as '1월' | '2월' | '3월' | '4월' | '5월' | '6월' | '7월' | '8월' | '9월' | '10월' | '11월' | '12월')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STUDY_MONTH_OPTIONS.map((month) => (
+                        <SelectItem key={month} value={month}>
+                          {month}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               
-              <div className="space-y-2">
+              {/* 금액과 입금일시를 같은 행에 배치 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="amount">금액 *</Label>
+                  <Input
+                    id="amount"
+                    type="text"
+                    inputMode="numeric"
+                    value={newPayment.amount}
+                    onChange={(e) => handleInputChange('amount', e.target.value)}
+                    placeholder="금액을 입력하세요"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="payment_date">입금일시 *</Label>
+                  <Input
+                    id="payment_date"
+                    type="datetime-local"
+                    value={newPayment.payment_date}
+                    onChange={(e) => handleInputChange('payment_date', e.target.value)}
+                  />
+                </div>
+              </div>
+              
+              {/* 입금방법과 현금영수증을 같은 행에 배치 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="payment_method">입금방법 *</Label>
+                  <Select
+                    value={newPayment.payment_method}
+                    onValueChange={(value) => handleInputChange('payment_method', value as '무통장' | '카드')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHOD_OPTIONS.map((method) => (
+                        <SelectItem key={method} value={method}>
+                          {method}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="cash_receipt_issued">현금영수증 발행여부</Label>
+                    <Switch
+                      id="cash_receipt_issued"
+                      checked={newPayment.cash_receipt_issued}
+                      onCheckedChange={(checked) => handleInputChange('cash_receipt_issued', checked)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="flex items-center justify-between">
+              {/* 입금자는 하단 우측으로 이동 */}
+              <div className="flex-1">
                 <Label htmlFor="payer_name">입금자</Label>
                 <Input
                   id="payer_name"
                   value={newPayment.payer_name}
                   onChange={(e) => handleInputChange('payer_name', e.target.value)}
                   placeholder="입금자 이름을 입력하세요"
+                  className="mt-2"
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="amount">금액 *</Label>
-                <Input
-                  id="amount"
-                  type="text"
-                  inputMode="numeric"
-                  value={newPayment.amount}
-                  onChange={(e) => handleInputChange('amount', e.target.value)}
-                  placeholder="금액을 입력하세요"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="payment_date">입금일시 *</Label>
-                <Input
-                  id="payment_date"
-                  type="datetime-local"
-                  value={newPayment.payment_date}
-                  onChange={(e) => handleInputChange('payment_date', e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="payment_method">입금방법 *</Label>
-                <Select
-                  value={newPayment.payment_method}
-                  onValueChange={(value) => handleInputChange('payment_method', value as '무통장' | '카드')}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsAddPaymentOpen(false)}
+                  disabled={isSubmitting}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_METHOD_OPTIONS.map((method) => (
-                      <SelectItem key={method} value={method}>
-                        {method}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  취소
+                </Button>
+                <Button
+                  onClick={handleAddPayment}
+                  disabled={isSubmitting || !newPayment.student_id || !newPayment.amount || !newPayment.payment_method || !newPayment.study_month}
+                >
+                  {isSubmitting ? '추가 중...' : '추가'}
+                </Button>
               </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="cash_receipt_issued">현금영수증 발행여부</Label>
-                  <Switch
-                    id="cash_receipt_issued"
-                    checked={newPayment.cash_receipt_issued}
-                    onCheckedChange={(checked) => handleInputChange('cash_receipt_issued', checked)}
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsAddPaymentOpen(false)}
-                disabled={isSubmitting}
-              >
-                취소
-              </Button>
-              <Button
-                onClick={handleAddPayment}
-                disabled={isSubmitting || !newPayment.student_id || !newPayment.amount || !newPayment.payment_method}
-              >
-                {isSubmitting ? '추가 중...' : '추가'}
-              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -650,101 +701,132 @@ export default function PaymentsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-student_id">학생 *</Label>
-                <Select
-                  value={editPayment.student_id}
-                  onValueChange={(value) => handleEditInputChange('student_id', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="학생을 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {students.map((student) => (
-                      <SelectItem key={student.id} value={student.id}>
-                        {student.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* 학생과 해당월을 같은 행에 배치 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-student_id">학생 *</Label>
+                  <Select
+                    value={editPayment.student_id}
+                    onValueChange={(value) => handleEditInputChange('student_id', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="학생을 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {students.map((student) => (
+                        <SelectItem key={student.id} value={student.id}>
+                          {student.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="edit-study_month">해당월 *</Label>
+                  <Select
+                    value={editPayment.study_month}
+                    onValueChange={(value) => handleEditInputChange('study_month', value as '1월' | '2월' | '3월' | '4월' | '5월' | '6월' | '7월' | '8월' | '9월' | '10월' | '11월' | '12월')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STUDY_MONTH_OPTIONS.map((month) => (
+                        <SelectItem key={month} value={month}>
+                          {month}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               
-              <div className="space-y-2">
+              {/* 금액과 입금일시를 같은 행에 배치 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-amount">금액 *</Label>
+                  <Input
+                    id="edit-amount"
+                    type="text"
+                    inputMode="numeric"
+                    value={editPayment.amount}
+                    onChange={(e) => handleEditInputChange('amount', e.target.value)}
+                    placeholder="금액을 입력하세요"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="edit-payment_date">입금일시 *</Label>
+                  <Input
+                    id="edit-payment_date"
+                    type="datetime-local"
+                    value={editPayment.payment_date}
+                    onChange={(e) => handleEditInputChange('payment_date', e.target.value)}
+                  />
+                </div>
+              </div>
+              
+              {/* 입금방법과 현금영수증을 같은 행에 배치 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-payment_method">입금방법 *</Label>
+                  <Select
+                    value={editPayment.payment_method}
+                    onValueChange={(value) => handleEditInputChange('payment_method', value as '무통장' | '카드')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHOD_OPTIONS.map((method) => (
+                        <SelectItem key={method} value={method}>
+                          {method}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="edit-cash_receipt_issued">현금영수증 발행여부</Label>
+                    <Switch
+                      id="edit-cash_receipt_issued"
+                      checked={editPayment.cash_receipt_issued}
+                      onCheckedChange={(checked) => handleEditInputChange('cash_receipt_issued', checked)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="flex items-center justify-between">
+              {/* 입금자는 하단 우측으로 이동 */}
+              <div className="flex-1">
                 <Label htmlFor="edit-payer_name">입금자</Label>
                 <Input
                   id="edit-payer_name"
                   value={editPayment.payer_name}
                   onChange={(e) => handleEditInputChange('payer_name', e.target.value)}
                   placeholder="입금자 이름을 입력하세요"
+                  className="mt-2"
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="edit-amount">금액 *</Label>
-                <Input
-                  id="edit-amount"
-                  type="text"
-                  inputMode="numeric"
-                  value={editPayment.amount}
-                  onChange={(e) => handleEditInputChange('amount', e.target.value)}
-                  placeholder="금액을 입력하세요"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="edit-payment_date">입금일시 *</Label>
-                <Input
-                  id="edit-payment_date"
-                  type="datetime-local"
-                  value={editPayment.payment_date}
-                  onChange={(e) => handleEditInputChange('payment_date', e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="edit-payment_method">입금방법 *</Label>
-                <Select
-                  value={editPayment.payment_method}
-                  onValueChange={(value) => handleEditInputChange('payment_method', value as '무통장' | '카드')}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditPaymentOpen(false)}
+                  disabled={isSubmitting}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_METHOD_OPTIONS.map((method) => (
-                      <SelectItem key={method} value={method}>
-                        {method}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  취소
+                </Button>
+                <Button
+                  onClick={handleUpdatePayment}
+                  disabled={isSubmitting || !editPayment.student_id || !editPayment.amount || !editPayment.payment_method || !editPayment.study_month}
+                >
+                  {isSubmitting ? '수정 중...' : '수정'}
+                </Button>
               </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="edit-cash_receipt_issued">현금영수증 발행여부</Label>
-                  <Switch
-                    id="edit-cash_receipt_issued"
-                    checked={editPayment.cash_receipt_issued}
-                    onCheckedChange={(checked) => handleEditInputChange('cash_receipt_issued', checked)}
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsEditPaymentOpen(false)}
-                disabled={isSubmitting}
-              >
-                취소
-              </Button>
-              <Button
-                onClick={handleUpdatePayment}
-                disabled={isSubmitting || !editPayment.student_id || !editPayment.amount || !editPayment.payment_method}
-              >
-                {isSubmitting ? '수정 중...' : '수정'}
-              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
