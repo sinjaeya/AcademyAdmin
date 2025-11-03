@@ -36,6 +36,7 @@ interface Student {
   parent_phone: string;
   currentAcademy: string;
   status: string;
+  study_time?: string;
   created_at: string;
   updated_at: string;
   messageCount?: number; // 최근 30일 메시지 수

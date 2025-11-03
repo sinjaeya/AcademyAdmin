@@ -78,7 +78,7 @@ export function CheckInOutTable({ isLoading: externalLoading, refreshKey }: Chec
     try {
       setLoading(true);
       setError(null);
-
+      
       // API 라우트 호출
       const response = await fetch(`/api/admin/checkinout?date=${selectedDate}`);
       

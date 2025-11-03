@@ -163,16 +163,16 @@ export default function SettingsUsersPage() {
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
 
-    try {
+      try {
       const response = await fetch(`/api/admin/users/${userToDelete}`, {
-        method: 'DELETE'
-      });
+          method: 'DELETE'
+        });
 
-      if (!response.ok) {
-        throw new Error('사용자 삭제에 실패했습니다.');
-      }
+        if (!response.ok) {
+          throw new Error('사용자 삭제에 실패했습니다.');
+        }
 
-      // 성공적으로 삭제되면 목록에서 제거
+        // 성공적으로 삭제되면 목록에서 제거
       setUsers(prev => prev.filter(user => user.id !== userToDelete));
       setIsDeleteDialogOpen(false);
       setUserToDelete(null);
@@ -180,8 +180,8 @@ export default function SettingsUsersPage() {
         type: 'success',
         description: '사용자가 성공적으로 삭제되었습니다.'
       });
-    } catch (err) {
-      console.error('Error deleting user:', err);
+      } catch (err) {
+        console.error('Error deleting user:', err);
       toast({
         type: 'error',
         description: err instanceof Error ? err.message : '사용자 삭제 중 오류가 발생했습니다.'
@@ -227,7 +227,7 @@ export default function SettingsUsersPage() {
         setAddUserError(errorMessage);
         return;
       }
-
+      
       // 성공적으로 추가되면 목록에 추가
       if (result.data) {
         setUsers(prev => [result.data, ...prev]);
@@ -308,7 +308,7 @@ export default function SettingsUsersPage() {
       if (editPassword) {
         updateData.password = editPassword;
       }
-
+      
       const response = await fetch(`/api/admin/users/${editingUser.id}`, {
         method: 'PUT',
         headers: {

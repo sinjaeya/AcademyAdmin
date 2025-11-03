@@ -45,6 +45,7 @@ export async function PUT(
     if (body.email !== undefined) updateData.email = body.email || null;
     if (body.currentAcademy !== undefined) updateData.currentAcademy = body.currentAcademy;
     if (body.status !== undefined) updateData.status = body.status;
+    if (body.study_time !== undefined) updateData.study_time = body.study_time;
 
     // 업데이트할 데이터가 없으면 에러 반환
     if (Object.keys(updateData).length === 0) {

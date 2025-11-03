@@ -53,6 +53,7 @@ interface Student {
   email?: string;
   currentAcademy: string;
   status: string;
+  study_time?: string;
   created_at: string;
   updated_at: string;
 }
@@ -69,6 +70,7 @@ interface NewStudentForm {
   email: string;
   currentAcademy: string;
   status: string;
+  study_time: string;
 }
 
 // 학생 수정 폼 데이터 타입
@@ -84,6 +86,7 @@ interface EditStudentForm {
   email: string;
   currentAcademy: string;
   status: string;
+  study_time: string;
 }
 
 // 학원 데이터 타입
@@ -156,7 +159,8 @@ export default function StudentsPage() {
     parent_type: '엄마',
     email: '',
     currentAcademy: '이지수학교습소',
-    status: '재원'
+    status: '재원',
+    study_time: '60'
   });
   const [editStudent, setEditStudent] = useState<EditStudentForm>({
     id: '',
@@ -169,7 +173,8 @@ export default function StudentsPage() {
     parent_type: '엄마',
     email: '',
     currentAcademy: '',
-    status: ''
+    status: '',
+    study_time: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -284,7 +289,8 @@ export default function StudentsPage() {
           parent_type: '엄마',
           email: '',
           currentAcademy: '이지수학교습소',
-          status: '재원'
+          status: '재원',
+          study_time: '60'
         });
         setIsAddStudentOpen(false);
         toast({
@@ -352,7 +358,8 @@ export default function StudentsPage() {
       parent_type: student.parent_type || '엄마',
       email: student.email || '',
       currentAcademy: student.currentAcademy,
-      status: student.status
+      status: student.status,
+      study_time: student.study_time || '60'
     });
     setIsEditStudentOpen(true);
   };
@@ -377,7 +384,8 @@ export default function StudentsPage() {
           parent_type: editStudent.parent_type,
           email: editStudent.email,
           currentAcademy: editStudent.currentAcademy,
-          status: editStudent.status
+          status: editStudent.status,
+          study_time: editStudent.study_time
         }),
       });
 
@@ -456,7 +464,7 @@ export default function StudentsPage() {
               총 {students.length}명의 학생이 있습니다
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto min-h-0 p-0" style={{ scrollbarWidth: 'thin' }}>
+          <CardContent className="flex-1 min-h-0 p-0" style={{ scrollbarWidth: 'thin' }}>
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-center">
@@ -470,11 +478,13 @@ export default function StudentsPage() {
                 <Button onClick={fetchStudents}>다시 시도</Button>
               </div>
             ) : (
-              <div className="overflow-x-auto p-6">
-                <Table>
+              <div className="p-6 h-full flex flex-col">
+                <div className="overflow-x-auto overflow-y-auto flex-1" style={{ scrollbarWidth: 'thin' }}>
+                  <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>학생명</TableHead>
+                      <TableHead className="sticky left-0 z-20 bg-white hover:bg-white border-r min-w-[100px]">학생명</TableHead>
+                      <TableHead className="sticky left-[100px] z-20 bg-white hover:bg-white border-r min-w-[120px]">액션</TableHead>
                       <TableHead>핸드폰번호</TableHead>
                       <TableHead>중간4자리</TableHead>
                       <TableHead>학교</TableHead>
@@ -484,14 +494,14 @@ export default function StudentsPage() {
                       <TableHead>이메일</TableHead>
                       <TableHead>학원</TableHead>
                       <TableHead>상태</TableHead>
+                      <TableHead>학습시간</TableHead>
                       <TableHead>등록일</TableHead>
-                      <TableHead>액션</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {students.map((student) => (
                       <TableRow key={student.id}>
-                        <TableCell>
+                        <TableCell className="sticky left-0 z-10 bg-white hover:bg-muted/50 border-r min-w-[100px]">
                           <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
                               <span className="text-sm font-medium text-gray-600">
@@ -501,6 +511,24 @@ export default function StudentsPage() {
                             <div>
                               <div className="font-medium">{student.name || 'N/A'}</div>
                             </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="sticky left-[100px] z-10 bg-white hover:bg-muted/50 border-r min-w-[120px]">
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleEditStudent(student)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleDeleteClick(student.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -532,7 +560,16 @@ export default function StudentsPage() {
                           {student.email || 'N/A'}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="default">{student.currentAcademy || 'N/A'}</Badge>
+                          <Badge 
+                            variant="default"
+                            className={
+                              student.currentAcademy === '이지수학교습소' 
+                                ? 'bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200' 
+                                : ''
+                            }
+                          >
+                            {student.currentAcademy || 'N/A'}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge 
@@ -547,31 +584,19 @@ export default function StudentsPage() {
                             {student.status || 'N/A'}
                           </Badge>
                         </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {student.study_time || '60'}분
+                          </Badge>
+                        </TableCell>
                         <TableCell className="text-sm text-gray-500">
                           {formatDateTime(student.created_at)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleEditStudent(student)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleDeleteClick(student.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </div>
             )}
           </CardContent>
@@ -747,6 +772,17 @@ export default function StudentsPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="study_time">학습시간 (분) *</Label>
+                <Input
+                  id="study_time"
+                  type="text"
+                  value={newStudent.study_time}
+                  onChange={(e) => handleInputChange('study_time', e.target.value)}
+                  placeholder="60"
+                />
+              </div>
             </div>
             
             <DialogFooter>
@@ -759,7 +795,7 @@ export default function StudentsPage() {
               </Button>
               <Button
                 onClick={handleAddStudent}
-                disabled={isSubmitting || !newStudent.name || !newStudent.phone_number || !newStudent.phone_middle_4 || newStudent.phone_middle_4.length !== 4 || !newStudent.parent_phone || !newStudent.parent_type || !newStudent.currentAcademy || !newStudent.status}
+                disabled={isSubmitting || !newStudent.name || !newStudent.phone_number || !newStudent.phone_middle_4 || newStudent.phone_middle_4.length !== 4 || !newStudent.parent_phone || !newStudent.parent_type || !newStudent.currentAcademy || !newStudent.status || !newStudent.study_time}
               >
                 {isSubmitting ? '추가 중...' : '추가'}
               </Button>
@@ -937,6 +973,17 @@ export default function StudentsPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-study_time">학습시간 (분) *</Label>
+                <Input
+                  id="edit-study_time"
+                  type="text"
+                  value={editStudent.study_time}
+                  onChange={(e) => handleEditInputChange('study_time', e.target.value)}
+                  placeholder="60"
+                />
+              </div>
             </div>
             
             <DialogFooter>
@@ -949,7 +996,7 @@ export default function StudentsPage() {
               </Button>
               <Button
                 onClick={handleUpdateStudent}
-                disabled={isSubmitting || !editStudent.name || !editStudent.phone_number || !editStudent.phone_middle_4 || editStudent.phone_middle_4.length !== 4 || !editStudent.school || !editStudent.grade || !editStudent.parent_phone || !editStudent.currentAcademy || !editStudent.status}
+                disabled={isSubmitting || !editStudent.name || !editStudent.phone_number || !editStudent.phone_middle_4 || editStudent.phone_middle_4.length !== 4 || !editStudent.school || !editStudent.grade || !editStudent.parent_phone || !editStudent.currentAcademy || !editStudent.status || !editStudent.study_time}
               >
                 {isSubmitting ? '수정 중...' : '수정'}
               </Button>
