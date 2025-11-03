@@ -47,10 +47,17 @@ export const PARENT_TYPE_OPTIONS = [
   '기타'
 ] as const;
 
+// 입금방법 옵션
+export const PAYMENT_METHOD_OPTIONS = [
+  '무통장',
+  '카드'
+] as const;
+
 // 타입 정의
 export type GradeOption = typeof GRADE_OPTIONS[number];
 export type SchoolOption = typeof SCHOOL_OPTIONS[number];
 export type AcademyOption = typeof ACADEMY_OPTIONS[number];
 export type StatusOption = typeof STATUS_OPTIONS[number];
 export type ParentType = typeof PARENT_TYPE_OPTIONS[number];
+export type PaymentMethod = typeof PAYMENT_METHOD_OPTIONS[number];
 

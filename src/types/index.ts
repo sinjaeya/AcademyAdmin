@@ -120,3 +120,19 @@ export interface UserContext {
   academy: Academy | null;
   isAdmin: boolean;
 }
+
+// 결제 내역 타입
+export interface Payment {
+  id: string;
+  student_id: number; // BIGINT
+  payer_name?: string;
+  amount: number;
+  payment_date: string;
+  payment_method: '무통장' | '카드';
+  cash_receipt_issued: boolean;
+  academy_id?: string;
+  created_at: string;
+  updated_at: string;
+  // JOIN된 학생 정보 (옵션)
+  student_name?: string;
+}
