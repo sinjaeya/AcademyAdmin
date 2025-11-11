@@ -19,7 +19,8 @@ import {
   Building2,
   ChevronDown as ChevronDownIcon,
   BookText,
-  Wallet
+  Wallet,
+  FileText
 } from 'lucide-react';
 
 // 네비게이션 아이템 타입 정의
@@ -59,6 +60,12 @@ const navigationCategories: NavigationCategory[] = [
       { name: '등/하원 조회', href: '/admin/checkinout', icon: Clock, badge: '5', requiredPermission: PERMISSION_IDS.STUDENTS_VIEW },
       { name: '학습관리', href: '/admin/learning', icon: BookText, requiredPermission: PERMISSION_IDS.REPORTS_VIEW },
       { name: '학습리포트', href: '/admin/study-reports', icon: BookOpen, requiredPermission: PERMISSION_IDS.REPORTS_VIEW }
+    ]
+  },
+  {
+    title: 'CONTENTS MANAGEMENT',
+    items: [
+      { name: '지문관리', href: '/admin/contents/passages', icon: FileText, requiredPermission: null }
     ]
   },
   {
