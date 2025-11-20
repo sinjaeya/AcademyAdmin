@@ -216,6 +216,18 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {editingAcademy && (
+                <div className="space-y-2">
+                  <Label htmlFor="academy_id">학원 ID</Label>
+                  <Input
+                    id="academy_id"
+                    value={editingAcademy.id}
+                    disabled
+                    className="bg-gray-100 text-gray-600 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500">학원 ID는 변경할 수 없습니다.</p>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">학원명 *</Label>
