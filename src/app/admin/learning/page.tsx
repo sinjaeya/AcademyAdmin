@@ -1,5 +1,5 @@
 import { AdminLayout } from '@/components/layout/AdminLayout';
-import { LearningTable } from '@/components/admin/LearningTable';
+import { LearningTableKorean } from '@/components/admin/LearningTableKorean';
 import { getServerAcademyId } from '@/lib/auth/server-context';
 
 async function getLearningData(year: number, month: number) {
@@ -85,7 +85,7 @@ export default async function LearningManagement() {
   
   return (
     <AdminLayout>
-      <LearningTable initialStudents={students} initialYear={currentYear} initialMonth={currentMonth} />
+      <LearningTableKorean initialStudents={students} initialYear={currentYear} initialMonth={currentMonth} />
     </AdminLayout>
   );
 }

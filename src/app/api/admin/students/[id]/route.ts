@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import bcrypt from 'bcryptjs';
 
 // 학생 정보 업데이트
 export async function PUT(
@@ -43,9 +44,32 @@ export async function PUT(
       updateData.parent_type = body.parent_type;
     }
     if (body.email !== undefined) updateData.email = body.email || null;
-    if (body.currentAcademy !== undefined) updateData.currentAcademy = body.currentAcademy;
+    if (body.rubric_grade_level !== undefined) updateData.rubric_grade_level = body.rubric_grade_level || null;
+    if (body.rubric_difficulty_level !== undefined) updateData.rubric_difficulty_level = body.rubric_difficulty_level || null;
+    // academy_id가 제공된 경우 사용, 없으면 currentAcademy로 academy_id 찾기
+    if (body.academy_id !== undefined) {
+      updateData.academy_id = body.academy_id || null;
+    } else if (body.currentAcademy !== undefined) {
+      // currentAcademy 이름으로 academy_id 찾기
+      const { data: academy } = await supabase
+        .from('academy')
+        .select('id')
+        .eq('name', body.currentAcademy)
+        .single();
+      
+      if (academy) {
+        updateData.academy_id = academy.id;
+      } else {
+        updateData.academy_id = null;
+      }
+    }
     if (body.status !== undefined) updateData.status = body.status;
     if (body.study_time !== undefined) updateData.study_time = body.study_time;
+    
+    // 비밀번호가 제공된 경우에만 해싱하여 업데이트
+    if (body.password !== undefined && body.password !== null && body.password.trim() !== '') {
+      updateData.password = await bcrypt.hash(body.password, 10);
+    }
 
     // 업데이트할 데이터가 없으면 에러 반환
     if (Object.keys(updateData).length === 0) {
@@ -59,7 +83,13 @@ export async function PUT(
       .from('student')
       .update(updateData)
       .eq('id', studentId)
-      .select();
+      .select(`
+        *,
+        academy:academy_id (
+          id,
+          name
+        )
+      `);
 
     if (error) {
       console.error('Error updating student:', error);
@@ -78,9 +108,19 @@ export async function PUT(
       );
     }
 
+    // academy 정보 정리
+    const updatedStudent = data[0];
+    const academy = updatedStudent.academy && typeof updatedStudent.academy === 'object' && !Array.isArray(updatedStudent.academy)
+      ? updatedStudent.academy
+      : null;
+
     return NextResponse.json({
       success: true,
-      data: data[0],
+      data: {
+        ...updatedStudent,
+        academy_id: updatedStudent.academy_id || null,
+        academy_name: academy?.name || updatedStudent.currentAcademy || null,
+      },
       message: '학생 정보가 성공적으로 업데이트되었습니다.'
     }, { status: 200 });
 

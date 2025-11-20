@@ -132,6 +132,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
   // 학습관리 서브메뉴들
   const learningSubMenus = useMemo(() => [
     { name: '국어', href: '/admin/learning', icon: BookText },
+    { name: '국어2', href: '/admin/learning/korean2', icon: BookText },
     { name: '수학', href: '/admin/learning/math', icon: BookText }
   ], []);
 

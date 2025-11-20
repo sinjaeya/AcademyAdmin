@@ -11,13 +11,13 @@ import {
 import { Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { LearningDetailDialog } from '@/components/admin/LearningDetailDialog';
 import { useToast } from '@/components/ui/toast';
 
 interface DailyActivity {
-  wordPang: number;
-  passageQuiz: number;
+  totalXp: number;
+  maxXp: number;
+  scoreDisplay: string;
 }
 
 interface Student {
@@ -26,7 +26,7 @@ interface Student {
   dailyActivities: { [day: number]: DailyActivity };
 }
 
-interface LearningTableProps {
+interface LearningTableKoreanProps {
   initialStudents: Student[];
   initialYear: number;
   initialMonth: number;
@@ -39,7 +39,18 @@ const getDayOfWeek = (year: number, month: number, day: number) => {
   return days[date.getDay()];
 };
 
-export function LearningTable({ initialStudents, initialYear, initialMonth }: LearningTableProps) {
+// 점수에 따라 색상 결정
+const getScoreColor = (totalXp: number, maxXp: number) => {
+  if (maxXp === 0) return 'bg-gray-100 text-gray-800';
+  
+  const ratio = totalXp / maxXp;
+  
+  if (ratio < 0.3) return 'bg-yellow-100 text-yellow-800';     // 경고
+  if (ratio < 0.6) return 'bg-green-100 text-green-800'; // 노력요함
+  return 'bg-blue-100 text-blue-800';                      // 우수
+};
+
+export function LearningTableKorean({ initialStudents, initialYear, initialMonth }: LearningTableKoreanProps) {
   const [selectedMonth, setSelectedMonth] = useState(
     `${initialYear}-${String(initialMonth).padStart(2, '0')}`
   );
@@ -79,7 +90,7 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
     const loadData = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/admin/learning?year=${year}&month=${month}`);
+        const response = await fetch(`/api/admin/learning/korean?year=${year}&month=${month}`);
         const result = await response.json();
         if (result.data) {
           setStudents(result.data);
@@ -199,22 +210,13 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
                     const isSelected = selectedCell.studentId === student.id && selectedCell.day === day;
                     
                     return (
-                      <td key={day} className={`px-2 py-2 text-center min-w-[80px] border-r ${isSelected ? 'bg-pink-200' : ''}`}>
-                        {activity && (activity.wordPang > 0 || activity.passageQuiz > 0) ? (
+                      <td key={day} className={`px-2 py-2 text-center min-w-[40px] border-r ${isSelected ? 'bg-pink-200' : ''}`}>
+                        {activity ? (
                           <div 
-                            className="flex flex-col gap-1 items-center cursor-pointer"
+                            className={`px-1 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 ${getScoreColor(activity.totalXp, activity.maxXp)}`}
                             onClick={() => handleCellClick(student.id, student.name, day)}
                           >
-                            {activity.wordPang > 0 && (
-                              <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200">
-                                단어팡 {activity.wordPang}
-                              </Badge>
-                            )}
-                            {activity.passageQuiz > 0 && (
-                              <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200">
-                                지문 {activity.passageQuiz}
-                              </Badge>
-                            )}
+                            {activity.scoreDisplay?.replace(/\s*UP\s*/i, '').trim() || activity.totalXp}
                           </div>
                         ) : (
                           ''

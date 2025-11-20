@@ -14,7 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GRADE_OPTIONS, SCHOOL_OPTIONS, STATUS_OPTIONS, PARENT_TYPE_OPTIONS } from '@/config/constants';
+import { 
+  GRADE_OPTIONS, 
+  SCHOOL_OPTIONS, 
+  STATUS_OPTIONS, 
+  PARENT_TYPE_OPTIONS,
+  RUBRIC_GRADE_LEVEL_OPTIONS,
+  RUBRIC_DIFFICULTY_LEVEL_OPTIONS,
+  RUBRIC_GRADE_LEVEL_LABELS,
+  RUBRIC_DIFFICULTY_LEVEL_LABELS
+} from '@/config/constants';
 import { 
   Table, 
   TableBody, 
@@ -51,7 +60,11 @@ interface Student {
   parent_phone: string;
   parent_type: string;
   email?: string;
-  currentAcademy: string;
+  rubric_grade_level?: string | null;
+  rubric_difficulty_level?: string | null;
+  academy_id?: string | null;
+  academy_name?: string | null;
+  currentAcademy?: string; // 하위 호환성을 위해 유지
   status: string;
   study_time?: string;
   created_at: string;
@@ -69,7 +82,11 @@ interface NewStudentForm {
   parent_phone: string;
   parent_type: string;
   email: string;
-  currentAcademy: string;
+  password: string;
+  rubric_grade_level: string;
+  rubric_difficulty_level: string;
+  academy_id?: string | null;
+  currentAcademy?: string; // 하위 호환성을 위해 유지
   status: string;
   study_time: string;
 }
@@ -85,7 +102,11 @@ interface EditStudentForm {
   parent_phone: string;
   parent_type: string;
   email: string;
-  currentAcademy: string;
+  password: string;
+  rubric_grade_level: string;
+  rubric_difficulty_level: string;
+  academy_id?: string | null;
+  currentAcademy?: string; // 하위 호환성을 위해 유지
   status: string;
   study_time: string;
 }
@@ -159,7 +180,10 @@ export default function StudentsPage() {
     parent_phone: '',
     parent_type: '엄마',
     email: '',
-    currentAcademy: '이지수학교습소',
+    password: '',
+    rubric_grade_level: 'middle',
+    rubric_difficulty_level: 'medium',
+    academy_id: null,
     status: '재원',
     study_time: '60'
   });
@@ -173,7 +197,10 @@ export default function StudentsPage() {
     parent_phone: '',
     parent_type: '엄마',
     email: '',
-    currentAcademy: '',
+    password: '',
+    rubric_grade_level: 'middle',
+    rubric_difficulty_level: 'medium',
+    academy_id: null,
     status: '',
     study_time: ''
   });
@@ -289,7 +316,10 @@ export default function StudentsPage() {
           parent_phone: '',
           parent_type: '엄마',
           email: '',
-          currentAcademy: '이지수학교습소',
+          password: '',
+          rubric_grade_level: 'middle',
+          rubric_difficulty_level: 'medium',
+          academy_id: null,
           status: '재원',
           study_time: '60'
         });
@@ -358,7 +388,11 @@ export default function StudentsPage() {
       parent_phone: student.parent_phone,
       parent_type: student.parent_type || '엄마',
       email: student.email || '',
-      currentAcademy: student.currentAcademy,
+      password: '',
+      rubric_grade_level: student.rubric_grade_level || 'middle',
+      rubric_difficulty_level: student.rubric_difficulty_level || 'medium',
+      academy_id: student.academy_id || null,
+      currentAcademy: student.academy_name || student.currentAcademy || '',
       status: student.status,
       study_time: student.study_time || '60'
     });
@@ -384,7 +418,10 @@ export default function StudentsPage() {
           parent_phone: editStudent.parent_phone,
           parent_type: editStudent.parent_type,
           email: editStudent.email,
-          currentAcademy: editStudent.currentAcademy,
+          password: editStudent.password,
+          rubric_grade_level: editStudent.rubric_grade_level,
+          rubric_difficulty_level: editStudent.rubric_difficulty_level,
+          academy_id: editStudent.academy_id,
           status: editStudent.status,
           study_time: editStudent.study_time
         }),
@@ -581,12 +618,12 @@ export default function StudentsPage() {
                           <Badge 
                             variant="default"
                             className={
-                              student.currentAcademy === '이지수학교습소' 
+                              student.academy_name === '이지수학교습소' 
                                 ? 'bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200' 
                                 : ''
                             }
                           >
-                            {student.currentAcademy || 'N/A'}
+                            {student.academy_name || student.currentAcademy || 'N/A'}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -747,12 +784,69 @@ export default function StudentsPage() {
                   placeholder="example@gmail.com"
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">비밀번호 (선택)</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={newStudent.password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  placeholder="비밀번호를 입력하세요"
+                />
+                <p className="text-xs text-gray-500">
+                  비밀번호를 입력하지 않으면 기본 비밀번호가 설정됩니다.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rubric_grade_level">루브릭 학년 레벨</Label>
+                <Select
+                  value={newStudent.rubric_grade_level}
+                  onValueChange={(value) => handleInputChange('rubric_grade_level', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="학년 레벨을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RUBRIC_GRADE_LEVEL_OPTIONS.map((level) => (
+                      <SelectItem key={level} value={level}>
+                        {RUBRIC_GRADE_LEVEL_LABELS[level] || level}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rubric_difficulty_level">루브릭 난이도 레벨</Label>
+                <Select
+                  value={newStudent.rubric_difficulty_level}
+                  onValueChange={(value) => handleInputChange('rubric_difficulty_level', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="난이도 레벨을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RUBRIC_DIFFICULTY_LEVEL_OPTIONS.map((level) => (
+                      <SelectItem key={level} value={level}>
+                        {RUBRIC_DIFFICULTY_LEVEL_LABELS[level] || level}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               
               <div className="space-y-2">
-                <Label htmlFor="currentAcademy">학원 *</Label>
+                <Label htmlFor="academy_id">학원 *</Label>
                 <Select
-                  value={newStudent.currentAcademy}
-                  onValueChange={(value) => handleInputChange('currentAcademy', value)}
+                  value={newStudent.academy_id || undefined}
+                  onValueChange={(value) => {
+                    setNewStudent(prev => ({
+                      ...prev,
+                      academy_id: value || null
+                    }));
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="학원을 선택하세요" />
@@ -760,7 +854,7 @@ export default function StudentsPage() {
                   <SelectContent>
                     {academies.length > 0 ? (
                       academies.map((academy) => (
-                        <SelectItem key={academy.id} value={academy.name}>
+                        <SelectItem key={academy.id} value={academy.id}>
                           {academy.name}
                         </SelectItem>
                       ))
@@ -814,7 +908,7 @@ export default function StudentsPage() {
               </Button>
               <Button
                 onClick={handleAddStudent}
-                disabled={isSubmitting || !newStudent.name || !newStudent.phone_number || !newStudent.phone_middle_4 || newStudent.phone_middle_4.length !== 4 || !newStudent.parent_phone || !newStudent.parent_type || !newStudent.currentAcademy || !newStudent.status || !newStudent.study_time}
+                disabled={isSubmitting || !newStudent.name || !newStudent.phone_number || !newStudent.phone_middle_4 || newStudent.phone_middle_4.length !== 4 || !newStudent.parent_phone || !newStudent.parent_type || !newStudent.academy_id || !newStudent.status || !newStudent.study_time}
               >
                 {isSubmitting ? '추가 중...' : '추가'}
               </Button>
@@ -948,12 +1042,69 @@ export default function StudentsPage() {
                   placeholder="example@gmail.com"
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-password">비밀번호 변경 (선택)</Label>
+                <Input
+                  id="edit-password"
+                  type="password"
+                  value={editStudent.password}
+                  onChange={(e) => handleEditInputChange('password', e.target.value)}
+                  placeholder="비밀번호를 변경하려면 입력하세요"
+                />
+                <p className="text-xs text-gray-500">
+                  비밀번호를 변경하려면 새 비밀번호를 입력하세요. 입력하지 않으면 기존 비밀번호가 유지됩니다.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-rubric_grade_level">루브릭 학년 레벨</Label>
+                <Select
+                  value={editStudent.rubric_grade_level}
+                  onValueChange={(value) => handleEditInputChange('rubric_grade_level', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="학년 레벨을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RUBRIC_GRADE_LEVEL_OPTIONS.map((level) => (
+                      <SelectItem key={level} value={level}>
+                        {RUBRIC_GRADE_LEVEL_LABELS[level] || level}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-rubric_difficulty_level">루브릭 난이도 레벨</Label>
+                <Select
+                  value={editStudent.rubric_difficulty_level}
+                  onValueChange={(value) => handleEditInputChange('rubric_difficulty_level', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="난이도 레벨을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RUBRIC_DIFFICULTY_LEVEL_OPTIONS.map((level) => (
+                      <SelectItem key={level} value={level}>
+                        {RUBRIC_DIFFICULTY_LEVEL_LABELS[level] || level}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               
               <div className="space-y-2">
-                <Label htmlFor="edit-currentAcademy">학원 *</Label>
+                <Label htmlFor="edit-academy_id">학원 *</Label>
                 <Select
-                  value={editStudent.currentAcademy}
-                  onValueChange={(value) => handleEditInputChange('currentAcademy', value)}
+                  value={editStudent.academy_id || undefined}
+                  onValueChange={(value) => {
+                    setEditStudent(prev => ({
+                      ...prev,
+                      academy_id: value || null
+                    }));
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="학원을 선택하세요" />
@@ -961,7 +1112,7 @@ export default function StudentsPage() {
                   <SelectContent>
                     {academies.length > 0 ? (
                       academies.map((academy) => (
-                        <SelectItem key={academy.id} value={academy.name}>
+                        <SelectItem key={academy.id} value={academy.id}>
                           {academy.name}
                         </SelectItem>
                       ))
@@ -972,6 +1123,22 @@ export default function StudentsPage() {
                     )}
                   </SelectContent>
                 </Select>
+                {editStudent.academy_id && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-0 text-xs text-gray-500 hover:text-gray-700"
+                    onClick={() => {
+                      setEditStudent(prev => ({
+                        ...prev,
+                        academy_id: null
+                      }));
+                    }}
+                  >
+                    학원 선택 해제
+                  </Button>
+                )}
               </div>
               
               <div className="space-y-2">
@@ -1015,7 +1182,7 @@ export default function StudentsPage() {
               </Button>
               <Button
                 onClick={handleUpdateStudent}
-                disabled={isSubmitting || !editStudent.name || !editStudent.phone_number || !editStudent.phone_middle_4 || editStudent.phone_middle_4.length !== 4 || !editStudent.school || !editStudent.grade || !editStudent.parent_phone || !editStudent.currentAcademy || !editStudent.status || !editStudent.study_time}
+                disabled={isSubmitting || !editStudent.name || !editStudent.phone_number || !editStudent.phone_middle_4 || editStudent.phone_middle_4.length !== 4 || !editStudent.school || !editStudent.grade || !editStudent.parent_phone || !editStudent.academy_id || !editStudent.status || !editStudent.study_time}
               >
                 {isSubmitting ? '수정 중...' : '수정'}
               </Button>

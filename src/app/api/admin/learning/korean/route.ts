@@ -13,18 +13,20 @@ export async function GET(request: NextRequest) {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
-    // test_session에서 데이터 가져오기 (word_pang, passage_quiz만)
+    // dailykor_learning_overview에서 데이터 가져오기
     const { data: learningData, error } = await supabase
-      .from('test_session')
+      .from('dailykor_learning_overview')
       .select(`
+        id,
         student_id,
-        test_type,
-        started_at
+        study_date,
+        total_xp,
+        max_xp,
+        score_display
       `)
-      .in('test_type', ['word_pang', 'passage_quiz'])
-      .gte('started_at', `${startDate}T00:00:00.000Z`)
-      .lte('started_at', `${endDate}T23:59:59.999Z`)
-      .order('started_at', { ascending: true });
+      .gte('study_date', startDate)
+      .lte('study_date', endDate)
+      .order('study_date', { ascending: true });
 
     if (error) {
       console.error('Error fetching learning data:', error);
@@ -47,20 +49,16 @@ export async function GET(request: NextRequest) {
     // 학생별로 데이터 그룹화
     const studentsMap = new Map<string, any>();
 
-    // 학생 정보 맵 생성 (숫자로 통일)
+    // 학생 정보 맵 생성
     const studentInfoMap = new Map();
     studentsData?.forEach((student: any) => {
-      // student.id를 숫자로 변환하여 저장
-      const studentIdNum = Number(student.id);
-      studentInfoMap.set(studentIdNum, student.name);
+      studentInfoMap.set(student.id, student.name);
     });
 
     if (learningData) {
       for (const record of learningData) {
-        // student_id를 숫자로 통일
-        const studentIdNum = Number(record.student_id);
-        const studentId = String(studentIdNum);
-        const studentName = studentInfoMap.get(studentIdNum) || `학생 ${studentId}`;
+        const studentId = String(record.student_id);
+        const studentName = studentInfoMap.get(record.student_id) || `학생 ${studentId}`;
 
         if (!studentsMap.has(studentId)) {
           studentsMap.set(studentId, {
@@ -70,32 +68,14 @@ export async function GET(request: NextRequest) {
           });
         }
 
-        // 날짜 추출 (UTC 기준으로 안전하게 처리)
-        const testDate = new Date(record.started_at);
-        // UTC 기준으로 날짜 추출 (년, 월, 일)
-        const utcYear = testDate.getUTCFullYear();
-        const utcMonth = testDate.getUTCMonth() + 1;
-        const utcDay = testDate.getUTCDate();
-        
-        // 선택된 월과 같은 월인지 확인
-        if (utcYear === year && utcMonth === month) {
-          const student = studentsMap.get(studentId);
+        const studyDate = new Date(record.study_date).getDate();
+        const student = studentsMap.get(studentId);
 
-          // 날짜별 활동 초기화
-          if (!student.dailyActivities[utcDay]) {
-            student.dailyActivities[utcDay] = {
-              wordPang: 0,
-              passageQuiz: 0
-            };
-          }
-
-          // test_type에 따라 카운트 증가
-          if (record.test_type === 'word_pang') {
-            student.dailyActivities[utcDay].wordPang += 1;
-          } else if (record.test_type === 'passage_quiz') {
-            student.dailyActivities[utcDay].passageQuiz += 1;
-          }
-        }
+        student.dailyActivities[studyDate] = {
+          totalXp: record.total_xp,
+          maxXp: record.max_xp,
+          scoreDisplay: record.score_display || '',
+        };
       }
     }
 

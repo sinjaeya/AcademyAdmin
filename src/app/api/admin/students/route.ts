@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import bcrypt from 'bcryptjs';
 
 // 학생 목록 조회
 export async function GET() {
@@ -8,7 +9,13 @@ export async function GET() {
 
     const { data: students, error } = await supabase
       .from('student')
-      .select('*')
+      .select(`
+        *,
+        academy:academy_id (
+          id,
+          name
+        )
+      `)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -46,11 +53,17 @@ export async function GET() {
       }
     }
 
-    // 학생 목록에 당월 납부 여부 추가 (ID를 숫자로 변환하여 매칭)
+    // 학생 목록에 당월 납부 여부 추가 및 academy 정보 정리 (ID를 숫자로 변환하여 매칭)
     const studentsWithPaymentStatus = (students || []).map((student: any) => {
       const studentId = typeof student.id === 'string' ? parseInt(student.id) : student.id;
+      const academy = student.academy && typeof student.academy === 'object' && !Array.isArray(student.academy)
+        ? student.academy
+        : null;
+      
       return {
         ...student,
+        academy_id: student.academy_id || null,
+        academy_name: academy?.name || student.currentAcademy || null, // 하위 호환성을 위해 currentAcademy도 유지
         hasPaidThisMonth: !isNaN(studentId) && paidStudentIds.has(studentId)
       };
     });
@@ -73,8 +86,17 @@ export async function POST(request: NextRequest) {
     
     const supabase = createServerClient();
 
+    // 비밀번호 해싱 처리
+    let passwordHash = null;
+    if (body.password && body.password.trim() !== '') {
+      passwordHash = await bcrypt.hash(body.password, 10);
+    } else {
+      // 비밀번호가 없으면 기본 비밀번호 설정 (예: 'student1234')
+      passwordHash = await bcrypt.hash('student1234', 10);
+    }
+
     // 필드명 매핑 (정확한 컬럼명 사용)
-    const studentToInsert = {
+    const studentToInsert: any = {
       name: body.name,
       phone_number: body.phone_number || null,
       phone_middle_4: body.phone_middle_4 || null,
@@ -83,9 +105,27 @@ export async function POST(request: NextRequest) {
       parent_phone: body.parent_phone || null,
       parent_type: body.parent_type || '엄마',  // 기본값: '엄마'
       email: body.email || null,
-      currentAcademy: body.currentAcademy || null,  // DB에서 camelCase 사용
+      password: passwordHash,
+      rubric_grade_level: body.rubric_grade_level || 'middle',
+      rubric_difficulty_level: body.rubric_difficulty_level || 'medium',
       status: body.status || 'active',
     };
+
+    // academy_id가 제공된 경우 사용, 없으면 currentAcademy로 academy_id 찾기
+    if (body.academy_id) {
+      studentToInsert.academy_id = body.academy_id;
+    } else if (body.currentAcademy) {
+      // currentAcademy 이름으로 academy_id 찾기
+      const { data: academy } = await supabase
+        .from('academy')
+        .select('id')
+        .eq('name', body.currentAcademy)
+        .single();
+      
+      if (academy) {
+        studentToInsert.academy_id = academy.id;
+      }
+    }
 
     // 1단계: student 테이블에 학생 정보 추가
     const { data: studentData, error: studentError } = await supabase

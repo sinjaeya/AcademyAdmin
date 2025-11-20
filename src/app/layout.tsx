@@ -1,15 +1,22 @@
 import type { Metadata } from 'next'
-import { Inter, Open_Sans, Roboto } from 'next/font/google'
+import { Gowun_Dodum, Inter, Open_Sans, Roboto } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import { ToastProvider } from '@/components/ui/toast'
 
-const inter = Inter({ subsets: ['latin'] })
+const gowunDodum = Gowun_Dodum({
+  subsets: ['latin', 'latin-ext', 'korean'],
+  weight: '400',
+  variable: '--font-gowun-dodum',
+  display: 'swap',
+})
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const openSans = Open_Sans({ subsets: ['latin'], variable: '--font-open-sans' })
-const roboto = Roboto({ 
-  subsets: ['latin'], 
+const roboto = Roboto({
+  subsets: ['latin'],
   weight: ['400', '700'],
-  variable: '--font-roboto' 
+  variable: '--font-roboto',
 })
 
 export const metadata: Metadata = {
@@ -24,7 +31,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body className={`${inter.className} ${openSans.variable} ${roboto.variable}`}>
+      <body className={`${gowunDodum.className} ${inter.variable} ${openSans.variable} ${roboto.variable}`}>
         <ToastProvider>
           <AuthProvider>
             {children}

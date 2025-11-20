@@ -69,6 +69,42 @@ export const STUDY_MONTH_OPTIONS = [
   '12월'
 ] as const;
 
+// 루브릭 학년 레벨 옵션
+export const RUBRIC_GRADE_LEVEL_OPTIONS = [
+  'middle',
+  'high'
+] as const;
+
+// 루브릭 난이도 레벨 옵션
+export const RUBRIC_DIFFICULTY_LEVEL_OPTIONS = [
+  'medium',
+  'advanced',
+  'highest',
+  'extreme',
+  'high_mock_1',
+  'high_mock_2',
+  'high_mock_3',
+  'csat'
+] as const;
+
+// 루브릭 학년 레벨 라벨 (한글)
+export const RUBRIC_GRADE_LEVEL_LABELS: Record<string, string> = {
+  middle: '중학교',
+  high: '고등학교'
+};
+
+// 루브릭 난이도 레벨 라벨 (한글)
+export const RUBRIC_DIFFICULTY_LEVEL_LABELS: Record<string, string> = {
+  medium: '중급',
+  advanced: '고급',
+  highest: '최고급',
+  extreme: '극상급',
+  high_mock_1: '고1 모의고사',
+  high_mock_2: '고2 모의고사',
+  high_mock_3: '고3 모의고사',
+  csat: '수능'
+};
+
 // 타입 정의
 export type GradeOption = typeof GRADE_OPTIONS[number];
 export type SchoolOption = typeof SCHOOL_OPTIONS[number];
@@ -77,4 +113,6 @@ export type StatusOption = typeof STATUS_OPTIONS[number];
 export type ParentType = typeof PARENT_TYPE_OPTIONS[number];
 export type PaymentMethod = typeof PAYMENT_METHOD_OPTIONS[number];
 export type StudyMonth = typeof STUDY_MONTH_OPTIONS[number];
+export type RubricGradeLevel = typeof RUBRIC_GRADE_LEVEL_OPTIONS[number];
+export type RubricDifficultyLevel = typeof RUBRIC_DIFFICULTY_LEVEL_OPTIONS[number];
 

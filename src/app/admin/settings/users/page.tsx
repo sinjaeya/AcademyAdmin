@@ -71,6 +71,12 @@ interface Role {
   name: string;
 }
 
+// 학원 타입
+interface Academy {
+  id: string;
+  name: string;
+}
+
 // 데이터 포맷팅 함수
 const formatDateTime = (dateString: string) => {
   if (!dateString) return 'N/A';
@@ -90,6 +96,7 @@ const formatDateTime = (dateString: string) => {
 export default function SettingsUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [academies, setAcademies] = useState<Academy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
@@ -149,9 +156,26 @@ export default function SettingsUsersPage() {
     }
   };
 
+  // 학원 목록 조회
+  const fetchAcademies = async () => {
+    try {
+      const response = await fetch('/api/admin/academy');
+      if (!response.ok) {
+        throw new Error('학원 목록을 가져오는데 실패했습니다.');
+      }
+      const result = await response.json();
+      if (result.success && result.academies) {
+        setAcademies(result.academies);
+      }
+    } catch (err) {
+      console.error('Error fetching academies:', err);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchRoles();
+    fetchAcademies();
   }, []);
 
 
@@ -301,7 +325,9 @@ export default function SettingsUsersPage() {
       const updateData: any = {
         email: editingUser.email,
         name: editingUser.name,
-        role_id: editingUser.role_id
+        role_id: editingUser.role_id,
+        academy_id: editingUser.academy_id || null,
+        academy_name: editingUser.academy_name || null
       };
 
       // 비밀번호가 입력된 경우에만 포함
@@ -642,6 +668,51 @@ export default function SettingsUsersPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-academy">학원</Label>
+                <Select
+                  value={editingUser?.academy_id || undefined}
+                  onValueChange={(value) => {
+                    if (!editingUser) return;
+                    const selectedAcademy = academies.find(a => a.id === value);
+                    setEditingUser(prev => prev ? {
+                      ...prev,
+                      academy_id: value || null,
+                      academy_name: selectedAcademy?.name || null
+                    } : null);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="학원을 선택하세요 (선택사항)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {academies.map((academy) => (
+                      <SelectItem key={academy.id} value={academy.id}>
+                        {academy.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {editingUser?.academy_id && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-0 text-xs text-gray-500 hover:text-gray-700"
+                    onClick={() => {
+                      if (!editingUser) return;
+                      setEditingUser(prev => prev ? {
+                        ...prev,
+                        academy_id: null,
+                        academy_name: null
+                      } : null);
+                    }}
+                  >
+                    학원 선택 해제
+                  </Button>
+                )}
               </div>
 
               <div className="space-y-2">
