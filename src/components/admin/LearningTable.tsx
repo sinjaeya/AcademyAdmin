@@ -92,15 +92,8 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
   
   // 필터링된 학생 목록
   const filteredStudents = useMemo(() => {
-    return students.filter(student => {
-      // 검색 필터
-      if (searchQuery && !student.name.includes(searchQuery)) {
-        return false;
-      }
-      
-      return true;
-    });
-  }, [students, searchQuery]);
+    return students;
+  }, [students]);
 
   const handleCellClick = (studentId: number, studentName: string, day: number) => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;

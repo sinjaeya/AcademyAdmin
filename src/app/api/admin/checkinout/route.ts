@@ -1,18 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 
-// 등/하원 데이터 타입 정의
-interface CheckInOutData {
-  id: string;
-  student_name: string;
-  check_in_time: string;
-  check_in_status: string;
-  check_out_time: string;
-  current_academy: string;
-  created_at: string;
-  updated_at: string;
-}
-
 /**
  * GET /api/admin/checkinout
  * 등/하원 기록 조회 (날짜별)

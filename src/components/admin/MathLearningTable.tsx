@@ -122,15 +122,8 @@ export function MathLearningTable({ initialStudents, initialYear, initialMonth }
   
   // 필터링된 학생 목록
   const filteredStudents = useMemo(() => {
-    return students.filter(student => {
-      // 검색 필터
-      if (searchQuery && !student.name.includes(searchQuery)) {
-        return false;
-      }
-      
-      return true;
-    });
-  }, [students, searchQuery]);
+    return students;
+  }, [students]);
 
   const handleCellClick = (studentName: string, day: number, worksheets: Worksheet[]) => {
     setSelectedDayData({
