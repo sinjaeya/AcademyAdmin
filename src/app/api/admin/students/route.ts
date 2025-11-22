@@ -3,11 +3,15 @@ import { createServerClient } from '@/lib/supabase/server';
 import bcrypt from 'bcryptjs';
 
 // 학생 목록 조회
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient();
+    const searchParams = request.nextUrl.searchParams;
+    
+    // status 파라미터가 있으면 사용, 없으면 기본값 '재원' 사용
+    const status = searchParams.get('status') || '재원';
 
-    const { data: students, error } = await supabase
+    let query = supabase
       .from('student')
       .select(`
         *,
@@ -15,8 +19,14 @@ export async function GET() {
           id,
           name
         )
-      `)
-      .order('created_at', { ascending: false });
+      `);
+
+    // status가 'all'이 아니면 필터링 적용
+    if (status !== 'all') {
+      query = query.eq('status', status);
+    }
+
+    const { data: students, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       console.error('Supabase error:', error);

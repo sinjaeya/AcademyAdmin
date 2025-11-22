@@ -584,6 +584,49 @@ export default function SettingsUsersPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="academy_id">학원</Label>
+                <Select
+                  value={newUser.academy_id || undefined}
+                  onValueChange={(value) => {
+                    const selectedAcademy = academies.find(a => a.id === value);
+                    setNewUser(prev => ({
+                      ...prev,
+                      academy_id: value || null,
+                      academy_name: selectedAcademy?.name || null
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="학원을 선택하세요 (선택사항)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {academies.map((academy) => (
+                      <SelectItem key={academy.id} value={academy.id}>
+                        {academy.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {newUser.academy_id && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-0 text-xs text-gray-500 hover:text-gray-700"
+                    onClick={() => {
+                      setNewUser(prev => ({
+                        ...prev,
+                        academy_id: null,
+                        academy_name: null
+                      }));
+                    }}
+                  >
+                    학원 선택 해제
+                  </Button>
+                )}
+              </div>
             </div>
             
             <DialogFooter>

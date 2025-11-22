@@ -75,7 +75,13 @@ const navigationCategories: NavigationCategory[] = [
     ]
   },
   {
-    title: 'TEAM & COMMUNICATION',
+    title: 'TEACHER',
+    items: [
+      { name: '지문가이드', href: '/admin/teacher/passage-guide', icon: BookOpen, requiredPermission: null }
+    ]
+  },
+  {
+    title: 'SETTINGS',
     items: [
       { name: '설정', href: '', icon: Settings, requiredPermission: null }
     ]
