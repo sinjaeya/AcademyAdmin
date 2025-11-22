@@ -130,7 +130,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'list_deployments': {
         const { project_id } = args;
-        const response = await fetch(`${baseUrl}/projects/${project_id}/deployments`, { headers });
+        // Vercel API v2를 사용하여 배포 목록 조회
+        const apiV2Url = vercelTeamId
+          ? `https://api.vercel.com/v2/deployments?projectId=${project_id}&limit=10&teamId=${vercelTeamId}`
+          : `https://api.vercel.com/v2/deployments?projectId=${project_id}&limit=10`;
+        const response = await fetch(apiV2Url, { headers });
         const data = await response.json();
         return {
           content: [
@@ -144,7 +148,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'get_deployment': {
         const { deployment_id } = args;
-        const response = await fetch(`${baseUrl}/deployments/${deployment_id}`, { headers });
+        // Vercel API v2를 사용하여 배포 상세 조회
+        const apiV2Url = vercelTeamId
+          ? `https://api.vercel.com/v2/deployments/${deployment_id}?teamId=${vercelTeamId}`
+          : `https://api.vercel.com/v2/deployments/${deployment_id}`;
+        const response = await fetch(apiV2Url, { headers });
         const data = await response.json();
         return {
           content: [
