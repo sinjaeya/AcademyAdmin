@@ -111,8 +111,6 @@ export default function PassageDetailPage({
       loadQuizResults();
     }
   }, [params, code, studentId]);
-    return keywords;
-  };
 
   return (
     <AdminLayout>
