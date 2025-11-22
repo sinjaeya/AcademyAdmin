@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     }).filter((id): id is number => id !== null);
     
     // 해당월 납부 내역 조회 (study_month 컬럼 기준)
-    let paidStudentIds = new Set<number>();
+    const paidStudentIds = new Set<number>();
     if (studentIds.length > 0) {
       const { data: payments, error: paymentError } = await supabase
         .from('payment')

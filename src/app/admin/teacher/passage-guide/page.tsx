@@ -71,7 +71,7 @@ export default function PassageGuidePage() {
 
   // 필터링된 학생 목록 (학년 기준, 가나다 순 정렬)
   const filteredStudents = useMemo(() => {
-    let filtered = selectedGrade === 'all' 
+    const filtered = selectedGrade === 'all' 
       ? allStudents 
       : allStudents.filter(student => student.grade === selectedGrade);
     

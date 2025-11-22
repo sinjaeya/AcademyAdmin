@@ -44,7 +44,7 @@ export async function GET() {
     const studentIds = [...new Set(data.map((payment: any) => payment.student_id).filter(Boolean))];
 
     // 학생 정보 별도 조회
-    let studentMap = new Map<string | number, { id: number; name: string }>();
+    const studentMap = new Map<string | number, { id: number; name: string }>();
     if (studentIds.length > 0) {
       const { data: studentsData, error: studentsError } = await supabase
         .from('student')
