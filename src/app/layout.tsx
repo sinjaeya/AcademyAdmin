@@ -5,7 +5,7 @@ import { AuthProvider } from '@/components/auth/AuthProvider'
 import { ToastProvider } from '@/components/ui/toast'
 
 const gowunDodum = Gowun_Dodum({
-  subsets: ['latin', 'latin-ext', 'korean'],
+  subsets: ['latin', 'latin-ext'],
   weight: '400',
   variable: '--font-gowun-dodum',
   display: 'swap',
