@@ -68,7 +68,6 @@ export function MathLearningTable({ initialStudents, initialYear, initialMonth }
   const [selectedMonth, setSelectedMonth] = useState(
     `${initialYear}-${String(initialMonth).padStart(2, '0')}`
   );
-  const [searchQuery, setSearchQuery] = useState('');
   const [students, setStudents] = useState(initialStudents);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);

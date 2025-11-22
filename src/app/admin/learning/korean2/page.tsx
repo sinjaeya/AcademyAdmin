@@ -1,6 +1,5 @@
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { LearningTable } from '@/components/admin/LearningTable';
-import { getServerAcademyId } from '@/lib/auth/server-context';
 
 async function getLearningData(year: number, month: number) {
   const { createServerClient } = await import('@/lib/supabase/server');

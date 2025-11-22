@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getUserPermissions } from '@/lib/permissions';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 /**
  * GET /api/auth/permissions
  * 현재 로그인한 사용자의 권한 목록 반환 (클라이언트 사이드용)

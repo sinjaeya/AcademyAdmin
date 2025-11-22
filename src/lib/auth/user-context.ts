@@ -8,8 +8,6 @@ import { User, Academy, UserContext } from '@/types'
  */
 export async function getUserContext(): Promise<UserContext | null> {
   try {
-    const supabase = createServerClient()
-    
     // TODO: 실제로는 세션에서 사용자 ID를 가져와야 함
     // 현재는 구현되지 않았으므로 null 반환
     return null

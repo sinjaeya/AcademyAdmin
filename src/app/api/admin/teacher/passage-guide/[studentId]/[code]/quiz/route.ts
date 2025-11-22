@@ -64,9 +64,6 @@ export async function GET(
         (tr: any) => tr.item_uuid === quiz.quiz_id
       );
 
-      // 정답을 숫자로 변환 (O = 1, X = 0)
-      const correctAnswerNum = quiz.answer === 'O' ? 1 : 0;
-      
       // 학생 답안 변환 (selected_answer: 1 = O, 0 = X)
       let studentAnswer: string | null = null;
       if (result?.selected_answer !== null && result?.selected_answer !== undefined) {

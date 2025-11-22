@@ -169,9 +169,6 @@ export default function StudyReportsPage() {
   // 학습지를 메시지에 넣기
   const handleAddWorksheetToMessage = () => {
     if (worksheets.length === 0) return;
-
-    const student = students.find(s => s.id === selectedStudent);
-    const studentName = student?.name || '';
     
     // 최근 5개의 학습지 정보 생성
     const recentWorksheets = worksheets.slice(0, 5);

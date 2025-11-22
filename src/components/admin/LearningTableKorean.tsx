@@ -9,7 +9,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Calendar } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { LearningDetailDialog } from '@/components/admin/LearningDetailDialog';
 import { useToast } from '@/components/ui/toast';
@@ -54,7 +53,6 @@ export function LearningTableKorean({ initialStudents, initialYear, initialMonth
   const [selectedMonth, setSelectedMonth] = useState(
     `${initialYear}-${String(initialMonth).padStart(2, '0')}`
   );
-  const [searchQuery, setSearchQuery] = useState('');
   const [students, setStudents] = useState(initialStudents);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -67,8 +65,6 @@ export function LearningTableKorean({ initialStudents, initialYear, initialMonth
     studentId: null,
     day: null
   });
-
-  const { toast } = useToast();
   
   // 월 파싱
   const [year, month] = selectedMonth.split('-').map(Number);

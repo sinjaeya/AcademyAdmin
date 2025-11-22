@@ -92,7 +92,6 @@ export async function POST(request: NextRequest) {
     
     const supabase = createServerClient();
     const academyId = await getServerAcademyId();
-    const isAdmin = await isServerUserAdmin();
 
     // 필수 필드 검증
     if (!body.student_id || !body.amount || !body.payment_method || !body.study_month) {

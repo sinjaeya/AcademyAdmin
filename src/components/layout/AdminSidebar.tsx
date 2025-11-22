@@ -92,13 +92,6 @@ interface AdminSidebarProps {
   className?: string;
 }
 
-interface SubMenuItem {
-  name: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  requiredPermission?: string | null;
-}
-
 export function AdminSidebar({ className }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -262,11 +255,6 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
       })
       .filter(category => category.items.length > 0); // 빈 카테고리 제거
   }, [hasPermission, filteredSettingsSubMenus, loadingPermissions, permissionIds]);
-
-  // 필터링된 학습관리 하위 메뉴
-  const filteredLearningSubMenus = useMemo(() => {
-    return learningSubMenus.filter(subItem => hasPermission(null)); // 학습관리 하위 메뉴는 모두 표시
-  }, [hasPermission]);
 
   return (
     <div className={cn('flex h-full w-56 flex-col bg-white border-r border-gray-200', className)}>

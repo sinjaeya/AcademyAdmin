@@ -40,7 +40,7 @@ interface CheckInOutTableProps {
   refreshKey?: number;
 }
 
-export function CheckInOutTable({ isLoading: externalLoading, refreshKey }: CheckInOutTableProps) {
+export function CheckInOutTable({ refreshKey }: CheckInOutTableProps) {
   const [data, setData] = useState<CheckInOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

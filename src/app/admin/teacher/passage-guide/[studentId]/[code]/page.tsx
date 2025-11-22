@@ -111,12 +111,6 @@ export default function PassageDetailPage({
       loadQuizResults();
     }
   }, [params, code, studentId]);
-
-  const formatKeywords = (keywords: string[] | string | null) => {
-    if (!keywords) return '-';
-    if (Array.isArray(keywords)) {
-      return keywords.join(', ');
-    }
     return keywords;
   };
 

@@ -10,7 +10,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
  * GET /api/admin/permissions
  * 역할, 권한, 역할-권한 매핑 데이터 조회
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // 모든 역할 조회
     const { data: roles, error: rolesError } = await supabase

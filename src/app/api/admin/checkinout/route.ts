@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 
 // 등/하원 데이터 타입 정의
-interface CheckInOut {
+interface CheckInOutData {
   id: string;
   student_name: string;
   check_in_time: string;
