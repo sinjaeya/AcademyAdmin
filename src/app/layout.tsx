@@ -20,8 +20,37 @@ const roboto = Roboto({
 })
 
 export const metadata: Metadata = {
-  title: 'Admin Dashboard',
-  description: 'Modern admin dashboard built with Next.js and Supabase',
+  title: '부산EDU 학원관리 시스템',
+  description: '학원 관리 시스템 PWA',
+  manifest: '/manifest.json',
+  themeColor: '#3b82f6',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: '부산EDU',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: [
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+    ],
+  },
+  other: {
+    'apple-mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-status-bar-style': 'default',
+  },
 }
 
 export default function RootLayout({
