@@ -21,7 +21,12 @@ interface PassageItem {
   code: string;
   category: string;
   studyDate: string;
-  passageNumber: number;
+  sessionId: number;
+  quizStats?: {
+    total: number;
+    correct: number;
+    incorrect: number;
+  };
 }
 
 export default function StudentPassageListPage({ params }: { params: Promise<{ studentId: string }> }) {
@@ -78,8 +83,8 @@ export default function StudentPassageListPage({ params }: { params: Promise<{ s
   };
 
   const formatCategory = (category: string) => {
-    // "비문학 > 과학            \tA000245" 형식에서 "비문학 > 과학" 부분만 추출
-    return category.split('\t')[0].trim();
+    // category가 있으면 그대로 사용, 없으면 '-' 표시
+    return category || '-';
   };
 
   return (
@@ -138,7 +143,16 @@ export default function StudentPassageListPage({ params }: { params: Promise<{ s
                         onClick={() => handlePassageClick(passage.code)}
                       >
                         <TableCell className="font-medium">
-                          <Badge variant="outline">{passage.code}</Badge>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="outline">{passage.code}</Badge>
+                            {passage.quizStats && passage.quizStats.total > 0 && (
+                              <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <span>퀴즈 {passage.quizStats.total}개</span>
+                                <span className="text-green-600">정답 {passage.quizStats.correct}</span>
+                                <span className="text-red-600">오답 {passage.quizStats.incorrect}</span>
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>{formatCategory(passage.category)}</TableCell>
                         <TableCell>{formatDate(passage.studyDate)}</TableCell>

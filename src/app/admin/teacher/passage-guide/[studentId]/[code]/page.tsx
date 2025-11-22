@@ -20,6 +20,19 @@ interface PassageDetail {
   qa_status: string | null;
 }
 
+interface QuizResult {
+  quiz_id: string;
+  statement: string;
+  correct_answer: string;
+  student_answer: string | null;
+  is_correct: boolean | null;
+  evidence: string;
+  reasoning: string;
+  quiz_order: number;
+  ox_type: string;
+  difficulty_level: number;
+}
+
 export default function PassageDetailPage({ 
   params 
 }: { 
@@ -29,7 +42,9 @@ export default function PassageDetailPage({
   const [code, setCode] = useState<string>('');
   const [studentName, setStudentName] = useState<string>('');
   const [passage, setPassage] = useState<PassageDetail | null>(null);
+  const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingQuizzes, setLoadingQuizzes] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -68,6 +83,35 @@ export default function PassageDetailPage({
     loadData();
   }, [params, searchParams, toast]);
 
+  // OX 퀴즈 결과 로드
+  useEffect(() => {
+    const loadQuizResults = async () => {
+      const resolvedParams = await params;
+      const id = resolvedParams.studentId;
+      const passageCode = resolvedParams.code;
+
+      try {
+        setLoadingQuizzes(true);
+        const response = await fetch(`/api/admin/teacher/passage-guide/${id}/${encodeURIComponent(passageCode)}/quiz`);
+        if (!response.ok) {
+          throw new Error('퀴즈 결과를 가져오는데 실패했습니다.');
+        }
+        const result = await response.json();
+        setQuizResults(result.data || []);
+      } catch (error) {
+        console.error('Error loading quiz results:', error);
+        // 퀴즈 결과가 없어도 에러로 표시하지 않음
+        setQuizResults([]);
+      } finally {
+        setLoadingQuizzes(false);
+      }
+    };
+
+    if (code && studentId) {
+      loadQuizResults();
+    }
+  }, [params, code, studentId]);
+
   const formatKeywords = (keywords: string[] | string | null) => {
     if (!keywords) return '-';
     if (Array.isArray(keywords)) {
@@ -91,9 +135,6 @@ export default function PassageDetailPage({
           </Button>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">지문 상세</h1>
-            <p className="text-gray-600 mt-1">
-              {studentName}님의 학습 지문: {code}
-            </p>
           </div>
         </div>
 
@@ -121,10 +162,12 @@ export default function PassageDetailPage({
                 <CardTitle>지문 정보</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-6 gap-4">
                   <div>
                     <p className="text-sm text-gray-500 mb-1">지문 코드</p>
-                    <Badge variant="outline">{passage.code_id}</Badge>
+                    <Badge variant="outline" className="text-sm font-semibold px-3 py-1.5">
+                      {passage.code_id}
+                    </Badge>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500 mb-1">학년</p>
@@ -150,18 +193,6 @@ export default function PassageDetailPage({
               </CardContent>
             </Card>
 
-            {/* 키워드 */}
-            {passage.keyword_list && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>키워드</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-700">{formatKeywords(passage.keyword_list)}</p>
-                </CardContent>
-              </Card>
-            )}
-
             {/* 지문 본문 */}
             <Card>
               <CardHeader>
@@ -173,6 +204,112 @@ export default function PassageDetailPage({
                     {passage.content || '본문 내용이 없습니다.'}
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* OX 퀴즈 결과 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>OX 퀴즈 결과</CardTitle>
+                <CardDescription>
+                  {studentName}님이 푼 OX 퀴즈와 정/오답 여부입니다
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingQuizzes ? (
+                  <div className="text-center py-8 text-gray-500">
+                    퀴즈 결과를 불러오는 중...
+                  </div>
+                ) : quizResults.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    해당 지문에 대한 OX 퀴즈가 없습니다
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {quizResults.map((quiz, index) => (
+                      <div
+                        key={quiz.quiz_id}
+                        className="border rounded-lg p-3 space-y-2"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <Badge variant="outline" className="text-xs">문제 {index + 1}</Badge>
+                              {quiz.ox_type && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {quiz.ox_type}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="font-medium text-gray-900 text-sm mb-2">
+                              {quiz.statement}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-0.5">정답</p>
+                            <Badge
+                              variant={quiz.correct_answer === 'O' ? 'default' : 'secondary'}
+                              className={
+                                quiz.correct_answer === 'O'
+                                  ? 'bg-green-100 text-green-800 text-xs'
+                                  : 'bg-red-100 text-red-800 text-xs'
+                              }
+                            >
+                              {quiz.correct_answer}
+                            </Badge>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-0.5">학생 답안</p>
+                            {quiz.student_answer ? (
+                              <Badge
+                                variant={
+                                  quiz.is_correct
+                                    ? 'default'
+                                    : 'destructive'
+                                }
+                                className={
+                                  quiz.is_correct
+                                    ? 'bg-green-100 text-green-800 text-xs'
+                                    : 'bg-red-100 text-red-800 text-xs'
+                                }
+                              >
+                                {quiz.student_answer}
+                                {quiz.is_correct ? ' (정답)' : ' (오답)'}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-gray-400">미응답</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {quiz.evidence && (
+                          <div className="flex items-start gap-2">
+                            <p className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                              근거:
+                            </p>
+                            <p className="text-xs text-gray-600 bg-gray-50 p-1.5 rounded flex-1">
+                              {quiz.evidence}
+                            </p>
+                          </div>
+                        )}
+
+                        {quiz.reasoning && (
+                          <div className="flex items-start gap-2">
+                            <p className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                              추론:
+                            </p>
+                            <p className="text-xs text-gray-600 bg-gray-50 p-1.5 rounded flex-1">
+                              {quiz.reasoning}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </>

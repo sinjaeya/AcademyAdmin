@@ -536,6 +536,8 @@ export default function StudentsPage() {
                       <TableHead>중간4자리</TableHead>
                       <TableHead>학교</TableHead>
                       <TableHead>학년</TableHead>
+                      <TableHead>학년난이도</TableHead>
+                      <TableHead>학습난이도</TableHead>
                       <TableHead>부모연락처</TableHead>
                       <TableHead>보호자 타입</TableHead>
                       <TableHead>이메일</TableHead>
@@ -602,6 +604,20 @@ export default function StudentsPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary">{student.grade || 'N/A'}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {student.rubric_grade_level 
+                              ? RUBRIC_GRADE_LEVEL_LABELS[student.rubric_grade_level] || student.rubric_grade_level
+                              : 'N/A'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {student.rubric_difficulty_level 
+                              ? RUBRIC_DIFFICULTY_LEVEL_LABELS[student.rubric_difficulty_level] || student.rubric_difficulty_level
+                              : 'N/A'}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-sm text-gray-600">
                           {student.parent_phone || 'N/A'}
