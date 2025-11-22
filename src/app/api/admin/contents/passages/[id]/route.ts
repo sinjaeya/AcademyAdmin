@@ -69,7 +69,7 @@ export async function PATCH(
   const updates: Record<string, unknown> = {};
 
   if (typeof payload.status === 'string') {
-    const normalized = payload.status.toLowerCase();
+    const normalized = payload.status.toLowerCase() as typeof PASSAGE_QA_STATUSES[number];
     if (!ALLOWED_STATUS.has(normalized)) {
       return NextResponse.json({ error: '허용되지 않은 상태 값입니다.' }, { status: 400 });
     }
