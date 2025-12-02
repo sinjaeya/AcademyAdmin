@@ -102,6 +102,85 @@ import { Dialog, DialogContent, ... } from '@/components/ui/dialog';
 
 그 외 git 작업은 사용자가 직접 수행하도록 안내.
 
+## 데이터 모델
+
+### 주요 테이블
+- `student` - 학생 정보 (이름, 연락처, 학교, 학년, 학습레벨 등)
+- `academy` - 학원 정보
+- `payment` - 학원비 수납 내역
+- `settings` - 시스템 변수 관리 (name, value 컬럼)
+- `users` - 관리자/강사 사용자
+
+### student 테이블 주요 필드
+| 필드명 | 타입 | 설명 |
+|--------|------|------|
+| `id` | BIGINT | PK |
+| `name` | VARCHAR | 학생 이름 |
+| `phone_number` | VARCHAR | 핸드폰 번호 |
+| `phone_middle_4` | VARCHAR | 핸드폰 중간 4자리 (자동 추출) |
+| `school` | VARCHAR | 학교명 |
+| `grade` | VARCHAR | 학년 (초1~고3) |
+| `parent_phone` | VARCHAR | 학부모 연락처 |
+| `parent_type` | ENUM | 보호자 유형 |
+| `academy_id` | FK | 소속 학원 |
+| `status` | VARCHAR | 재원 상태 |
+| `sentence_level` | ENUM | 문장학습레벨 |
+| `rubric_grade_level` | ENUM | 루브릭 학년 레벨 |
+| `rubric_difficulty_level` | ENUM | 루브릭 난이도 레벨 |
+
+### 주요 ENUM 타입
+
+**sentence_level (문장학습레벨)** - `grade_level_type`
+```
+Lv1_Elem5, Lv2_Elem6, Lv3_Mid1, Lv4_Mid2, Lv5_Mid3, Lv6_High1, Lv7_High2, Lv8_High3, Lv9_CSAT
+```
+라벨: Lv1 초5 ~ Lv9 수능
+
+**rubric_grade_level (루브릭 학년)**
+```
+middle, high
+```
+라벨: 중학교, 고등학교
+
+**rubric_difficulty_level (루브릭 난이도)**
+```
+medium, advanced, highest, extreme, high_mock_1, high_mock_2, high_mock_3, csat
+```
+라벨: 중급, 고급, 최고급, 극상급, 고1~3 모의고사, 수능
+
+**parent_type (보호자 유형)**
+```
+엄마, 아빠, 할아버지, 할머니, 기타
+```
+
+**status (재원 상태)**
+```
+재원, 휴원, 해지
+```
+
+### 상수 파일 위치
+모든 ENUM 옵션과 라벨은 `src/config/constants.ts`에 정의됨.
+
+## 주요 API 엔드포인트
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `/api/admin/students` | GET | 학생 목록 (status 파라미터로 필터링) |
+| `/api/admin/students` | POST | 학생 추가 |
+| `/api/admin/students/[id]` | PUT | 학생 정보 수정 |
+| `/api/admin/students/[id]` | DELETE | 학생 삭제 |
+| `/api/admin/payment` | GET/POST | 수납 내역 조회/추가 |
+| `/api/admin/settings/variables` | GET/POST/PUT/DELETE | 변수 관리 |
+
+### API 응답 형식
+```typescript
+// 성공
+{ success: true, data: any, message: string }
+
+// 실패
+{ error: string }
+```
+
 ## 환경변수
 
 `.env.local` 필수 설정:
