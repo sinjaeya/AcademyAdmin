@@ -20,7 +20,8 @@ import {
   ChevronDown as ChevronDownIcon,
   BookText,
   Wallet,
-  FileText
+  FileText,
+  Variable
 } from 'lucide-react';
 
 // 네비게이션 아이템 타입 정의
@@ -123,6 +124,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
 
   // 설정 메뉴의 하위 메뉴들
   const settingsSubMenus = useMemo(() => [
+    { name: '변수 관리', href: '/admin/settings/variables', icon: Variable, requiredPermission: null },
     { name: '학원관리', href: '/admin/settings/academy', icon: Building2, requiredPermission: PERMISSION_IDS.ACADEMY_SETTINGS },
     { name: '사용자 관리', href: '/admin/settings/users', icon: Users, requiredPermission: PERMISSION_IDS.USERS_VIEW },
     { name: '권한 관리', href: '/admin/settings/permissions', icon: Shield, requiredPermission: null } // Admin 전용은 특별 처리

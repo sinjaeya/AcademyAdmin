@@ -118,6 +118,7 @@ export async function POST(request: NextRequest) {
       password: passwordHash,
       rubric_grade_level: body.rubric_grade_level || 'middle',
       rubric_difficulty_level: body.rubric_difficulty_level || 'medium',
+      sentence_level: body.sentence_level || 'Lv3_Mid1',  // 기본값: 'Lv3_Mid1' (중1)
       status: body.status || 'active',
     };
 

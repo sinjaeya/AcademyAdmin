@@ -14,15 +14,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  GRADE_OPTIONS, 
-  SCHOOL_OPTIONS, 
-  STATUS_OPTIONS, 
+import {
+  GRADE_OPTIONS,
+  SCHOOL_OPTIONS,
+  STATUS_OPTIONS,
   PARENT_TYPE_OPTIONS,
   RUBRIC_GRADE_LEVEL_OPTIONS,
   RUBRIC_DIFFICULTY_LEVEL_OPTIONS,
   RUBRIC_GRADE_LEVEL_LABELS,
-  RUBRIC_DIFFICULTY_LEVEL_LABELS
+  RUBRIC_DIFFICULTY_LEVEL_LABELS,
+  SENTENCE_LEVEL_OPTIONS,
+  SENTENCE_LEVEL_LABELS
 } from '@/config/constants';
 import { 
   Table, 
@@ -62,6 +64,7 @@ interface Student {
   email?: string;
   rubric_grade_level?: string | null;
   rubric_difficulty_level?: string | null;
+  sentence_level?: string | null;
   academy_id?: string | null;
   academy_name?: string | null;
   currentAcademy?: string; // 하위 호환성을 위해 유지
@@ -85,6 +88,7 @@ interface NewStudentForm {
   password: string;
   rubric_grade_level: string;
   rubric_difficulty_level: string;
+  sentence_level: string;
   academy_id?: string | null;
   currentAcademy?: string; // 하위 호환성을 위해 유지
   status: string;
@@ -105,6 +109,7 @@ interface EditStudentForm {
   password: string;
   rubric_grade_level: string;
   rubric_difficulty_level: string;
+  sentence_level: string;
   academy_id?: string | null;
   currentAcademy?: string; // 하위 호환성을 위해 유지
   status: string;
@@ -183,6 +188,7 @@ export default function StudentsPage() {
     password: '',
     rubric_grade_level: 'middle',
     rubric_difficulty_level: 'medium',
+    sentence_level: 'Lv3_Mid1',
     academy_id: null,
     status: '재원',
     study_time: '60'
@@ -200,6 +206,7 @@ export default function StudentsPage() {
     password: '',
     rubric_grade_level: 'middle',
     rubric_difficulty_level: 'medium',
+    sentence_level: 'Lv3_Mid1',
     academy_id: null,
     status: '',
     study_time: ''
@@ -319,6 +326,7 @@ export default function StudentsPage() {
           password: '',
           rubric_grade_level: 'middle',
           rubric_difficulty_level: 'medium',
+          sentence_level: 'Lv3_Mid1',
           academy_id: null,
           status: '재원',
           study_time: '60'
@@ -391,6 +399,7 @@ export default function StudentsPage() {
       password: '',
       rubric_grade_level: student.rubric_grade_level || 'middle',
       rubric_difficulty_level: student.rubric_difficulty_level || 'medium',
+      sentence_level: student.sentence_level || 'Lv3_Mid1',
       academy_id: student.academy_id || null,
       currentAcademy: student.academy_name || student.currentAcademy || '',
       status: student.status,
@@ -421,6 +430,7 @@ export default function StudentsPage() {
           password: editStudent.password,
           rubric_grade_level: editStudent.rubric_grade_level,
           rubric_difficulty_level: editStudent.rubric_difficulty_level,
+          sentence_level: editStudent.sentence_level,
           academy_id: editStudent.academy_id,
           status: editStudent.status,
           study_time: editStudent.study_time
@@ -538,6 +548,7 @@ export default function StudentsPage() {
                       <TableHead>학년</TableHead>
                       <TableHead>학년난이도</TableHead>
                       <TableHead>학습난이도</TableHead>
+                      <TableHead>문장학습레벨</TableHead>
                       <TableHead>부모연락처</TableHead>
                       <TableHead>보호자 타입</TableHead>
                       <TableHead>이메일</TableHead>
@@ -614,8 +625,15 @@ export default function StudentsPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {student.rubric_difficulty_level 
+                            {student.rubric_difficulty_level
                               ? RUBRIC_DIFFICULTY_LEVEL_LABELS[student.rubric_difficulty_level] || student.rubric_difficulty_level
+                              : 'N/A'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {student.sentence_level
+                              ? SENTENCE_LEVEL_LABELS[student.sentence_level] || student.sentence_level
                               : 'N/A'}
                           </Badge>
                         </TableCell>
@@ -852,7 +870,26 @@ export default function StudentsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
+              <div className="space-y-2">
+                <Label htmlFor="sentence_level">문장학습레벨</Label>
+                <Select
+                  value={newStudent.sentence_level}
+                  onValueChange={(value) => handleInputChange('sentence_level', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="문장학습레벨을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SENTENCE_LEVEL_OPTIONS.map((level) => (
+                      <SelectItem key={level} value={level}>
+                        {SENTENCE_LEVEL_LABELS[level] || level}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="academy_id">학원 *</Label>
                 <Select
@@ -1110,7 +1147,26 @@ export default function StudentsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-sentence_level">문장학습레벨</Label>
+                <Select
+                  value={editStudent.sentence_level}
+                  onValueChange={(value) => handleEditInputChange('sentence_level', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="문장학습레벨을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SENTENCE_LEVEL_OPTIONS.map((level) => (
+                      <SelectItem key={level} value={level}>
+                        {SENTENCE_LEVEL_LABELS[level] || level}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="edit-academy_id">학원 *</Label>
                 <Select

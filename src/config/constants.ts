@@ -105,6 +105,32 @@ export const RUBRIC_DIFFICULTY_LEVEL_LABELS: Record<string, string> = {
   csat: '수능'
 };
 
+// 문장학습레벨 옵션
+export const SENTENCE_LEVEL_OPTIONS = [
+  'Lv1_Elem5',
+  'Lv2_Elem6',
+  'Lv3_Mid1',
+  'Lv4_Mid2',
+  'Lv5_Mid3',
+  'Lv6_High1',
+  'Lv7_High2',
+  'Lv8_High3',
+  'Lv9_CSAT'
+] as const;
+
+// 문장학습레벨 라벨 (한글)
+export const SENTENCE_LEVEL_LABELS: Record<string, string> = {
+  Lv1_Elem5: 'Lv1 초5',
+  Lv2_Elem6: 'Lv2 초6',
+  Lv3_Mid1: 'Lv3 중1',
+  Lv4_Mid2: 'Lv4 중2',
+  Lv5_Mid3: 'Lv5 중3',
+  Lv6_High1: 'Lv6 고1',
+  Lv7_High2: 'Lv7 고2',
+  Lv8_High3: 'Lv8 고3',
+  Lv9_CSAT: 'Lv9 수능'
+};
+
 // 타입 정의
 export type GradeOption = typeof GRADE_OPTIONS[number];
 export type SchoolOption = typeof SCHOOL_OPTIONS[number];
@@ -115,4 +141,5 @@ export type PaymentMethod = typeof PAYMENT_METHOD_OPTIONS[number];
 export type StudyMonth = typeof STUDY_MONTH_OPTIONS[number];
 export type RubricGradeLevel = typeof RUBRIC_GRADE_LEVEL_OPTIONS[number];
 export type RubricDifficultyLevel = typeof RUBRIC_DIFFICULTY_LEVEL_OPTIONS[number];
+export type SentenceLevel = typeof SENTENCE_LEVEL_OPTIONS[number];
 

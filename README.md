@@ -96,6 +96,11 @@ src/
 - [x] 통계 카드 컴포넌트
 - [x] 사용자 테이블 컴포넌트
 - [x] 상태 관리 (Zustand)
+- [x] **변수 관리 시스템** (CRUD)
+  - 학생앱 변수관리 그룹
+  - settings 테이블의 name, value 컬럼 관리
+  - 변수 추가/수정/삭제 기능
+  - 변수명 중복 체크
 - [x] **PWA (Progressive Web App) 설정**
   - 오프라인 지원
   - 홈 화면 설치 기능
@@ -190,6 +195,26 @@ npm run pwa:icons
 
 ### 접근 경로
 - 좌측 메뉴: **FINANCE > 학원비수납내역**
+
+## 🔧 변수 관리 시스템
+
+학생 앱에서 사용할 변수들을 관리하는 기능입니다.
+
+### 주요 기능
+- 변수 추가/수정/삭제 (CRUD)
+- 학생앱 변수관리 그룹
+- 변수명 중복 체크
+- settings 테이블의 name, value 컬럼 관리
+
+### 데이터베이스
+- `settings` 테이블 사용
+- 변수명(name)과 값(value) 저장
+
+### 접근 경로
+- 좌측 메뉴: **SETTINGS > 변수 관리**
+
+### 관련 문서
+- 자세한 내용은 [VARIABLES_MANAGEMENT_GUIDE.md](./VARIABLES_MANAGEMENT_GUIDE.md) 참조
 
 ## 📝 다음 단계
 

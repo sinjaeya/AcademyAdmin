@@ -46,6 +46,7 @@ export async function PUT(
     if (body.email !== undefined) updateData.email = body.email || null;
     if (body.rubric_grade_level !== undefined) updateData.rubric_grade_level = body.rubric_grade_level || null;
     if (body.rubric_difficulty_level !== undefined) updateData.rubric_difficulty_level = body.rubric_difficulty_level || null;
+    if (body.sentence_level !== undefined) updateData.sentence_level = body.sentence_level || null;
     // academy_id가 제공된 경우 사용, 없으면 currentAcademy로 academy_id 찾기
     if (body.academy_id !== undefined) {
       updateData.academy_id = body.academy_id || null;
