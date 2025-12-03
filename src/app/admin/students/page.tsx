@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,7 @@ import {
   Phone
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
+import { useAuthStore } from '@/store/auth';
 
 // 학생 데이터 타입 정의
 interface Student {
@@ -168,6 +169,7 @@ const extractMiddle4Digits = (phoneNumber: string): string => {
 
 export default function StudentsPage() {
   const { toast } = useToast();
+  const { academyId } = useAuthStore();
   const [students, setStudents] = useState<Student[]>([]);
   const [academies, setAcademies] = useState<Academy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -230,12 +232,20 @@ export default function StudentsPage() {
   };
 
   // 데이터 가져오기
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      const response = await fetch('/api/admin/students');
+
+      // 학원 ID가 있으면 해당 학원 학생만 조회
+      const params = new URLSearchParams();
+      if (academyId) {
+        params.append('academy_id', academyId);
+      }
+      const queryString = params.toString();
+      const url = `/api/admin/students${queryString ? `?${queryString}` : ''}`;
+
+      const response = await fetch(url);
       const result = await response.json();
 
       if (!response.ok) {
@@ -249,12 +259,12 @@ export default function StudentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [academyId]);
 
   useEffect(() => {
     fetchStudents();
     fetchAcademies();
-  }, []);
+  }, [fetchStudents]);
 
   const handleDeleteClick = (studentId: string) => {
     setStudentToDelete(studentId);
