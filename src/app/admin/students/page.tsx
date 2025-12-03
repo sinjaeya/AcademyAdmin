@@ -1110,7 +1110,7 @@ export default function StudentsPage() {
                 <Label htmlFor="edit-password">비밀번호 변경 (선택)</Label>
                 <Input
                   id="edit-password"
-                  type="password"
+                  type="text"
                   value={editStudent.password}
                   onChange={(e) => handleEditInputChange('password', e.target.value)}
                   placeholder="비밀번호를 변경하려면 입력하세요"
