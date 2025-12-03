@@ -31,8 +31,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '데이터를 가져오는데 실패했습니다.' }, { status: 500 });
     }
 
-    // 학생 ID 목록 가져오기
-    const studentIds = [...new Set(learningData?.map(r => r.student_id) || [])];
+    // short_passage_learning_history에서 문장클리닉 데이터 가져오기
+    const { data: sentenceClinicData, error: sentenceClinicError } = await supabase
+      .from('short_passage_learning_history')
+      .select(`
+        student_id,
+        started_at
+      `)
+      .gte('started_at', `${startDate}T00:00:00.000Z`)
+      .lte('started_at', `${endDate}T23:59:59.999Z`)
+      .order('started_at', { ascending: true });
+
+    if (sentenceClinicError) {
+      console.error('Error fetching sentence clinic data:', sentenceClinicError);
+    }
+
+    // 학생 ID 목록 가져오기 (test_session + short_passage_learning_history)
+    const testSessionStudentIds = learningData?.map(r => r.student_id) || [];
+    const sentenceClinicStudentIds = sentenceClinicData?.map(r => r.student_id) || [];
+    const studentIds = [...new Set([...testSessionStudentIds, ...sentenceClinicStudentIds])];
 
     if (studentIds.length === 0) {
       return NextResponse.json({ data: [] });
@@ -85,7 +102,8 @@ export async function GET(request: NextRequest) {
           if (!student.dailyActivities[utcDay]) {
             student.dailyActivities[utcDay] = {
               wordPang: 0,
-              passageQuiz: 0
+              passageQuiz: 0,
+              sentenceClinic: 0
             };
           }
 
@@ -95,6 +113,42 @@ export async function GET(request: NextRequest) {
           } else if (record.test_type === 'passage_quiz') {
             student.dailyActivities[utcDay].passageQuiz += 1;
           }
+        }
+      }
+    }
+
+    // 문장클리닉 데이터 처리
+    if (sentenceClinicData) {
+      for (const record of sentenceClinicData) {
+        const studentIdNum = Number(record.student_id);
+        const studentId = String(studentIdNum);
+        const studentName = studentInfoMap.get(studentIdNum) || `학생 ${studentId}`;
+
+        if (!studentsMap.has(studentId)) {
+          studentsMap.set(studentId, {
+            id: studentId,
+            name: studentName,
+            dailyActivities: {}
+          });
+        }
+
+        const testDate = new Date(record.started_at);
+        const utcYear = testDate.getUTCFullYear();
+        const utcMonth = testDate.getUTCMonth() + 1;
+        const utcDay = testDate.getUTCDate();
+
+        if (utcYear === year && utcMonth === month) {
+          const student = studentsMap.get(studentId);
+
+          if (!student.dailyActivities[utcDay]) {
+            student.dailyActivities[utcDay] = {
+              wordPang: 0,
+              passageQuiz: 0,
+              sentenceClinic: 0
+            };
+          }
+
+          student.dailyActivities[utcDay].sentenceClinic += 1;
         }
       }
     }

@@ -8,7 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar } from 'lucide-react';
+import { Calendar, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LearningDetailDialog } from '@/components/admin/LearningDetailDialog';
@@ -17,6 +18,7 @@ import { useToast } from '@/components/ui/toast';
 interface DailyActivity {
   wordPang: number;
   passageQuiz: number;
+  sentenceClinic: number;
 }
 
 interface Student {
@@ -106,7 +108,7 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
   const monthOptions = useMemo(() => {
     const options = [];
     const now = new Date();
-    
+
     for (let i = 0; i < 6; i++) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const year = date.getFullYear();
@@ -114,9 +116,26 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
       const label = `${year}-${month}`;
       options.push({ value: label, label });
     }
-    
+
     return options;
   }, []);
+
+  // 새로고침 함수
+  const handleRefresh = async () => {
+    setLoading(true);
+    setSelectedCell({ studentId: null, day: null });
+    try {
+      const response = await fetch(`/api/admin/learning?year=${year}&month=${month}`);
+      const result = await response.json();
+      if (result.data) {
+        setStudents(result.data);
+      }
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   return (
     <div className="space-y-6">
@@ -145,6 +164,16 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
               </SelectContent>
             </Select>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            새로고침
+          </Button>
         </div>
       </Card>
 
@@ -189,8 +218,8 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
                     
                     return (
                       <td key={day} className={`px-2 py-2 text-center min-w-[80px] border-r ${isSelected ? 'bg-pink-200' : ''}`}>
-                        {activity && (activity.wordPang > 0 || activity.passageQuiz > 0) ? (
-                          <div 
+                        {activity && (activity.wordPang > 0 || activity.passageQuiz > 0 || activity.sentenceClinic > 0) ? (
+                          <div
                             className="flex flex-col gap-1 items-center cursor-pointer"
                             onClick={() => handleCellClick(student.id, student.name, day)}
                           >
@@ -201,7 +230,12 @@ export function LearningTable({ initialStudents, initialYear, initialMonth }: Le
                             )}
                             {activity.passageQuiz > 0 && (
                               <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200">
-                                지문 {activity.passageQuiz}
+                                보물찾기 {activity.passageQuiz}
+                              </Badge>
+                            )}
+                            {activity.sentenceClinic > 0 && (
+                              <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200">
+                                문장클리닉 {activity.sentenceClinic}
                               </Badge>
                             )}
                           </div>
