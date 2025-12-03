@@ -7,10 +7,10 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/auth';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Users,
+  Settings,
   LogOut,
   Clock,
   Shield,
@@ -21,7 +21,8 @@ import {
   BookText,
   Wallet,
   FileText,
-  Variable
+  Variable,
+  Radio
 } from 'lucide-react';
 
 // 네비게이션 아이템 타입 정의
@@ -134,6 +135,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
   const learningSubMenus = useMemo(() => [
     { name: '국어', href: '/admin/learning', icon: BookText },
     { name: '국어2', href: '/admin/learning/korean2', icon: BookText },
+    { name: '실시간 풀스택-국어', href: '/admin/learning/realtime-korean', icon: Radio },
     { name: '수학', href: '/admin/learning/math', icon: BookText }
   ], []);
 
