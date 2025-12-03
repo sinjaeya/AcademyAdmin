@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Radio, X } from 'lucide-react';
+import { RefreshCw, Radio, X, Trash2 } from 'lucide-react';
 
 // 학습 기록 타입
 interface LearningRecord {
@@ -196,6 +196,39 @@ export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProp
       setLoading(false);
     }
   }, []);
+
+  // 진행 중인 학습 삭제
+  const handleDeleteRecord = useCallback(async (recordId: string) => {
+    if (!confirm('진행 중인 학습을 삭제하시겠습니까?')) return;
+
+    try {
+      const response = await fetch(`/api/admin/learning/realtime/${recordId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        // 로컬 상태에서 제거
+        setRecords(prev => prev.filter(r => r.id !== recordId));
+        // 선택된 학생의 records도 업데이트
+        if (selectedStudent) {
+          const updatedRecords = selectedStudent.records.filter(r => r.id !== recordId);
+          if (updatedRecords.length === 0) {
+            setSelectedStudent(null);
+          } else {
+            setSelectedStudent({
+              ...selectedStudent,
+              records: updatedRecords
+            });
+          }
+        }
+      } else {
+        alert('삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  }, [selectedStudent]);
 
   // Realtime 구독 설정
   useEffect(() => {
@@ -563,6 +596,7 @@ export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProp
                     <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">정답수</th>
                     <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">정답률</th>
                     <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">상태</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 w-16"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -600,6 +634,18 @@ export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProp
                           <Badge variant="secondary" className="bg-blue-100 text-blue-800 animate-pulse">
                             진행중
                           </Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        {!record.completedAt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleDeleteRecord(record.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         )}
                       </td>
                     </tr>
