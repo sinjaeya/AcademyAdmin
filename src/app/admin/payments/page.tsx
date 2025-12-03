@@ -39,6 +39,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
+import { useAuthStore } from '@/store/auth';
 import { Payment } from '@/types';
 
 // 학생 데이터 타입 정의
@@ -131,6 +132,7 @@ const getCurrentDateTimeLocal = (): string => {
 
 export default function PaymentsPage() {
   const { toast } = useToast();
+  const { academyId } = useAuthStore();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,17 +162,30 @@ export default function PaymentsPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 학생 목록 가져오기
+  // 학생 목록 가져오기 (로그인한 학원의 학생만, 가나다 순 정렬)
   const fetchStudents = async () => {
     try {
-      const response = await fetch('/api/admin/students');
+      // 학원 ID가 있으면 해당 학원 학생만 조회
+      const params = new URLSearchParams();
+      if (academyId) {
+        params.append('academy_id', academyId);
+      }
+      const queryString = params.toString();
+      const url = `/api/admin/students${queryString ? `?${queryString}` : ''}`;
+
+      const response = await fetch(url);
       const result = await response.json();
 
       if (!response.ok) {
         throw new Error(result.error || '학생 목록을 가져오는 중 오류가 발생했습니다.');
       }
 
-      setStudents(result || []);
+      // 가나다 순으로 정렬
+      const sortedStudents = (result || []).sort((a: Student, b: Student) =>
+        a.name.localeCompare(b.name, 'ko')
+      );
+
+      setStudents(sortedStudents);
     } catch (err) {
       console.error('Error fetching students:', err);
     }
@@ -201,7 +216,8 @@ export default function PaymentsPage() {
   useEffect(() => {
     fetchPayments();
     fetchStudents();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [academyId]);
 
   const handleDeleteClick = (paymentId: string) => {
     setPaymentToDelete(paymentId);
