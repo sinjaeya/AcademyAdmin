@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Radio } from 'lucide-react';
+import { RefreshCw, Radio, X } from 'lucide-react';
 
 // 학습 기록 타입
 interface LearningRecord {
@@ -18,6 +18,17 @@ interface LearningRecord {
   totalItems: number;
   correctCount: number;
   accuracyRate: number;
+}
+
+// 학생별 요약 타입
+interface StudentSummary {
+  studentId: number;
+  studentName: string;
+  wordPang: { count: number; totalItems: number; correctCount: number; accuracyRate: number };
+  passageQuiz: { count: number; totalItems: number; correctCount: number; accuracyRate: number };
+  sentenceClinic: { count: number; totalItems: number; correctCount: number; accuracyRate: number };
+  currentActivity: 'word_pang' | 'passage_quiz' | 'sentence_clinic' | null;
+  records: LearningRecord[];
 }
 
 // Supabase Realtime payload 타입
@@ -87,7 +98,8 @@ export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProp
   const [records, setRecords] = useState<LearningRecord[]>(initialData);
   const [loading, setLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  const [newRecordIds, setNewRecordIds] = useState<Set<string>>(new Set());
+  const [selectedStudent, setSelectedStudent] = useState<StudentSummary | null>(null);
+  const [newStudentIds, setNewStudentIds] = useState<Set<number>>(new Set());
 
   // 학생 이름 조회 함수
   const fetchStudentName = useCallback(async (studentId: number): Promise<string> => {
@@ -101,6 +113,73 @@ export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProp
 
     return data?.name || `학생 ${studentId}`;
   }, []);
+
+  // 학생별 요약 데이터 생성
+  const studentSummaries = useMemo(() => {
+    const summaryMap = new Map<number, StudentSummary>();
+
+    for (const record of records) {
+      if (!summaryMap.has(record.studentId)) {
+        summaryMap.set(record.studentId, {
+          studentId: record.studentId,
+          studentName: record.studentName,
+          wordPang: { count: 0, totalItems: 0, correctCount: 0, accuracyRate: 0 },
+          passageQuiz: { count: 0, totalItems: 0, correctCount: 0, accuracyRate: 0 },
+          sentenceClinic: { count: 0, totalItems: 0, correctCount: 0, accuracyRate: 0 },
+          currentActivity: null,
+          records: []
+        });
+      }
+
+      const summary = summaryMap.get(record.studentId)!;
+      summary.records.push(record);
+
+      // 진행 중인 활동 체크 (completedAt이 null인 가장 최근 활동)
+      if (!record.completedAt && !summary.currentActivity) {
+        summary.currentActivity = record.learningType;
+      }
+
+      // 완료된 학습만 통계에 포함
+      if (record.completedAt) {
+        if (record.learningType === 'word_pang') {
+          summary.wordPang.count += 1;
+          summary.wordPang.totalItems += record.totalItems;
+          summary.wordPang.correctCount += record.correctCount;
+        } else if (record.learningType === 'passage_quiz') {
+          summary.passageQuiz.count += 1;
+          summary.passageQuiz.totalItems += record.totalItems;
+          summary.passageQuiz.correctCount += record.correctCount;
+        } else if (record.learningType === 'sentence_clinic') {
+          summary.sentenceClinic.count += 1;
+          summary.sentenceClinic.totalItems += record.totalItems;
+          summary.sentenceClinic.correctCount += record.correctCount;
+        }
+      }
+    }
+
+    // 정답률 계산
+    summaryMap.forEach(summary => {
+      if (summary.wordPang.totalItems > 0) {
+        summary.wordPang.accuracyRate = (summary.wordPang.correctCount / summary.wordPang.totalItems) * 100;
+      }
+      if (summary.passageQuiz.totalItems > 0) {
+        summary.passageQuiz.accuracyRate = (summary.passageQuiz.correctCount / summary.passageQuiz.totalItems) * 100;
+      }
+      if (summary.sentenceClinic.totalItems > 0) {
+        summary.sentenceClinic.accuracyRate = (summary.sentenceClinic.correctCount / summary.sentenceClinic.totalItems) * 100;
+      }
+      // 시작시간 기준 내림차순 정렬
+      summary.records.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+    });
+
+    return Array.from(summaryMap.values()).sort((a, b) => {
+      // 현재 활동 중인 학생 먼저
+      if (a.currentActivity && !b.currentActivity) return -1;
+      if (!a.currentActivity && b.currentActivity) return 1;
+      // 그 다음 이름순
+      return a.studentName.localeCompare(b.studentName);
+    });
+  }, [records]);
 
   // 데이터 새로고침
   const handleRefresh = useCallback(async () => {
@@ -163,19 +242,18 @@ export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProp
             };
 
             setRecords(prev => {
-              // 기존 레코드 업데이트 또는 새 레코드 추가
               const existingIndex = prev.findIndex(r => r.id === record.id);
               if (existingIndex >= 0) {
                 const updated = [...prev];
                 updated[existingIndex] = record;
                 return updated;
               } else {
-                // 새 레코드는 맨 앞에 추가
-                setNewRecordIds(ids => new Set(ids).add(record.id));
+                // 새 학생 하이라이트
+                setNewStudentIds(ids => new Set(ids).add(record.studentId));
                 setTimeout(() => {
-                  setNewRecordIds(ids => {
+                  setNewStudentIds(ids => {
                     const newIds = new Set(ids);
-                    newIds.delete(record.id);
+                    newIds.delete(record.studentId);
                     return newIds;
                   });
                 }, 3000);
@@ -216,7 +294,6 @@ export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProp
 
             const studentName = await fetchStudentName(newRecord.student_id);
 
-            // 문장클리닉은 2문제 (빈칸채우기 + 키워드)
             const clozeCorrect = newRecord.cloze_is_correct ? 1 : 0;
             const keywordCorrect = newRecord.keyword_is_correct ? 1 : 0;
             const correctCount = clozeCorrect + keywordCorrect;
@@ -241,11 +318,11 @@ export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProp
                 updated[existingIndex] = record;
                 return updated;
               } else {
-                setNewRecordIds(ids => new Set(ids).add(record.id));
+                setNewStudentIds(ids => new Set(ids).add(record.studentId));
                 setTimeout(() => {
-                  setNewRecordIds(ids => {
+                  setNewStudentIds(ids => {
                     const newIds = new Set(ids);
-                    newIds.delete(record.id);
+                    newIds.delete(record.studentId);
                     return newIds;
                   });
                 }, 3000);
@@ -268,6 +345,22 @@ export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProp
       setIsConnected(false);
     };
   }, [fetchStudentName]);
+
+  // 전체 통계 계산
+  const totalStats = useMemo(() => {
+    const completedRecords = records.filter(r => r.completedAt);
+    const inProgressCount = records.filter(r => !r.completedAt).length;
+    const avgAccuracy = completedRecords.length > 0
+      ? completedRecords.reduce((acc, r) => acc + r.accuracyRate, 0) / completedRecords.length
+      : 0;
+
+    return {
+      totalStudents: studentSummaries.length,
+      completedCount: completedRecords.length,
+      inProgressCount,
+      avgAccuracy
+    };
+  }, [records, studentSummaries]);
 
   return (
     <div className="space-y-6">
@@ -314,111 +407,207 @@ export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProp
         </div>
       )}
 
-      {/* 학습 데이터 테이블 */}
-      <div className="bg-white rounded-lg border">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 border-b">학생이름</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 border-b">학습유형</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 border-b">시작시간</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 border-b">문제수</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 border-b">정답수</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 border-b">정답률</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 border-b">상태</th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                    오늘 학습 기록이 없습니다.
-                  </td>
-                </tr>
-              ) : (
-                records.map((record) => (
-                  <tr
-                    key={record.id}
-                    className={`border-b hover:bg-gray-50 transition-all duration-300 ${
-                      newRecordIds.has(record.id) ? 'bg-yellow-50 animate-pulse' : ''
-                    }`}
-                  >
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                      {record.studentName}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge
-                        variant="secondary"
-                        className={getLearningTypeBadgeClass(record.learningType)}
-                      >
-                        {getLearningTypeLabel(record.learningType)}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center text-gray-600">
-                      {formatTime(record.startedAt)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center text-gray-600">
-                      {record.totalItems}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center text-gray-600">
-                      {record.correctCount}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center">
-                      <span className={`font-medium ${
-                        record.accuracyRate >= 80 ? 'text-green-600' :
-                        record.accuracyRate >= 60 ? 'text-yellow-600' :
-                        'text-red-600'
-                      }`}>
-                        {record.accuracyRate.toFixed(0)}%
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {record.completedAt ? (
-                        <Badge variant="secondary" className="bg-green-100 text-green-800">
-                          완료
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 animate-pulse">
-                          진행중
-                        </Badge>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* 전체 통계 요약 */}
+      <div className="grid grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="text-sm text-gray-500">학습 중인 학생</div>
+          <div className="text-2xl font-bold text-gray-900">{totalStats.totalStudents}명</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-sm text-gray-500">완료한 학습</div>
+          <div className="text-2xl font-bold text-green-600">{totalStats.completedCount}개</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-sm text-gray-500">진행 중</div>
+          <div className="text-2xl font-bold text-blue-600">{totalStats.inProgressCount}개</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-sm text-gray-500">평균 정답률</div>
+          <div className="text-2xl font-bold text-gray-900">{totalStats.avgAccuracy.toFixed(0)}%</div>
+        </Card>
       </div>
 
-      {/* 통계 요약 */}
-      {records.length > 0 && (
-        <div className="grid grid-cols-4 gap-4">
-          <Card className="p-4">
-            <div className="text-sm text-gray-500">총 학습 횟수</div>
-            <div className="text-2xl font-bold text-gray-900">{records.length}</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-sm text-gray-500">완료</div>
-            <div className="text-2xl font-bold text-green-600">
-              {records.filter(r => r.completedAt).length}
+      {/* 학생별 카드 그리드 */}
+      {studentSummaries.length === 0 ? (
+        <Card className="p-8 text-center text-gray-500">
+          오늘 학습 기록이 없습니다.
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {studentSummaries.map((summary) => (
+            <Card
+              key={summary.studentId}
+              className={`p-4 cursor-pointer hover:shadow-lg transition-all duration-300 ${
+                newStudentIds.has(summary.studentId) ? 'ring-2 ring-yellow-400 bg-yellow-50' : ''
+              } ${summary.currentActivity ? 'border-2 border-blue-400' : ''}`}
+              onClick={() => setSelectedStudent(summary)}
+            >
+              {/* 학생 이름 & 실시간 상태 */}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-lg text-gray-900">{summary.studentName}</h3>
+                {summary.currentActivity && (
+                  <Badge className={`${getLearningTypeBadgeClass(summary.currentActivity)} animate-pulse`}>
+                    {getLearningTypeLabel(summary.currentActivity)} 중
+                  </Badge>
+                )}
+              </div>
+
+              {/* 학습 현황 */}
+              <div className="space-y-2">
+                {/* 단어팡 */}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-blue-600 font-medium">단어팡</span>
+                  <span className="text-gray-700">
+                    {summary.wordPang.count}개
+                    {summary.wordPang.count > 0 && (
+                      <span className="text-gray-500 ml-1">
+                        ({summary.wordPang.accuracyRate.toFixed(0)}%)
+                      </span>
+                    )}
+                  </span>
+                </div>
+
+                {/* 보물찾기 */}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-green-600 font-medium">보물찾기</span>
+                  <span className="text-gray-700">
+                    {summary.passageQuiz.count}개
+                    {summary.passageQuiz.count > 0 && (
+                      <span className="text-gray-500 ml-1">
+                        ({summary.passageQuiz.accuracyRate.toFixed(0)}%)
+                      </span>
+                    )}
+                  </span>
+                </div>
+
+                {/* 문장클리닉 */}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-purple-600 font-medium">문장클리닉</span>
+                  <span className="text-gray-700">
+                    {summary.sentenceClinic.count}개
+                    {summary.sentenceClinic.count > 0 && (
+                      <span className="text-gray-500 ml-1">
+                        ({summary.sentenceClinic.accuracyRate.toFixed(0)}%)
+                      </span>
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* 총 학습 수 */}
+              <div className="mt-3 pt-3 border-t text-xs text-gray-500 text-right">
+                총 {summary.wordPang.count + summary.passageQuiz.count + summary.sentenceClinic.count}개 완료
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* 상세 모달 */}
+      {selectedStudent && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSelectedStudent(null)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+            {/* 모달 헤더 */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-xl font-bold">{selectedStudent.studentName} - 오늘 학습 상세</h2>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedStudent(null)}>
+                <X className="w-5 h-5" />
+              </Button>
             </div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-sm text-gray-500">진행중</div>
-            <div className="text-2xl font-bold text-blue-600">
-              {records.filter(r => !r.completedAt).length}
+
+            {/* 요약 카드 */}
+            <div className="p-4 bg-gray-50 grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-blue-600 font-bold text-lg">
+                  {selectedStudent.wordPang.count}개
+                </div>
+                <div className="text-sm text-gray-600">단어팡</div>
+                {selectedStudent.wordPang.count > 0 && (
+                  <div className="text-xs text-gray-500">
+                    정답률 {selectedStudent.wordPang.accuracyRate.toFixed(0)}%
+                  </div>
+                )}
+              </div>
+              <div className="text-center">
+                <div className="text-green-600 font-bold text-lg">
+                  {selectedStudent.passageQuiz.count}개
+                </div>
+                <div className="text-sm text-gray-600">보물찾기</div>
+                {selectedStudent.passageQuiz.count > 0 && (
+                  <div className="text-xs text-gray-500">
+                    정답률 {selectedStudent.passageQuiz.accuracyRate.toFixed(0)}%
+                  </div>
+                )}
+              </div>
+              <div className="text-center">
+                <div className="text-purple-600 font-bold text-lg">
+                  {selectedStudent.sentenceClinic.count}개
+                </div>
+                <div className="text-sm text-gray-600">문장클리닉</div>
+                {selectedStudent.sentenceClinic.count > 0 && (
+                  <div className="text-xs text-gray-500">
+                    정답률 {selectedStudent.sentenceClinic.accuracyRate.toFixed(0)}%
+                  </div>
+                )}
+              </div>
             </div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-sm text-gray-500">평균 정답률</div>
-            <div className="text-2xl font-bold text-gray-900">
-              {records.length > 0
-                ? (records.reduce((acc, r) => acc + r.accuracyRate, 0) / records.length).toFixed(0)
-                : 0}%
+
+            {/* 상세 테이블 */}
+            <div className="overflow-auto max-h-[50vh]">
+              <table className="w-full">
+                <thead className="bg-gray-100 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">학습유형</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">시작시간</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">문제수</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">정답수</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">정답률</th>
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">상태</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedStudent.records.map((record) => (
+                    <tr key={record.id} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-2">
+                        <Badge className={getLearningTypeBadgeClass(record.learningType)}>
+                          {getLearningTypeLabel(record.learningType)}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-2 text-center text-sm text-gray-600">
+                        {formatTime(record.startedAt)}
+                      </td>
+                      <td className="px-4 py-2 text-center text-sm text-gray-600">
+                        {record.totalItems}
+                      </td>
+                      <td className="px-4 py-2 text-center text-sm text-gray-600">
+                        {record.correctCount}
+                      </td>
+                      <td className="px-4 py-2 text-center text-sm">
+                        <span className={`font-medium ${
+                          record.accuracyRate >= 80 ? 'text-green-600' :
+                          record.accuracyRate >= 60 ? 'text-yellow-600' :
+                          'text-red-600'
+                        }`}>
+                          {record.accuracyRate.toFixed(0)}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        {record.completedAt ? (
+                          <Badge variant="secondary" className="bg-green-100 text-green-800">
+                            완료
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-blue-100 text-blue-800 animate-pulse">
+                            진행중
+                          </Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </Card>
+          </div>
         </div>
       )}
     </div>
