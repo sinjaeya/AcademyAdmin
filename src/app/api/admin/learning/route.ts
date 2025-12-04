@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
       .select(`
         student_id,
         test_type,
-        started_at
+        started_at,
+        accuracy_rate
       `)
       .in('test_type', ['word_pang', 'passage_quiz'])
       .gte('started_at', `${startDate}T00:00:00.000Z`)
@@ -36,7 +37,9 @@ export async function GET(request: NextRequest) {
       .from('short_passage_learning_history')
       .select(`
         student_id,
-        started_at
+        started_at,
+        cloze_is_correct,
+        keyword_is_correct
       `)
       .gte('started_at', `${startDate}T00:00:00.000Z`)
       .lte('started_at', `${endDate}T23:59:59.999Z`)
@@ -101,17 +104,20 @@ export async function GET(request: NextRequest) {
           // 날짜별 활동 초기화
           if (!student.dailyActivities[utcDay]) {
             student.dailyActivities[utcDay] = {
-              wordPang: 0,
-              passageQuiz: 0,
-              sentenceClinic: 0
+              wordPang: { count: 0, accuracySum: 0 },
+              passageQuiz: { count: 0, accuracySum: 0 },
+              sentenceClinic: { count: 0, correctCount: 0, totalCount: 0 }
             };
           }
 
-          // test_type에 따라 카운트 증가
+          // test_type에 따라 카운트 및 정답률 누적
+          const accuracy = record.accuracy_rate || 0;
           if (record.test_type === 'word_pang') {
-            student.dailyActivities[utcDay].wordPang += 1;
+            student.dailyActivities[utcDay].wordPang.count += 1;
+            student.dailyActivities[utcDay].wordPang.accuracySum += accuracy;
           } else if (record.test_type === 'passage_quiz') {
-            student.dailyActivities[utcDay].passageQuiz += 1;
+            student.dailyActivities[utcDay].passageQuiz.count += 1;
+            student.dailyActivities[utcDay].passageQuiz.accuracySum += accuracy;
           }
         }
       }
@@ -142,13 +148,18 @@ export async function GET(request: NextRequest) {
 
           if (!student.dailyActivities[utcDay]) {
             student.dailyActivities[utcDay] = {
-              wordPang: 0,
-              passageQuiz: 0,
-              sentenceClinic: 0
+              wordPang: { count: 0, accuracySum: 0 },
+              passageQuiz: { count: 0, accuracySum: 0 },
+              sentenceClinic: { count: 0, correctCount: 0, totalCount: 0 }
             };
           }
 
-          student.dailyActivities[utcDay].sentenceClinic += 1;
+          // 문장클리닉: cloze_is_correct + keyword_is_correct 로 정답률 계산
+          const clozeCorrect = record.cloze_is_correct ? 1 : 0;
+          const keywordCorrect = record.keyword_is_correct ? 1 : 0;
+          student.dailyActivities[utcDay].sentenceClinic.count += 1;
+          student.dailyActivities[utcDay].sentenceClinic.correctCount += clozeCorrect + keywordCorrect;
+          student.dailyActivities[utcDay].sentenceClinic.totalCount += 2; // 각 학습당 2문제
         }
       }
     }
