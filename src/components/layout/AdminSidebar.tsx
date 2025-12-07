@@ -22,7 +22,11 @@ import {
   Wallet,
   FileText,
   Variable,
-  Radio
+  Radio,
+  MessageSquare,
+  BarChart3,
+  TrendingUp,
+  Send
 } from 'lucide-react';
 
 // 네비게이션 아이템 타입 정의
@@ -59,15 +63,22 @@ const navigationCategories: NavigationCategory[] = [
     title: 'STUDENT MANAGEMENT',
     items: [
       { name: '학생 관리', href: '/admin/students', icon: GraduationCap, requiredPermission: PERMISSION_IDS.STUDENTS_VIEW },
+      { name: '풀스택-국어 카톡 발송', href: '/admin/kakao-report', icon: Send, requiredPermission: null },
       { name: '등/하원 조회', href: '/admin/checkinout', icon: Clock, badge: '5', requiredPermission: PERMISSION_IDS.STUDENTS_VIEW },
       { name: '학습관리', href: '/admin/learning', icon: BookText, requiredPermission: PERMISSION_IDS.REPORTS_VIEW },
       { name: '학습리포트', href: '/admin/study-reports', icon: BookOpen, requiredPermission: PERMISSION_IDS.REPORTS_VIEW }
     ]
   },
   {
+    title: 'STATISTICS',
+    items: [
+      { name: '통계', href: '', icon: BarChart3, requiredPermission: null }
+    ]
+  },
+  {
     title: 'CONTENTS MANAGEMENT',
     items: [
-      { name: '지문관리', href: '/admin/contents/passages', icon: FileText, requiredPermission: null }
+      { name: '콘텐츠 관리', href: '', icon: FileText, requiredPermission: null }
     ]
   },
   {
@@ -139,6 +150,19 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
     { name: '수학', href: '/admin/learning/math', icon: BookText }
   ], []);
 
+  // 콘텐츠 관리 서브메뉴들
+  const contentsSubMenus = useMemo(() => [
+    { name: '지문관리', href: '/admin/contents/passages', icon: FileText },
+    { name: '단어팡 관리', href: '/admin/contents/word-pang', icon: BookText },
+    { name: '문장클리닉 관리', href: '/admin/contents/sentence-clinic', icon: MessageSquare }
+  ], []);
+
+  // 통계 서브메뉴들
+  const statisticsSubMenus = useMemo(() => [
+    { name: '문장클리닉 통계', href: '/admin/statistics/sentence-clinic', icon: BarChart3 },
+    { name: '풀스택-국어 학생 통계', href: '/admin/statistics/student-learning', icon: TrendingUp }
+  ], []);
+
   // 권한 목록 로드 (한 번만, role_id가 변경될 때만)
   useEffect(() => {
     const loadPermissions = async () => {
@@ -193,10 +217,22 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
         updated = true;
       }
 
+      const hasActiveContentsSubMenu = contentsSubMenus.some(subItem => subItem.href === pathname);
+      if (hasActiveContentsSubMenu && !prev.includes('콘텐츠 관리')) {
+        newExpanded.push('콘텐츠 관리');
+        updated = true;
+      }
+
+      const hasActiveStatisticsSubMenu = statisticsSubMenus.some(subItem => subItem.href === pathname);
+      if (hasActiveStatisticsSubMenu && !prev.includes('통계')) {
+        newExpanded.push('통계');
+        updated = true;
+      }
+
       // 변경이 없으면 같은 배열 반환하여 리렌더링 방지
       return updated ? newExpanded : prev;
     });
-  }, [pathname, settingsSubMenus, learningSubMenus]);
+  }, [pathname, settingsSubMenus, learningSubMenus, contentsSubMenus, statisticsSubMenus]);
 
   // 권한 체크 함수 - useCallback으로 최적화 (ref 사용하여 불필요한 재생성 방지)
   const hasPermission = useCallback((requiredPermission: string | null | undefined): boolean => {
@@ -297,6 +333,8 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
                 const isActive = isItemActive(item.href);
                 const isSettings = item.name === '설정';
                 const isLearningManagement = item.name === '학습관리';
+                const isContentsManagement = item.name === '콘텐츠 관리';
+                const isStatistics = item.name === '통계';
                 const isExpanded = expandedItems.includes(item.name);
                 
                 return (
@@ -398,6 +436,102 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
                           </div>
                         )}
                       </div>
+                    ) : isContentsManagement ? (
+                      <div>
+                        <div
+                          className={cn(
+                            'flex items-center justify-between px-2.5 py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer',
+                            isActive
+                              ? 'bg-blue-50 text-blue-700'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          )}
+                          onClick={() => toggleExpanded(item.name)}
+                        >
+                          <div className="flex items-center space-x-2.5">
+                            <item.icon className="h-[18px] w-[18px]" />
+                            <span>{item.name}</span>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <ChevronDownIcon className={cn(
+                              'h-3.5 w-3.5 text-gray-400 transition-transform',
+                              isExpanded ? 'rotate-180' : ''
+                            )} />
+                          </div>
+                        </div>
+
+                        {/* 하위 메뉴 */}
+                        {isExpanded && (
+                          <div className="ml-3.5 mt-1.5 space-y-1">
+                            {contentsSubMenus.map((subItem) => {
+                              const isSubActive = isItemActive(subItem.href);
+                              return (
+                                <Link key={subItem.name} href={subItem.href}>
+                                  <div
+                                    className={cn(
+                                      'flex items-center px-2.5 py-2 rounded-lg text-[13px] font-medium transition-colors',
+                                      isSubActive
+                                        ? 'bg-blue-50 text-blue-700'
+                                        : 'text-gray-600 hover:bg-gray-50'
+                                    )}
+                                  >
+                                    <subItem.icon className="h-3.5 w-3.5 mr-2.5" />
+                                    <span>{subItem.name}</span>
+                                  </div>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ) : isStatistics ? (
+                      <div>
+                        <div
+                          className={cn(
+                            'flex items-center justify-between px-2.5 py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer',
+                            isActive
+                              ? 'bg-blue-50 text-blue-700'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          )}
+                          onClick={() => toggleExpanded(item.name)}
+                        >
+                          <div className="flex items-center space-x-2.5">
+                            <item.icon className="h-[18px] w-[18px]" />
+                            <span>{item.name}</span>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <ChevronDownIcon className={cn(
+                              'h-3.5 w-3.5 text-gray-400 transition-transform',
+                              isExpanded ? 'rotate-180' : ''
+                            )} />
+                          </div>
+                        </div>
+
+                        {/* 하위 메뉴 */}
+                        {isExpanded && (
+                          <div className="ml-3.5 mt-1.5 space-y-1">
+                            {statisticsSubMenus.map((subItem) => {
+                              const isSubActive = isItemActive(subItem.href);
+                              return (
+                                <Link key={subItem.name} href={subItem.href}>
+                                  <div
+                                    className={cn(
+                                      'flex items-center px-2.5 py-2 rounded-lg text-[13px] font-medium transition-colors',
+                                      isSubActive
+                                        ? 'bg-blue-50 text-blue-700'
+                                        : 'text-gray-600 hover:bg-gray-50'
+                                    )}
+                                  >
+                                    <subItem.icon className="h-3.5 w-3.5 mr-2.5" />
+                                    <span>{subItem.name}</span>
+                                  </div>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <Link href={item.href}>
                         <div
@@ -412,35 +546,21 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
                             <item.icon className="h-[18px] w-[18px]" />
                             <span>{item.name}</span>
                           </div>
-                          
+
                           <div className="flex items-center space-x-2">
                             {/* 배지 */}
                             {item.badge && (
-                              <Badge 
+                              <Badge
                                 variant={item.badgeType === 'new' ? 'default' : 'secondary'}
                                 className={cn(
                                   'text-[11px] px-2 py-0.5',
-                                  item.badgeType === 'new' 
-                                    ? 'bg-green-100 text-green-700' 
+                                  item.badgeType === 'new'
+                                    ? 'bg-green-100 text-green-700'
                                     : 'bg-blue-100 text-blue-700'
                                 )}
                               >
                                 {item.badge}
                               </Badge>
-                            )}
-                            
-                            {/* 드롭다운 화살표 - 하위 메뉴가 있을 때만 표시 */}
-                            {isSettings && (
-                              <ChevronDownIcon className={cn(
-                                'h-3.5 w-3.5 text-gray-400 transition-transform',
-                                isExpanded ? 'rotate-180' : ''
-                              )} />
-                            )}
-                            {isLearningManagement && (
-                              <ChevronDownIcon className={cn(
-                                'h-3.5 w-3.5 text-gray-400 transition-transform',
-                                isExpanded ? 'rotate-180' : ''
-                              )} />
                             )}
                           </div>
                         </div>
