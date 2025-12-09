@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Edit, Trash2, Building2, MapPin, Phone, Mail, Globe, FileText } from 'lucide-react';
+import { Plus, Edit, Trash2, Building2, MapPin, Phone, Mail, Globe, FileText, MessageSquare } from 'lucide-react';
 import { Academy } from '@/types';
 import { useToast } from '@/components/ui/toast';
 
@@ -33,7 +33,15 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
     website: '',
     description: '',
     logo_url: '',
-    is_active: true
+    is_active: true,
+    // Solapi 카카오 알림톡 설정
+    solapi_api_key: '',
+    solapi_api_secret: '',
+    solapi_pf_id: '',
+    solapi_from_number: '',
+    solapi_template_checkin: '',
+    solapi_template_checkout: '',
+    solapi_template_checkout2: ''
   });
 
   // 학원 목록 조회
@@ -148,7 +156,15 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
       website: '',
       description: '',
       logo_url: '',
-      is_active: true
+      is_active: true,
+      // Solapi 카카오 알림톡 설정
+      solapi_api_key: '',
+      solapi_api_secret: '',
+      solapi_pf_id: '',
+      solapi_from_number: '',
+      solapi_template_checkin: '',
+      solapi_template_checkout: '',
+      solapi_template_checkout2: ''
     });
     setEditingAcademy(null);
   };
@@ -164,7 +180,15 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
       website: academy.website || '',
       description: academy.description || '',
       logo_url: academy.logo_url || '',
-      is_active: academy.is_active
+      is_active: academy.is_active,
+      // Solapi 카카오 알림톡 설정
+      solapi_api_key: academy.solapi_api_key || '',
+      solapi_api_secret: academy.solapi_api_secret || '',
+      solapi_pf_id: academy.solapi_pf_id || '',
+      solapi_from_number: academy.solapi_from_number || '',
+      solapi_template_checkin: academy.solapi_template_checkin || '',
+      solapi_template_checkout: academy.solapi_template_checkout || '',
+      solapi_template_checkout2: academy.solapi_template_checkout2 || ''
     });
     setIsDialogOpen(true);
   };
@@ -312,6 +336,88 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
                 <Label htmlFor="is_active">활성 상태</Label>
               </div>
 
+              {/* Solapi 카카오 알림톡 설정 */}
+              <div className="border-t pt-4 mt-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <MessageSquare className="h-5 w-5 text-yellow-500" />
+                  <h3 className="font-semibold text-gray-900">카카오 알림톡 설정 (Solapi)</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="solapi_api_key">API Key</Label>
+                    <Input
+                      id="solapi_api_key"
+                      type="password"
+                      value={formData.solapi_api_key}
+                      onChange={(e) => setFormData({ ...formData, solapi_api_key: e.target.value })}
+                      placeholder="Solapi API Key"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="solapi_api_secret">API Secret</Label>
+                    <Input
+                      id="solapi_api_secret"
+                      type="password"
+                      value={formData.solapi_api_secret}
+                      onChange={(e) => setFormData({ ...formData, solapi_api_secret: e.target.value })}
+                      placeholder="Solapi API Secret"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="solapi_pf_id">카카오톡 채널 PF ID</Label>
+                    <Input
+                      id="solapi_pf_id"
+                      value={formData.solapi_pf_id}
+                      onChange={(e) => setFormData({ ...formData, solapi_pf_id: e.target.value })}
+                      placeholder="@채널ID"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="solapi_from_number">발신 번호</Label>
+                    <Input
+                      id="solapi_from_number"
+                      value={formData.solapi_from_number}
+                      onChange={(e) => setFormData({ ...formData, solapi_from_number: e.target.value })}
+                      placeholder="02-1234-5678"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="solapi_template_checkin">등원 알림톡 템플릿 ID</Label>
+                    <Input
+                      id="solapi_template_checkin"
+                      value={formData.solapi_template_checkin}
+                      onChange={(e) => setFormData({ ...formData, solapi_template_checkin: e.target.value })}
+                      placeholder="등원 알림 템플릿 ID"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="solapi_template_checkout">하원 알림톡 템플릿 ID</Label>
+                    <Input
+                      id="solapi_template_checkout"
+                      value={formData.solapi_template_checkout}
+                      onChange={(e) => setFormData({ ...formData, solapi_template_checkout: e.target.value })}
+                      placeholder="하원 알림 템플릿 ID"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="solapi_template_checkout2">하원 알림톡 템플릿 ID (학습결과 포함)</Label>
+                    <Input
+                      id="solapi_template_checkout2"
+                      value={formData.solapi_template_checkout2}
+                      onChange={(e) => setFormData({ ...formData, solapi_template_checkout2: e.target.value })}
+                      placeholder="학습결과 포함 하원 알림 템플릿 ID"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   취소
@@ -373,7 +479,13 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
                   <span className="line-clamp-2">{academy.description}</span>
                 </div>
               )}
-              
+              {academy.solapi_api_key && (
+                <div className="flex items-center space-x-2 text-sm text-yellow-600">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>카카오 알림톡 설정됨</span>
+                </div>
+              )}
+
               <div className="flex justify-end space-x-2 pt-2">
                 <Button
                   variant="outline"

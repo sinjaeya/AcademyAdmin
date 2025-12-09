@@ -112,6 +112,14 @@ export interface Academy {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Solapi 카카오 알림톡 설정
+  solapi_api_key?: string;
+  solapi_api_secret?: string;
+  solapi_pf_id?: string;
+  solapi_from_number?: string;
+  solapi_template_checkin?: string;
+  solapi_template_checkout?: string;
+  solapi_template_checkout2?: string;
 }
 
 // 서버 사이드 사용자 컨텍스트 타입

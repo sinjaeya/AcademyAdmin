@@ -50,7 +50,12 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, address, phone, email, website, description, logo_url, is_active } = body;
+    const {
+      name, address, phone, email, website, description, logo_url, is_active,
+      // Solapi 카카오 알림톡 설정
+      solapi_api_key, solapi_api_secret, solapi_pf_id, solapi_from_number,
+      solapi_template_checkin, solapi_template_checkout, solapi_template_checkout2
+    } = body;
 
     // 필수 필드 검증
     if (!name) {
@@ -77,6 +82,14 @@ export async function PUT(
         description: description || null,
         logo_url: logo_url || null,
         is_active: is_active !== undefined ? is_active : true,
+        // Solapi 카카오 알림톡 설정
+        solapi_api_key: solapi_api_key || null,
+        solapi_api_secret: solapi_api_secret || null,
+        solapi_pf_id: solapi_pf_id || null,
+        solapi_from_number: solapi_from_number || null,
+        solapi_template_checkin: solapi_template_checkin || null,
+        solapi_template_checkout: solapi_template_checkout || null,
+        solapi_template_checkout2: solapi_template_checkout2 || null,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
