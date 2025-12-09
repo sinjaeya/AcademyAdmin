@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Edit, Trash2, Building2, MapPin, Phone, Mail, Globe, FileText, MessageSquare } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Plus, Edit, Trash2, Building2, MapPin, Phone, Mail, Globe, FileText, MessageSquare, Eye, EyeOff } from 'lucide-react';
 import { Academy } from '@/types';
 import { useToast } from '@/components/ui/toast';
 
@@ -25,6 +26,8 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [academyToDelete, setAcademyToDelete] = useState<string | null>(null);
   const [editingAcademy, setEditingAcademy] = useState<Academy | null>(null);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [showApiSecret, setShowApiSecret] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -167,6 +170,8 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
       solapi_template_checkout2: ''
     });
     setEditingAcademy(null);
+    setShowApiKey(false);
+    setShowApiSecret(false);
   };
 
   // 수정 모드로 설정
@@ -252,173 +257,205 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
                   <p className="text-xs text-gray-500">학원 ID는 변경할 수 없습니다.</p>
                 </div>
               )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">학원명 *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="학원명을 입력하세요"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">전화번호</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="02-1234-5678"
-                  />
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="address">주소</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="서울시 강남구 테스트로 123"
-                />
-              </div>
+              <Tabs defaultValue="academy">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="academy">
+                    <Building2 className="h-4 w-4 mr-2" />
+                    학원 정보
+                  </TabsTrigger>
+                  <TabsTrigger value="solapi">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    솔라피(카카오) 설정
+                  </TabsTrigger>
+                </TabsList>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">이메일</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="info@academy.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="website">웹사이트</Label>
-                  <Input
-                    id="website"
-                    value={formData.website}
-                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                    placeholder="https://academy.com"
-                  />
-                </div>
-              </div>
+                {/* 학원 정보 탭 */}
+                <TabsContent value="academy" className="space-y-4 pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">학원명 *</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="학원명을 입력하세요"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">전화번호</Label>
+                      <Input
+                        id="phone"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        placeholder="02-1234-5678"
+                      />
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="logo_url">로고 URL</Label>
-                <Input
-                  id="logo_url"
-                  value={formData.logo_url}
-                  onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-                  placeholder="https://example.com/logo.png"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">설명</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="학원에 대한 설명을 입력하세요"
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="is_active"
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                />
-                <Label htmlFor="is_active">활성 상태</Label>
-              </div>
-
-              {/* Solapi 카카오 알림톡 설정 */}
-              <div className="border-t pt-4 mt-4">
-                <div className="flex items-center space-x-2 mb-4">
-                  <MessageSquare className="h-5 w-5 text-yellow-500" />
-                  <h3 className="font-semibold text-gray-900">카카오 알림톡 설정 (Solapi)</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="solapi_api_key">API Key</Label>
+                    <Label htmlFor="address">주소</Label>
                     <Input
-                      id="solapi_api_key"
-                      type="password"
-                      value={formData.solapi_api_key}
-                      onChange={(e) => setFormData({ ...formData, solapi_api_key: e.target.value })}
-                      placeholder="Solapi API Key"
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      placeholder="서울시 강남구 테스트로 123"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="solapi_api_secret">API Secret</Label>
-                    <Input
-                      id="solapi_api_secret"
-                      type="password"
-                      value={formData.solapi_api_secret}
-                      onChange={(e) => setFormData({ ...formData, solapi_api_secret: e.target.value })}
-                      placeholder="Solapi API Secret"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="solapi_pf_id">카카오톡 채널 PF ID</Label>
-                    <Input
-                      id="solapi_pf_id"
-                      value={formData.solapi_pf_id}
-                      onChange={(e) => setFormData({ ...formData, solapi_pf_id: e.target.value })}
-                      placeholder="@채널ID"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">이메일</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        placeholder="info@academy.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="website">웹사이트</Label>
+                      <Input
+                        id="website"
+                        value={formData.website}
+                        onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                        placeholder="https://academy.com"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="solapi_from_number">발신 번호</Label>
-                    <Input
-                      id="solapi_from_number"
-                      value={formData.solapi_from_number}
-                      onChange={(e) => setFormData({ ...formData, solapi_from_number: e.target.value })}
-                      placeholder="02-1234-5678"
-                    />
-                  </div>
-                </div>
 
-                <div className="space-y-4 mt-4">
                   <div className="space-y-2">
-                    <Label htmlFor="solapi_template_checkin">등원 알림톡 템플릿 ID</Label>
+                    <Label htmlFor="logo_url">로고 URL</Label>
                     <Input
-                      id="solapi_template_checkin"
-                      value={formData.solapi_template_checkin}
-                      onChange={(e) => setFormData({ ...formData, solapi_template_checkin: e.target.value })}
-                      placeholder="등원 알림 템플릿 ID"
+                      id="logo_url"
+                      value={formData.logo_url}
+                      onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                      placeholder="https://example.com/logo.png"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="solapi_template_checkout">하원 알림톡 템플릿 ID</Label>
-                    <Input
-                      id="solapi_template_checkout"
-                      value={formData.solapi_template_checkout}
-                      onChange={(e) => setFormData({ ...formData, solapi_template_checkout: e.target.value })}
-                      placeholder="하원 알림 템플릿 ID"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="solapi_template_checkout2">하원 알림톡 템플릿 ID (학습결과 포함)</Label>
-                    <Input
-                      id="solapi_template_checkout2"
-                      value={formData.solapi_template_checkout2}
-                      onChange={(e) => setFormData({ ...formData, solapi_template_checkout2: e.target.value })}
-                      placeholder="학습결과 포함 하원 알림 템플릿 ID"
-                    />
-                  </div>
-                </div>
-              </div>
 
-              <div className="flex justify-end space-x-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="description">설명</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="학원에 대한 설명을 입력하세요"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="is_active"
+                      checked={formData.is_active}
+                      onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                    />
+                    <Label htmlFor="is_active">활성 상태</Label>
+                  </div>
+                </TabsContent>
+
+                {/* 솔라피(카카오) 설정 탭 */}
+                <TabsContent value="solapi" className="space-y-4 pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="solapi_api_key">API Key</Label>
+                      <div className="relative">
+                        <Input
+                          id="solapi_api_key"
+                          type={showApiKey ? 'text' : 'password'}
+                          value={formData.solapi_api_key}
+                          onChange={(e) => setFormData({ ...formData, solapi_api_key: e.target.value })}
+                          placeholder="Solapi API Key"
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer"
+                        >
+                          {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="solapi_api_secret">API Secret</Label>
+                      <div className="relative">
+                        <Input
+                          id="solapi_api_secret"
+                          type={showApiSecret ? 'text' : 'password'}
+                          value={formData.solapi_api_secret}
+                          onChange={(e) => setFormData({ ...formData, solapi_api_secret: e.target.value })}
+                          placeholder="Solapi API Secret"
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApiSecret(!showApiSecret)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer"
+                        >
+                          {showApiSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="solapi_pf_id">카카오톡 채널 PF ID</Label>
+                      <Input
+                        id="solapi_pf_id"
+                        value={formData.solapi_pf_id}
+                        onChange={(e) => setFormData({ ...formData, solapi_pf_id: e.target.value })}
+                        placeholder="@채널ID"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="solapi_from_number">발신 번호</Label>
+                      <Input
+                        id="solapi_from_number"
+                        value={formData.solapi_from_number}
+                        onChange={(e) => setFormData({ ...formData, solapi_from_number: e.target.value })}
+                        placeholder="02-1234-5678"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="solapi_template_checkin">등원 알림톡 템플릿 ID</Label>
+                      <Input
+                        id="solapi_template_checkin"
+                        value={formData.solapi_template_checkin}
+                        onChange={(e) => setFormData({ ...formData, solapi_template_checkin: e.target.value })}
+                        placeholder="등원 알림 템플릿 ID"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="solapi_template_checkout">하원 알림톡 템플릿 ID</Label>
+                      <Input
+                        id="solapi_template_checkout"
+                        value={formData.solapi_template_checkout}
+                        onChange={(e) => setFormData({ ...formData, solapi_template_checkout: e.target.value })}
+                        placeholder="하원 알림 템플릿 ID"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="solapi_template_checkout2">하원 알림톡 템플릿 ID (학습결과 포함)</Label>
+                      <Input
+                        id="solapi_template_checkout2"
+                        value={formData.solapi_template_checkout2}
+                        onChange={(e) => setFormData({ ...formData, solapi_template_checkout2: e.target.value })}
+                        placeholder="학습결과 포함 하원 알림 템플릿 ID"
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              <div className="flex justify-end space-x-2 pt-4 border-t">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   취소
                 </Button>
