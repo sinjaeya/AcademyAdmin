@@ -43,6 +43,16 @@ interface TestSessionPayload {
   accuracy_rate: number;
 }
 
+// test_result payload 타입 (개별 문제 결과)
+interface TestResultPayload {
+  id: number;
+  session_id: number;
+  student_id: number;
+  test_type: 'word_pang' | 'passage_quiz';
+  is_correct: boolean;
+  answered_at: string;
+}
+
 interface SentenceClinicPayload {
   id: string;
   student_id: number;
@@ -52,8 +62,17 @@ interface SentenceClinicPayload {
   keyword_is_correct: boolean;
 }
 
+// 학생별 개별 문제 수 타입 (외부용)
+interface StudentWordCountRecord {
+  wordPangCount: number;
+  wordPangCorrect: number;
+  passageQuizCount: number;
+  passageQuizCorrect: number;
+}
+
 interface RealtimeLearningTableProps {
   initialData: LearningRecord[];
+  initialWordCounts?: Record<number, StudentWordCountRecord>;
 }
 
 // 학습 유형 한글 변환
@@ -94,12 +113,30 @@ const formatTime = (dateString: string) => {
   });
 };
 
-export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProps) {
+// 학생별 개별 문제 수 타입
+interface StudentWordCount {
+  wordPangCount: number;
+  wordPangCorrect: number;
+  passageQuizCount: number;
+  passageQuizCorrect: number;
+}
+
+export function RealtimeLearningTable({ initialData, initialWordCounts }: RealtimeLearningTableProps) {
   const [records, setRecords] = useState<LearningRecord[]>(initialData);
   const [loading, setLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentSummary | null>(null);
   const [newStudentIds, setNewStudentIds] = useState<Set<number>>(new Set());
+  // 학생별 개별 문제 수 (실시간 업데이트용)
+  const [studentWordCounts, setStudentWordCounts] = useState<Map<number, StudentWordCount>>(() => {
+    const map = new Map<number, StudentWordCount>();
+    if (initialWordCounts) {
+      for (const [studentId, counts] of Object.entries(initialWordCounts)) {
+        map.set(Number(studentId), counts);
+      }
+    }
+    return map;
+  });
 
   // 학생 이름 조회 함수
   const fetchStudentName = useCallback(async (studentId: number): Promise<string> => {
@@ -139,23 +176,29 @@ export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProp
         summary.currentActivity = record.learningType;
       }
 
-      // 완료된 학습만 통계에 포함
-      if (record.completedAt) {
-        if (record.learningType === 'word_pang') {
-          summary.wordPang.count += 1;
-          summary.wordPang.totalItems += record.totalItems;
-          summary.wordPang.correctCount += record.correctCount;
-        } else if (record.learningType === 'passage_quiz') {
-          summary.passageQuiz.count += 1;
-          summary.passageQuiz.totalItems += record.totalItems;
-          summary.passageQuiz.correctCount += record.correctCount;
-        } else if (record.learningType === 'sentence_clinic') {
-          summary.sentenceClinic.count += 1;
-          summary.sentenceClinic.totalItems += record.totalItems;
-          summary.sentenceClinic.correctCount += record.correctCount;
-        }
+      // 문장클리닉만 레코드 기반으로 통계 (완료된 학습만)
+      if (record.completedAt && record.learningType === 'sentence_clinic') {
+        summary.sentenceClinic.count += 1;
+        summary.sentenceClinic.totalItems += record.totalItems;
+        summary.sentenceClinic.correctCount += record.correctCount;
       }
     }
+
+    // studentWordCounts에서 단어팡/보물찾기 개별 문제 수 가져오기
+    summaryMap.forEach((summary, studentId) => {
+      const wordCount = studentWordCounts.get(studentId);
+      if (wordCount) {
+        // 단어팡: 개별 문제 수
+        summary.wordPang.count = wordCount.wordPangCount;
+        summary.wordPang.totalItems = wordCount.wordPangCount;
+        summary.wordPang.correctCount = wordCount.wordPangCorrect;
+
+        // 보물찾기: 개별 문제 수
+        summary.passageQuiz.count = wordCount.passageQuizCount;
+        summary.passageQuiz.totalItems = wordCount.passageQuizCount;
+        summary.passageQuiz.correctCount = wordCount.passageQuizCorrect;
+      }
+    });
 
     // 정답률 계산
     summaryMap.forEach(summary => {
@@ -179,7 +222,7 @@ export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProp
       // 그 다음 이름순
       return a.studentName.localeCompare(b.studentName);
     });
-  }, [records]);
+  }, [records, studentWordCounts]);
 
   // 데이터 새로고침
   const handleRefresh = useCallback(async () => {
@@ -189,6 +232,14 @@ export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProp
       const result = await response.json();
       if (result.data) {
         setRecords(result.data);
+      }
+      // 개별 문제 수 데이터도 가져오기
+      if (result.wordCounts) {
+        const newWordCounts = new Map<number, StudentWordCount>();
+        for (const [studentId, counts] of Object.entries(result.wordCounts)) {
+          newWordCounts.set(Number(studentId), counts as StudentWordCount);
+        }
+        setStudentWordCounts(newWordCounts);
       }
     } catch (error) {
       console.error('Error refreshing data:', error);
@@ -369,10 +420,74 @@ export function RealtimeLearningTable({ initialData }: RealtimeLearningTableProp
         console.log('sentence_clinic subscription status:', status);
       });
 
+    // test_result 채널 구독 (개별 문제 결과 - 단어 1개씩 업데이트)
+    const testResultChannel = supabase
+      .channel('test_result_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'test_result',
+          filter: `test_type=in.(word_pang,passage_quiz)`
+        },
+        async (payload) => {
+          console.log('test_result change:', payload);
+
+          const newResult = payload.new as TestResultPayload;
+
+          // 오늘 날짜인지 확인
+          const today = new Date().toISOString().split('T')[0];
+          const resultDate = new Date(newResult.answered_at).toISOString().split('T')[0];
+
+          if (resultDate !== today) return;
+
+          const studentId = newResult.student_id;
+          const testType = newResult.test_type;
+          const isCorrect = newResult.is_correct;
+
+          // 학생별 문제 수 업데이트
+          setStudentWordCounts(prev => {
+            const newMap = new Map(prev);
+            const current = newMap.get(studentId) || {
+              wordPangCount: 0,
+              wordPangCorrect: 0,
+              passageQuizCount: 0,
+              passageQuizCorrect: 0
+            };
+
+            if (testType === 'word_pang') {
+              current.wordPangCount += 1;
+              if (isCorrect) current.wordPangCorrect += 1;
+            } else if (testType === 'passage_quiz') {
+              current.passageQuizCount += 1;
+              if (isCorrect) current.passageQuizCorrect += 1;
+            }
+
+            newMap.set(studentId, { ...current });
+            return newMap;
+          });
+
+          // 새 학생 하이라이트
+          setNewStudentIds(ids => new Set(ids).add(studentId));
+          setTimeout(() => {
+            setNewStudentIds(ids => {
+              const newIds = new Set(ids);
+              newIds.delete(studentId);
+              return newIds;
+            });
+          }, 1000);
+        }
+      )
+      .subscribe((status) => {
+        console.log('test_result subscription status:', status);
+      });
+
     // 클린업
     return () => {
       if (supabase) {
         supabase.removeChannel(testSessionChannel);
+        supabase.removeChannel(testResultChannel);
         supabase.removeChannel(sentenceClinicChannel);
       }
       setIsConnected(false);

@@ -13,7 +13,19 @@ interface LearningRecord {
   accuracyRate: number;
 }
 
-async function getInitialData(): Promise<LearningRecord[]> {
+interface StudentWordCount {
+  wordPangCount: number;
+  wordPangCorrect: number;
+  passageQuizCount: number;
+  passageQuizCorrect: number;
+}
+
+interface InitialData {
+  records: LearningRecord[];
+  wordCounts: Record<number, StudentWordCount>;
+}
+
+async function getInitialData(): Promise<InitialData> {
   const { createServerClient } = await import('@/lib/supabase/server');
   const supabase = createServerClient();
 
@@ -45,7 +57,49 @@ async function getInitialData(): Promise<LearningRecord[]> {
 
   if (testSessionError) {
     console.error('Error fetching test_session data:', testSessionError);
-    return [];
+    return { records: [], wordCounts: {} };
+  }
+
+  // test_result에서 오늘의 개별 문제 결과 가져오기
+  const { data: testResultData, error: testResultError } = await supabase
+    .from('test_result')
+    .select(`
+      id,
+      student_id,
+      test_type,
+      is_correct,
+      answered_at
+    `)
+    .in('test_type', ['word_pang', 'passage_quiz'])
+    .gte('answered_at', startDate)
+    .lte('answered_at', endDate);
+
+  if (testResultError) {
+    console.error('Error fetching test_result data:', testResultError);
+  }
+
+  // 학생별 개별 문제 수 계산
+  const wordCounts: Record<number, StudentWordCount> = {};
+  if (testResultData) {
+    for (const result of testResultData) {
+      const studentId = Number(result.student_id);
+      if (!wordCounts[studentId]) {
+        wordCounts[studentId] = {
+          wordPangCount: 0,
+          wordPangCorrect: 0,
+          passageQuizCount: 0,
+          passageQuizCorrect: 0
+        };
+      }
+
+      if (result.test_type === 'word_pang') {
+        wordCounts[studentId].wordPangCount += 1;
+        if (result.is_correct) wordCounts[studentId].wordPangCorrect += 1;
+      } else if (result.test_type === 'passage_quiz') {
+        wordCounts[studentId].passageQuizCount += 1;
+        if (result.is_correct) wordCounts[studentId].passageQuizCorrect += 1;
+      }
+    }
   }
 
   // short_passage_learning_history에서 오늘의 문장클리닉 데이터 가져오기
@@ -136,15 +190,15 @@ async function getInitialData(): Promise<LearningRecord[]> {
   // 시작 시간 기준 내림차순 정렬
   records.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
 
-  return records;
+  return { records, wordCounts };
 }
 
 export default async function RealtimeKoreanLearning() {
-  const initialData = await getInitialData();
+  const { records, wordCounts } = await getInitialData();
 
   return (
     <AdminLayout>
-      <RealtimeLearningTable initialData={initialData} />
+      <RealtimeLearningTable initialData={records} initialWordCounts={wordCounts} />
     </AdminLayout>
   );
 }

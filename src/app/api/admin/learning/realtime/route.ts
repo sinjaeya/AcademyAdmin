@@ -85,6 +85,48 @@ export async function GET() {
       });
     }
 
+    // test_result에서 오늘의 개별 문제 결과 가져오기
+    const { data: testResultData, error: testResultError } = await supabase
+      .from('test_result')
+      .select(`
+        id,
+        student_id,
+        test_type,
+        is_correct,
+        answered_at
+      `)
+      .in('test_type', ['word_pang', 'passage_quiz'])
+      .gte('answered_at', startDate)
+      .lte('answered_at', endDate);
+
+    if (testResultError) {
+      console.error('Error fetching test_result data:', testResultError);
+    }
+
+    // 학생별 개별 문제 수 계산
+    const wordCounts: Record<number, { wordPangCount: number; wordPangCorrect: number; passageQuizCount: number; passageQuizCorrect: number }> = {};
+    if (testResultData) {
+      for (const result of testResultData) {
+        const studentId = Number(result.student_id);
+        if (!wordCounts[studentId]) {
+          wordCounts[studentId] = {
+            wordPangCount: 0,
+            wordPangCorrect: 0,
+            passageQuizCount: 0,
+            passageQuizCorrect: 0
+          };
+        }
+
+        if (result.test_type === 'word_pang') {
+          wordCounts[studentId].wordPangCount += 1;
+          if (result.is_correct) wordCounts[studentId].wordPangCorrect += 1;
+        } else if (result.test_type === 'passage_quiz') {
+          wordCounts[studentId].passageQuizCount += 1;
+          if (result.is_correct) wordCounts[studentId].passageQuizCorrect += 1;
+        }
+      }
+    }
+
     // 결과 데이터 생성
     const records: LearningRecord[] = [];
 
@@ -136,7 +178,7 @@ export async function GET() {
     // 시작 시간 기준 내림차순 정렬
     records.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
 
-    return NextResponse.json({ data: records });
+    return NextResponse.json({ data: records, wordCounts });
   } catch (error) {
     console.error('Error in realtime learning API:', error);
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
