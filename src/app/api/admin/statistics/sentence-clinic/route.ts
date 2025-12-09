@@ -42,7 +42,7 @@ export async function GET(): Promise<NextResponse> {
       .rpc('get_short_passage_stats');
 
     // RPC 함수가 없으면 직접 쿼리로 대체
-    let levelCounts: Record<string, number> = {};
+    const levelCounts: Record<string, number> = {};
 
     if (statsError) {
       // RPC 함수가 없는 경우 전체 데이터를 페이지네이션으로 가져오기
