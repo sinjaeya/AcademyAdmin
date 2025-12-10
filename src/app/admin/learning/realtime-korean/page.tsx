@@ -29,10 +29,20 @@ async function getInitialData(): Promise<InitialData> {
   const { createServerClient } = await import('@/lib/supabase/server');
   const supabase = createServerClient();
 
-  // 오늘 날짜 (UTC 기준)
-  const today = new Date();
-  const startOfDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), 0, 0, 0, 0));
-  const endOfDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), 23, 59, 59, 999));
+  // 한국 시간(KST, UTC+9) 기준 오늘
+  const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  const now = new Date();
+
+  // KST 기준 현재 날짜 계산
+  const kstNow = new Date(now.getTime() + KST_OFFSET_MS);
+  const kstYear = kstNow.getUTCFullYear();
+  const kstMonth = kstNow.getUTCMonth();
+  const kstDate = kstNow.getUTCDate();
+
+  // KST 오늘 00:00:00을 UTC로 변환
+  const startOfDay = new Date(Date.UTC(kstYear, kstMonth, kstDate, 0, 0, 0, 0) - KST_OFFSET_MS);
+  // KST 오늘 23:59:59.999를 UTC로 변환
+  const endOfDay = new Date(Date.UTC(kstYear, kstMonth, kstDate, 23, 59, 59, 999) - KST_OFFSET_MS);
 
   const startDate = startOfDay.toISOString();
   const endDate = endOfDay.toISOString();

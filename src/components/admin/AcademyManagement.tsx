@@ -227,10 +227,7 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
     <div className="space-y-6">
       {/* 헤더 및 추가 버튼 */}
       <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-semibold">학원 목록</h2>
-          <p className="text-sm text-gray-600">총 {academies.length}개의 학원이 등록되어 있습니다.</p>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900">학원관리</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={handleAddNew}>

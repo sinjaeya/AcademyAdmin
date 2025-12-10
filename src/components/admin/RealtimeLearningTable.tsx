@@ -113,6 +113,12 @@ const formatTime = (dateString: string) => {
   });
 };
 
+// KST 기준 날짜 문자열 반환 (YYYY-MM-DD)
+const getKSTDateString = (date: Date): string => {
+  const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  return kstDate.toISOString().split('T')[0];
+};
+
 // 학생별 개별 문제 수 타입
 interface StudentWordCount {
   wordPangCount: number;
@@ -305,9 +311,9 @@ export function RealtimeLearningTable({ initialData, initialWordCounts }: Realti
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const newRecord = payload.new as TestSessionPayload;
 
-            // 오늘 날짜인지 확인
-            const today = new Date().toISOString().split('T')[0];
-            const recordDate = new Date(newRecord.started_at).toISOString().split('T')[0];
+            // KST 기준 오늘 날짜인지 확인
+            const today = getKSTDateString(new Date());
+            const recordDate = getKSTDateString(new Date(newRecord.started_at));
 
             if (recordDate !== today) return;
 
@@ -370,9 +376,9 @@ export function RealtimeLearningTable({ initialData, initialWordCounts }: Realti
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const newRecord = payload.new as SentenceClinicPayload;
 
-            // 오늘 날짜인지 확인
-            const today = new Date().toISOString().split('T')[0];
-            const recordDate = new Date(newRecord.started_at).toISOString().split('T')[0];
+            // KST 기준 오늘 날짜인지 확인
+            const today = getKSTDateString(new Date());
+            const recordDate = getKSTDateString(new Date(newRecord.started_at));
 
             if (recordDate !== today) return;
 
@@ -436,9 +442,9 @@ export function RealtimeLearningTable({ initialData, initialWordCounts }: Realti
 
           const newResult = payload.new as TestResultPayload;
 
-          // 오늘 날짜인지 확인
-          const today = new Date().toISOString().split('T')[0];
-          const resultDate = new Date(newResult.answered_at).toISOString().split('T')[0];
+          // KST 기준 오늘 날짜인지 확인
+          const today = getKSTDateString(new Date());
+          const resultDate = getKSTDateString(new Date(newResult.answered_at));
 
           if (resultDate !== today) return;
 
