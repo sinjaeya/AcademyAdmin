@@ -500,22 +500,6 @@ export function RealtimeLearningTable({ initialData, initialWordCounts }: Realti
     };
   }, [fetchStudentName]);
 
-  // 전체 통계 계산
-  const totalStats = useMemo(() => {
-    const completedRecords = records.filter(r => r.completedAt);
-    const inProgressCount = records.filter(r => !r.completedAt).length;
-    const avgAccuracy = completedRecords.length > 0
-      ? completedRecords.reduce((acc, r) => acc + r.accuracyRate, 0) / completedRecords.length
-      : 0;
-
-    return {
-      totalStudents: studentSummaries.length,
-      completedCount: completedRecords.length,
-      inProgressCount,
-      avgAccuracy
-    };
-  }, [records, studentSummaries]);
-
   return (
     <div className="space-y-6">
       {/* 페이지 헤더 */}
@@ -560,26 +544,6 @@ export function RealtimeLearningTable({ initialData, initialWordCounts }: Realti
           데이터를 불러오는 중...
         </div>
       )}
-
-      {/* 전체 통계 요약 */}
-      <div className="grid grid-cols-4 gap-4">
-        <Card className="p-4">
-          <div className="text-sm text-gray-500">학습 중인 학생</div>
-          <div className="text-2xl font-bold text-gray-900">{totalStats.totalStudents}명</div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-sm text-gray-500">완료한 학습</div>
-          <div className="text-2xl font-bold text-green-600">{totalStats.completedCount}개</div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-sm text-gray-500">진행 중</div>
-          <div className="text-2xl font-bold text-blue-600">{totalStats.inProgressCount}개</div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-sm text-gray-500">평균 정답률</div>
-          <div className="text-2xl font-bold text-gray-900">{totalStats.avgAccuracy.toFixed(0)}%</div>
-        </Card>
-      </div>
 
       {/* 학생별 카드 그리드 */}
       {studentSummaries.length === 0 ? (
