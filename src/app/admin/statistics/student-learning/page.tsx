@@ -2,9 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Loader2, TrendingUp, Users, Zap, BookText, Search } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Loader2, TrendingUp, Zap, BookText, Search, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 // 학생별 통계 타입
 interface StudentStat {
@@ -31,33 +40,66 @@ interface StatisticsData {
   summary: SummaryStats;
 }
 
+type SortField = 'wordPangCount' | 'sentenceLearningCount' | 'passageQuizCount' | null;
+type SortDirection = 'asc' | 'desc';
+
 export default function StudentLearningStatisticsPage(): React.ReactElement {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [statistics, setStatistics] = useState<StatisticsData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  const fetchStatistics = async (isRefresh = false): Promise<void> => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      }
+      setError(null);
+      const response = await fetch('/api/admin/statistics/student-learning');
+      const result = await response.json();
+
+      if (result.success) {
+        setStatistics(result.data);
+      } else {
+        setError(result.error || '통계 조회 실패');
+      }
+    } catch (err) {
+      console.error('통계 조회 오류:', err);
+      setError('통계 조회 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchStatistics = async (): Promise<void> => {
-      try {
-        const response = await fetch('/api/admin/statistics/student-learning');
-        const result = await response.json();
-
-        if (result.success) {
-          setStatistics(result.data);
-        } else {
-          setError(result.error || '통계 조회 실패');
-        }
-      } catch (err) {
-        console.error('통계 조회 오류:', err);
-        setError('통계 조회 중 오류가 발생했습니다.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchStatistics();
   }, []);
+
+  // 정렬 핸들러
+  const handleSort = (field: SortField): void => {
+    if (sortField === field) {
+      // 같은 필드 클릭 시 방향 토글
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // 다른 필드 클릭 시 내림차순으로 시작
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  // 정렬 아이콘 렌더링
+  const renderSortIcon = (field: SortField): React.ReactElement => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-3 h-3 ml-1 opacity-50" />;
+    }
+    return sortDirection === 'asc'
+      ? <ArrowUp className="w-3 h-3 ml-1" />
+      : <ArrowDown className="w-3 h-3 ml-1" />;
+  };
 
   // 검색 필터링
   const filteredStudents = statistics?.students.filter((student) => {
@@ -69,6 +111,15 @@ export default function StudentLearningStatisticsPage(): React.ReactElement {
       student.grade?.toLowerCase().includes(search)
     );
   }) || [];
+
+  // 정렬 적용
+  const sortedStudents = [...filteredStudents].sort((a, b) => {
+    if (!sortField) return 0;
+    const aValue = a[sortField];
+    const bValue = b[sortField];
+    const multiplier = sortDirection === 'asc' ? 1 : -1;
+    return (aValue - bValue) * multiplier;
+  });
 
   if (loading) {
     return (
@@ -111,61 +162,15 @@ export default function StudentLearningStatisticsPage(): React.ReactElement {
               <p className="text-sm text-gray-500">이지국어교습소 재원 학생</p>
             </div>
           </div>
-        </div>
-
-        {/* 전체 통계 요약 카드 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* 총 학생 수 */}
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-sm">총 학생 수</p>
-                  <p className="text-3xl font-bold">{statistics?.summary.totalStudents}</p>
-                </div>
-                <Users className="w-10 h-10 text-blue-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 단어팡 총 완료 */}
-          <Card className="bg-gradient-to-r from-amber-500 to-orange-500 text-white">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-amber-100 text-sm">단어팡 완료</p>
-                  <p className="text-3xl font-bold">{statistics?.summary.totalWordPang}</p>
-                </div>
-                <Zap className="w-10 h-10 text-amber-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 문장클리닉 총 완료 */}
-          <Card className="bg-gradient-to-r from-emerald-500 to-green-500 text-white">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-emerald-100 text-sm">문장클리닉 완료</p>
-                  <p className="text-3xl font-bold">{statistics?.summary.totalSentenceLearning}</p>
-                </div>
-                <BookText className="w-10 h-10 text-emerald-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 보물찾기 총 완료 */}
-          <Card className="bg-gradient-to-r from-purple-500 to-violet-500 text-white">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-100 text-sm">보물찾기 완료</p>
-                  <p className="text-3xl font-bold">{statistics?.summary.totalPassageQuiz}</p>
-                </div>
-                <Search className="w-10 h-10 text-purple-200" />
-              </div>
-            </CardContent>
-          </Card>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchStatistics(true)}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            새로고침
+          </Button>
         </div>
 
         {/* 검색 */}
@@ -180,99 +185,94 @@ export default function StudentLearningStatisticsPage(): React.ReactElement {
             />
           </div>
           <span className="text-sm text-gray-500">
-            {filteredStudents.length}명 표시
+            {sortedStudents.length}명 표시
           </span>
         </div>
 
-        {/* 학생별 카드 목록 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredStudents.map((student) => (
-            <Card key={student.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between">
-                  <span className="text-lg font-bold text-gray-800">{student.name}</span>
-                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                    총 {student.totalCount}회
-                  </span>
-                </CardTitle>
-                <p className="text-sm text-gray-500">
-                  {student.school || '-'} {student.grade || ''}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {/* 단어팡 */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-                        <Zap className="w-4 h-4 text-amber-600" />
-                      </div>
-                      <span className="text-sm text-gray-600">단어팡</span>
-                    </div>
-                    <span className="font-bold text-amber-600">{student.wordPangCount}회</span>
-                  </div>
-
-                  {/* 문장클리닉 */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
-                        <BookText className="w-4 h-4 text-emerald-600" />
-                      </div>
-                      <span className="text-sm text-gray-600">문장클리닉</span>
-                    </div>
-                    <span className="font-bold text-emerald-600">{student.sentenceLearningCount}회</span>
-                  </div>
-
-                  {/* 보물찾기 */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                        <Search className="w-4 h-4 text-purple-600" />
-                      </div>
-                      <span className="text-sm text-gray-600">보물찾기</span>
-                    </div>
-                    <span className="font-bold text-purple-600">{student.passageQuizCount}회</span>
-                  </div>
-                </div>
-
-                {/* 총 학습 진행 바 */}
-                {student.totalCount > 0 && (
-                  <div className="mt-4 pt-3 border-t border-gray-100">
-                    <div className="flex gap-1 h-2 rounded-full overflow-hidden bg-gray-100">
-                      {student.wordPangCount > 0 && (
-                        <div
-                          className="bg-amber-500"
-                          style={{ width: `${(student.wordPangCount / student.totalCount) * 100}%` }}
-                        />
-                      )}
-                      {student.sentenceLearningCount > 0 && (
-                        <div
-                          className="bg-emerald-500"
-                          style={{ width: `${(student.sentenceLearningCount / student.totalCount) * 100}%` }}
-                        />
-                      )}
-                      {student.passageQuizCount > 0 && (
-                        <div
-                          className="bg-purple-500"
-                          style={{ width: `${(student.passageQuizCount / student.totalCount) * 100}%` }}
-                        />
-                      )}
-                    </div>
-                  </div>
+        {/* 학생별 테이블 */}
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="w-[80px] text-center">번호</TableHead>
+                  <TableHead>이름</TableHead>
+                  <TableHead>학교</TableHead>
+                  <TableHead className="w-[80px] text-center">학년</TableHead>
+                  <TableHead className="w-[120px] text-center">
+                    <button
+                      onClick={() => handleSort('wordPangCount')}
+                      className="flex items-center justify-center gap-1 w-full cursor-pointer hover:text-amber-600 transition-colors"
+                    >
+                      <Zap className="w-4 h-4 text-amber-500" />
+                      <span>단어팡</span>
+                      {renderSortIcon('wordPangCount')}
+                    </button>
+                  </TableHead>
+                  <TableHead className="w-[120px] text-center">
+                    <button
+                      onClick={() => handleSort('sentenceLearningCount')}
+                      className="flex items-center justify-center gap-1 w-full cursor-pointer hover:text-emerald-600 transition-colors"
+                    >
+                      <BookText className="w-4 h-4 text-emerald-500" />
+                      <span>문장클리닉</span>
+                      {renderSortIcon('sentenceLearningCount')}
+                    </button>
+                  </TableHead>
+                  <TableHead className="w-[120px] text-center">
+                    <button
+                      onClick={() => handleSort('passageQuizCount')}
+                      className="flex items-center justify-center gap-1 w-full cursor-pointer hover:text-purple-600 transition-colors"
+                    >
+                      <Search className="w-4 h-4 text-purple-500" />
+                      <span>보물찾기</span>
+                      {renderSortIcon('passageQuizCount')}
+                    </button>
+                  </TableHead>
+                  <TableHead className="w-[100px] text-center">총합</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedStudents.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-12 text-gray-500">
+                      {searchTerm ? '검색 결과가 없습니다.' : '등록된 학생이 없습니다.'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sortedStudents.map((student, index) => (
+                    <TableRow key={student.id} className="hover:bg-gray-50">
+                      <TableCell className="text-center text-gray-500">{index + 1}</TableCell>
+                      <TableCell className="font-medium">{student.name}</TableCell>
+                      <TableCell className="text-gray-600">{student.school || '-'}</TableCell>
+                      <TableCell className="text-center text-gray-600">{student.grade || '-'}</TableCell>
+                      <TableCell className="text-center">
+                        <span className="font-semibold text-amber-600">
+                          {student.wordPangCount.toLocaleString()}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="font-semibold text-emerald-600">
+                          {student.sentenceLearningCount.toLocaleString()}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="font-semibold text-purple-600">
+                          {student.passageQuizCount.toLocaleString()}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="font-bold text-blue-600">
+                          {student.totalCount.toLocaleString()}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* 학습 기록이 없는 경우 */}
-        {filteredStudents.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">
-              {searchTerm ? '검색 결과가 없습니다.' : '등록된 학생이 없습니다.'}
-            </p>
-          </div>
-        )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       </div>
     </AdminLayout>
   );

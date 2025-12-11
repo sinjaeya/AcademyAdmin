@@ -35,6 +35,23 @@ export async function GET(): Promise<NextResponse> {
       return NextResponse.json({ error: sessionsError.message }, { status: 500 });
     }
 
+    // 문장클리닉 학습 기록 조회 (short_passage_learning_history 테이블)
+    const { data: sentenceLearningData, error: sentenceLearningError } = await supabase
+      .from('short_passage_learning_history')
+      .select('student_id');
+
+    if (sentenceLearningError) {
+      console.error('문장클리닉 조회 오류:', sentenceLearningError);
+      return NextResponse.json({ error: sentenceLearningError.message }, { status: 500 });
+    }
+
+    // 학생별 문장클리닉 지문 수 집계
+    const sentenceLearningCounts: Record<number, number> = {};
+    sentenceLearningData?.forEach((record) => {
+      const studentId = record.student_id;
+      sentenceLearningCounts[studentId] = (sentenceLearningCounts[studentId] || 0) + 1;
+    });
+
     // 학생별 통계 집계
     const studentStats: Record<number, {
       wordPangCount: number;
@@ -54,10 +71,8 @@ export async function GET(): Promise<NextResponse> {
 
       switch (session.test_type) {
         case 'word_pang':
-          studentStats[studentId].wordPangCount += 1;
-          break;
-        case 'sentence_learning':
-          studentStats[studentId].sentenceLearningCount += 1;
+          // 세션 수가 아닌 학습한 총 단어 수로 변경
+          studentStats[studentId].wordPangCount += session.total_items || 0;
           break;
         case 'passage_quiz':
           studentStats[studentId].passageQuizCount += 1;
@@ -73,6 +88,9 @@ export async function GET(): Promise<NextResponse> {
         passageQuizCount: 0
       };
 
+      // 문장클리닉은 별도 테이블에서 조회한 데이터 사용
+      const sentenceLearningCount = sentenceLearningCounts[student.id] || 0;
+
       return {
         id: student.id,
         name: student.name,
@@ -80,9 +98,9 @@ export async function GET(): Promise<NextResponse> {
         grade: student.grade,
         status: student.status,
         wordPangCount: stats.wordPangCount,
-        sentenceLearningCount: stats.sentenceLearningCount,
+        sentenceLearningCount: sentenceLearningCount,
         passageQuizCount: stats.passageQuizCount,
-        totalCount: stats.wordPangCount + stats.sentenceLearningCount + stats.passageQuizCount
+        totalCount: stats.wordPangCount + sentenceLearningCount + stats.passageQuizCount
       };
     }) || [];
 
