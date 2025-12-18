@@ -186,12 +186,12 @@ async function getInitialData(): Promise<InitialData> {
 
         // 4. 단어 ID -> 단어 맵 생성
         const wordMap = new Map<number, string>();
-        wordData?.forEach(w => wordMap.set(w.voca_id, w.word));
+        wordData?.forEach(w => wordMap.set(Number(w.voca_id), w.word));
 
         // 5. 세션별 맞은/틀린 단어 분류
         for (const result of wordResultData) {
-          const sessionId = result.session_id;
-          const word = wordMap.get(result.item_id) || '';
+          const sessionId = Number(result.session_id);
+          const word = wordMap.get(Number(result.item_id)) || '';
 
           if (!sessionWordMap.has(sessionId)) {
             sessionWordMap.set(sessionId, { correctWords: [], wrongWords: [] });
