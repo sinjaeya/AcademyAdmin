@@ -18,6 +18,8 @@ interface LearningRecord {
   totalItems: number;
   correctCount: number;
   accuracyRate: number;
+  correctWords?: string[]; // 단어팡 맞은 단어들
+  wrongWords?: string[]; // 단어팡 틀린 단어들
 }
 
 // 학생별 요약 타입
@@ -734,8 +736,23 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                       <td className="px-4 py-2 text-center text-sm text-gray-600">
                         {record.totalItems}
                       </td>
-                      <td className="px-4 py-2 text-center text-sm text-gray-600">
-                        {record.correctCount}
+                      <td className="px-4 py-2 text-sm text-gray-600">
+                        {record.learningType === 'word_pang' && (record.correctWords || record.wrongWords) ? (
+                          <div className="flex flex-wrap gap-1 justify-center">
+                            {record.correctWords?.map((word, idx) => (
+                              <Badge key={`c-${idx}`} className="bg-green-100 text-green-700 border-green-200 text-xs">
+                                {word}
+                              </Badge>
+                            ))}
+                            {record.wrongWords?.map((word, idx) => (
+                              <Badge key={`w-${idx}`} className="bg-red-100 text-red-700 border-red-200 text-xs">
+                                {word}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center">{record.correctCount}</div>
+                        )}
                       </td>
                       <td className="px-4 py-2 text-center text-sm">
                         <span className={`font-medium ${
