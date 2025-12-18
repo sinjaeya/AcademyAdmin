@@ -596,10 +596,10 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                     단어팡
                     {(() => {
                       const historical = historicalAccuracy.get(summary.studentId);
-                      if (historical?.wordPangAccuracyRate != null) {
+                      if (historical && historical.wordPangTotal > 0) {
                         return (
                           <span className="text-blue-500 font-normal ml-1">
-                            ({historical.wordPangAccuracyRate.toFixed(0)}%)
+                            ({historical.wordPangTotal}개/{historical.wordPangAccuracyRate?.toFixed(0)}%)
                           </span>
                         );
                       }
