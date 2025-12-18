@@ -20,9 +20,17 @@ interface StudentWordCount {
   passageQuizCorrect: number;
 }
 
+// 학생별 누적 정답률 (오늘 이전)
+interface StudentHistoricalAccuracy {
+  wordPangTotal: number;
+  wordPangCorrect: number;
+  wordPangAccuracyRate: number | null; // 데이터 없으면 null
+}
+
 interface InitialData {
   records: LearningRecord[];
   wordCounts: Record<number, StudentWordCount>;
+  historicalAccuracy: Record<number, StudentHistoricalAccuracy>;
 }
 
 async function getInitialData(): Promise<InitialData> {
@@ -67,7 +75,7 @@ async function getInitialData(): Promise<InitialData> {
 
   if (testSessionError) {
     console.error('Error fetching test_session data:', testSessionError);
-    return { records: [], wordCounts: {} };
+    return { records: [], wordCounts: {}, historicalAccuracy: {} };
   }
 
   // test_result에서 오늘의 개별 문제 결과 가져오기
@@ -200,15 +208,60 @@ async function getInitialData(): Promise<InitialData> {
   // 시작 시간 기준 내림차순 정렬
   records.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
 
-  return { records, wordCounts };
+  // 오늘 학습한 학생들의 오늘 이전 누적 정답률 조회
+  const historicalAccuracy: Record<number, StudentHistoricalAccuracy> = {};
+
+  if (studentIds.length > 0) {
+    // 오늘 이전의 단어팡 결과 가져오기
+    const { data: historicalData, error: historicalError } = await supabase
+      .from('test_result')
+      .select('student_id, is_correct')
+      .eq('test_type', 'word_pang')
+      .in('student_id', studentIds)
+      .lt('answered_at', startDate); // 오늘 이전 데이터만
+
+    if (historicalError) {
+      console.error('Error fetching historical data:', historicalError);
+    } else if (historicalData) {
+      // 학생별로 집계
+      for (const result of historicalData) {
+        const studentId = Number(result.student_id);
+        if (!historicalAccuracy[studentId]) {
+          historicalAccuracy[studentId] = {
+            wordPangTotal: 0,
+            wordPangCorrect: 0,
+            wordPangAccuracyRate: null
+          };
+        }
+        historicalAccuracy[studentId].wordPangTotal += 1;
+        if (result.is_correct) {
+          historicalAccuracy[studentId].wordPangCorrect += 1;
+        }
+      }
+
+      // 정답률 계산
+      for (const studentId of Object.keys(historicalAccuracy)) {
+        const data = historicalAccuracy[Number(studentId)];
+        if (data.wordPangTotal > 0) {
+          data.wordPangAccuracyRate = (data.wordPangCorrect / data.wordPangTotal) * 100;
+        }
+      }
+    }
+  }
+
+  return { records, wordCounts, historicalAccuracy };
 }
 
 export default async function RealtimeKoreanLearning() {
-  const { records, wordCounts } = await getInitialData();
+  const { records, wordCounts, historicalAccuracy } = await getInitialData();
 
   return (
     <AdminLayout>
-      <RealtimeLearningTable initialData={records} initialWordCounts={wordCounts} />
+      <RealtimeLearningTable
+        initialData={records}
+        initialWordCounts={wordCounts}
+        initialHistoricalAccuracy={historicalAccuracy}
+      />
     </AdminLayout>
   );
 }

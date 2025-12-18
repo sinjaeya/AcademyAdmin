@@ -8,7 +8,12 @@
       "Bash(npx @next/codemod@canary upgrade latest)",
       "Bash(npm i:*)",
       "Bash(npm ls:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm view:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\n보안 취약점 패치 (npm audit fix).\n\n- next: 16.0.8 → 16.0.10 (Server Actions 소스코드 노출, DoS 취약점 수정)\n- @modelcontextprotocol/sdk: 1.20.2 → 1.24.3 (DNS rebinding 보호)\n- body-parser: DoS 취약점 수정\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

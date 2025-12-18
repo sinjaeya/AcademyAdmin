@@ -70,9 +70,17 @@ interface StudentWordCountRecord {
   passageQuizCorrect: number;
 }
 
+// 학생별 누적 정답률 (오늘 이전)
+interface StudentHistoricalAccuracy {
+  wordPangTotal: number;
+  wordPangCorrect: number;
+  wordPangAccuracyRate: number | null;
+}
+
 interface RealtimeLearningTableProps {
   initialData: LearningRecord[];
   initialWordCounts?: Record<number, StudentWordCountRecord>;
+  initialHistoricalAccuracy?: Record<number, StudentHistoricalAccuracy>;
 }
 
 // 학습 유형 한글 변환
@@ -127,7 +135,7 @@ interface StudentWordCount {
   passageQuizCorrect: number;
 }
 
-export function RealtimeLearningTable({ initialData, initialWordCounts }: RealtimeLearningTableProps) {
+export function RealtimeLearningTable({ initialData, initialWordCounts, initialHistoricalAccuracy }: RealtimeLearningTableProps) {
   const [records, setRecords] = useState<LearningRecord[]>(initialData);
   const [loading, setLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -139,6 +147,16 @@ export function RealtimeLearningTable({ initialData, initialWordCounts }: Realti
     if (initialWordCounts) {
       for (const [studentId, counts] of Object.entries(initialWordCounts)) {
         map.set(Number(studentId), counts);
+      }
+    }
+    return map;
+  });
+  // 학생별 누적 정답률 (오늘 이전)
+  const [historicalAccuracy] = useState<Map<number, StudentHistoricalAccuracy>>(() => {
+    const map = new Map<number, StudentHistoricalAccuracy>();
+    if (initialHistoricalAccuracy) {
+      for (const [studentId, data] of Object.entries(initialHistoricalAccuracy)) {
+        map.set(Number(studentId), data);
       }
     }
     return map;
@@ -574,7 +592,20 @@ export function RealtimeLearningTable({ initialData, initialWordCounts }: Realti
               <div className="space-y-2">
                 {/* 단어팡 */}
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-blue-600 font-medium">단어팡</span>
+                  <span className="text-blue-600 font-medium">
+                    단어팡
+                    {(() => {
+                      const historical = historicalAccuracy.get(summary.studentId);
+                      if (historical?.wordPangAccuracyRate != null) {
+                        return (
+                          <span className="text-blue-500 font-normal ml-1">
+                            ({historical.wordPangAccuracyRate.toFixed(0)}%)
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </span>
                   <span className="text-gray-700">
                     {summary.wordPang.count}개
                     {summary.wordPang.count > 0 && (
