@@ -219,7 +219,7 @@ async function getInitialData(): Promise<InitialData> {
 
       // 단어팡인 경우 단어 정보 추가
       const wordData = record.test_type === 'word_pang'
-        ? sessionWordMap.get(record.id)
+        ? sessionWordMap.get(Number(record.id))
         : undefined;
 
       records.push({
