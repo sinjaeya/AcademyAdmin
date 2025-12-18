@@ -25,7 +25,7 @@ interface StudentSummary {
   studentId: number;
   studentName: string;
   wordPang: { count: number; totalItems: number; correctCount: number; accuracyRate: number };
-  passageQuiz: { count: number; totalItems: number; correctCount: number; accuracyRate: number };
+  passageQuiz: { count: number; sessionCount: number; totalItems: number; correctCount: number; accuracyRate: number };
   sentenceClinic: { count: number; totalItems: number; correctCount: number; accuracyRate: number };
   currentActivity: 'word_pang' | 'passage_quiz' | 'sentence_clinic' | null;
   records: LearningRecord[];
@@ -185,7 +185,7 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
           studentId: record.studentId,
           studentName: record.studentName,
           wordPang: { count: 0, totalItems: 0, correctCount: 0, accuracyRate: 0 },
-          passageQuiz: { count: 0, totalItems: 0, correctCount: 0, accuracyRate: 0 },
+          passageQuiz: { count: 0, sessionCount: 0, totalItems: 0, correctCount: 0, accuracyRate: 0 },
           sentenceClinic: { count: 0, totalItems: 0, correctCount: 0, accuracyRate: 0 },
           currentActivity: null,
           records: []
@@ -198,6 +198,11 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
       // 진행 중인 활동 체크 (completedAt이 null인 가장 최근 활동)
       if (!record.completedAt && !summary.currentActivity) {
         summary.currentActivity = record.learningType;
+      }
+
+      // 보물찾기 지문 수 (세션 수) 계산 - 완료된 세션만
+      if (record.completedAt && record.learningType === 'passage_quiz') {
+        summary.passageQuiz.sessionCount += 1;
       }
 
       // 문장클리닉만 레코드 기반으로 통계 (완료된 학습만)
@@ -620,7 +625,7 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-green-600 font-medium">보물찾기</span>
                   <span className="text-gray-700">
-                    {summary.passageQuiz.count}개
+                    {summary.passageQuiz.sessionCount}지문 / {summary.passageQuiz.count}개
                     {summary.passageQuiz.count > 0 && (
                       <span className="text-gray-500 ml-1">
                         ({summary.passageQuiz.accuracyRate.toFixed(0)}%)
