@@ -154,7 +154,7 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
     return map;
   });
   // 학생별 누적 정답률 (오늘 이전)
-  const [historicalAccuracy] = useState<Map<number, StudentHistoricalAccuracy>>(() => {
+  const [historicalAccuracy, setHistoricalAccuracy] = useState<Map<number, StudentHistoricalAccuracy>>(() => {
     const map = new Map<number, StudentHistoricalAccuracy>();
     if (initialHistoricalAccuracy) {
       for (const [studentId, data] of Object.entries(initialHistoricalAccuracy)) {
@@ -271,6 +271,14 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
           newWordCounts.set(Number(studentId), counts as StudentWordCount);
         }
         setStudentWordCounts(newWordCounts);
+      }
+      // 오늘 이전 누적 정답률 데이터 업데이트
+      if (result.historicalAccuracy) {
+        const newHistoricalAccuracy = new Map<number, StudentHistoricalAccuracy>();
+        for (const [studentId, data] of Object.entries(result.historicalAccuracy)) {
+          newHistoricalAccuracy.set(Number(studentId), data as StudentHistoricalAccuracy);
+        }
+        setHistoricalAccuracy(newHistoricalAccuracy);
       }
     } catch (error) {
       console.error('Error refreshing data:', error);

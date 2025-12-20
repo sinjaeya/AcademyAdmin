@@ -188,7 +188,48 @@ export async function GET() {
     // 시작 시간 기준 내림차순 정렬
     records.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
 
-    return NextResponse.json({ data: records, wordCounts });
+    // 오늘 학습한 학생들의 오늘 이전 누적 정답률 조회
+    const historicalAccuracy: Record<number, { wordPangTotal: number; wordPangCorrect: number; wordPangAccuracyRate: number | null }> = {};
+
+    if (studentIds.length > 0) {
+      // 오늘 이전의 단어팡 결과 가져오기
+      const { data: historicalData, error: historicalError } = await supabase
+        .from('test_result')
+        .select('student_id, is_correct')
+        .eq('test_type', 'word_pang')
+        .in('student_id', studentIds)
+        .lt('answered_at', startDate); // 오늘 이전 데이터만
+
+      if (historicalError) {
+        console.error('Error fetching historical data:', historicalError);
+      } else if (historicalData) {
+        // 학생별로 집계
+        for (const result of historicalData) {
+          const studentId = Number(result.student_id);
+          if (!historicalAccuracy[studentId]) {
+            historicalAccuracy[studentId] = {
+              wordPangTotal: 0,
+              wordPangCorrect: 0,
+              wordPangAccuracyRate: null
+            };
+          }
+          historicalAccuracy[studentId].wordPangTotal += 1;
+          if (result.is_correct) {
+            historicalAccuracy[studentId].wordPangCorrect += 1;
+          }
+        }
+
+        // 정답률 계산
+        for (const studentId of Object.keys(historicalAccuracy)) {
+          const data = historicalAccuracy[Number(studentId)];
+          if (data.wordPangTotal > 0) {
+            data.wordPangAccuracyRate = (data.wordPangCorrect / data.wordPangTotal) * 100;
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({ data: records, wordCounts, historicalAccuracy });
   } catch (error) {
     console.error('Error in realtime learning API:', error);
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
