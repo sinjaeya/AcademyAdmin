@@ -20,6 +20,38 @@ interface LearningRecord {
   accuracyRate: number;
   correctWords?: string[]; // 단어팡 맞은 단어들
   wrongWords?: string[]; // 단어팡 틀린 단어들
+  // 문장클리닉 상세 정보
+  sentenceClinicDetail?: {
+    keyword: string;
+    text: string; // 지문
+    // 빈칸 문제
+    clozeSummary: string;
+    clozeOptions: string[];
+    clozeAnswer: number;
+    clozeSelectedAnswer: number | null;
+    clozeIsCorrect: boolean | null;
+    clozeExplanation: string;
+    // 키워드 문제
+    keywordQuestion: string;
+    keywordOptions: string[];
+    keywordAnswer: number;
+    keywordSelectedAnswer: number | null;
+    keywordIsCorrect: boolean | null;
+    keywordExplanation: string;
+  };
+  // 보물찾기 상세 정보
+  passageQuizDetails?: Array<{
+    statement: string;
+    oxType: string;
+    isCorrect: boolean;
+    answer: string;
+  }>;
+}
+
+// 팝업에서 보여줄 학습 상세 정보 타입
+interface LearningDetailPopup {
+  type: 'sentence_clinic' | 'passage_quiz';
+  record: LearningRecord;
 }
 
 // 학생별 요약 타입
@@ -143,6 +175,8 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
   const [isConnected, setIsConnected] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentSummary | null>(null);
   const [newStudentIds, setNewStudentIds] = useState<Set<number>>(new Set());
+  // 학습 상세 팝업
+  const [detailPopup, setDetailPopup] = useState<LearningDetailPopup | null>(null);
   // 학생별 개별 문제 수 (실시간 업데이트용)
   const [studentWordCounts, setStudentWordCounts] = useState<Map<number, StudentWordCount>>(() => {
     const map = new Map<number, StudentWordCount>();
@@ -795,6 +829,7 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                         {record.totalItems}
                       </td>
                       <td className="px-4 py-2 text-sm text-gray-600">
+                        {/* 단어팡: 맞은/틀린 단어 배지 */}
                         {record.learningType === 'word_pang' && (record.correctWords || record.wrongWords) ? (
                           <div className="flex flex-wrap gap-1 justify-center">
                             {record.correctWords?.map((word, idx) => (
@@ -807,6 +842,50 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                                 {word}
                               </Badge>
                             ))}
+                          </div>
+                        ) : record.learningType === 'sentence_clinic' && record.sentenceClinicDetail ? (
+                          /* 문장클리닉: 키워드 클릭 가능 */
+                          <div className="flex justify-center">
+                            <Badge
+                              className="bg-purple-100 text-purple-700 border-purple-200 text-xs cursor-pointer hover:bg-purple-200"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDetailPopup({ type: 'sentence_clinic', record });
+                              }}
+                            >
+                              {record.sentenceClinicDetail.keyword || '키워드'}
+                            </Badge>
+                          </div>
+                        ) : record.learningType === 'passage_quiz' && record.passageQuizDetails && record.passageQuizDetails.length > 0 ? (
+                          /* 보물찾기: O/X 진술문 클릭 가능 */
+                          <div className="flex flex-wrap gap-1 justify-center">
+                            {record.passageQuizDetails.slice(0, 3).map((detail, idx) => (
+                              <Badge
+                                key={idx}
+                                className={`text-xs cursor-pointer hover:opacity-80 ${
+                                  detail.isCorrect
+                                    ? 'bg-green-100 text-green-700 border-green-200'
+                                    : 'bg-red-100 text-red-700 border-red-200'
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDetailPopup({ type: 'passage_quiz', record });
+                                }}
+                              >
+                                {detail.statement.length > 8 ? detail.statement.slice(0, 8) + '...' : detail.statement}
+                              </Badge>
+                            ))}
+                            {record.passageQuizDetails.length > 3 && (
+                              <Badge
+                                className="bg-gray-100 text-gray-600 border-gray-200 text-xs cursor-pointer hover:bg-gray-200"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDetailPopup({ type: 'passage_quiz', record });
+                                }}
+                              >
+                                +{record.passageQuizDetails.length - 3}
+                              </Badge>
+                            )}
                           </div>
                         ) : (
                           <div className="text-center">{record.correctCount}</div>
@@ -848,6 +927,198 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 학습 상세 팝업 */}
+      {detailPopup && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]"
+          onClick={() => setDetailPopup(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* 팝업 헤더 */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-bold">
+                {detailPopup.type === 'sentence_clinic' ? '문장클리닉 상세' : '보물찾기 상세'}
+              </h3>
+              <Button variant="ghost" size="sm" onClick={() => setDetailPopup(null)}>
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+
+            {/* 팝업 내용 */}
+            <div className="p-4 overflow-auto max-h-[60vh]">
+              {detailPopup.type === 'sentence_clinic' && detailPopup.record.sentenceClinicDetail && (
+                <div className="space-y-4">
+                  {/* 키워드 */}
+                  <div className="bg-purple-50 rounded-lg p-4">
+                    <div className="text-sm text-purple-600 font-medium mb-1">키워드</div>
+                    <div className="text-lg font-bold text-purple-800">
+                      {detailPopup.record.sentenceClinicDetail.keyword}
+                    </div>
+                  </div>
+
+                  {/* 지문 */}
+                  {detailPopup.record.sentenceClinicDetail.text && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="text-sm text-gray-600 font-medium mb-2">지문</div>
+                      <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+                        {detailPopup.record.sentenceClinicDetail.text}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 빈칸 문제 */}
+                  <div className={`rounded-lg p-4 border ${
+                    detailPopup.record.sentenceClinicDetail.clozeIsCorrect
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-red-50 border-red-200'
+                  }`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-sm font-bold text-gray-700">빈칸 문제</div>
+                      <Badge className={
+                        detailPopup.record.sentenceClinicDetail.clozeIsCorrect
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700'
+                      }>
+                        {detailPopup.record.sentenceClinicDetail.clozeIsCorrect ? '정답' : '오답'}
+                      </Badge>
+                    </div>
+                    {/* 요약문 (문제) */}
+                    {detailPopup.record.sentenceClinicDetail.clozeSummary && (
+                      <div className="mb-3 p-3 bg-white rounded border text-sm">
+                        {detailPopup.record.sentenceClinicDetail.clozeSummary}
+                      </div>
+                    )}
+                    {/* 선택지 */}
+                    <div className="space-y-2 mb-3">
+                      {(detailPopup.record.sentenceClinicDetail.clozeOptions || []).map((option, idx) => {
+                        const optionNum = idx + 1;
+                        const isCorrectAnswer = optionNum === detailPopup.record.sentenceClinicDetail!.clozeAnswer;
+                        const isStudentChoice = optionNum === detailPopup.record.sentenceClinicDetail!.clozeSelectedAnswer;
+                        return option ? (
+                          <div
+                            key={idx}
+                            className={`p-2 rounded text-sm flex items-center gap-2 ${
+                              isCorrectAnswer
+                                ? 'bg-green-100 border border-green-300'
+                                : isStudentChoice && !isCorrectAnswer
+                                  ? 'bg-red-100 border border-red-300'
+                                  : 'bg-white border border-gray-200'
+                            }`}
+                          >
+                            <span className="font-medium w-6">{optionNum}.</span>
+                            <span className="flex-1">{option}</span>
+                            {isCorrectAnswer && <span className="text-green-600 font-bold">정답</span>}
+                            {isStudentChoice && <span className={isCorrectAnswer ? 'text-green-600' : 'text-red-600'}>선택</span>}
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                    {/* 해설 */}
+                    {detailPopup.record.sentenceClinicDetail.clozeExplanation && (
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200 text-sm">
+                        <span className="font-medium text-blue-700">해설: </span>
+                        {detailPopup.record.sentenceClinicDetail.clozeExplanation}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 키워드 문제 */}
+                  <div className={`rounded-lg p-4 border ${
+                    detailPopup.record.sentenceClinicDetail.keywordIsCorrect
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-red-50 border-red-200'
+                  }`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-sm font-bold text-gray-700">키워드 문제</div>
+                      <Badge className={
+                        detailPopup.record.sentenceClinicDetail.keywordIsCorrect
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700'
+                      }>
+                        {detailPopup.record.sentenceClinicDetail.keywordIsCorrect ? '정답' : '오답'}
+                      </Badge>
+                    </div>
+                    {/* 문제 */}
+                    {detailPopup.record.sentenceClinicDetail.keywordQuestion && (
+                      <div className="mb-3 p-3 bg-white rounded border text-sm">
+                        {detailPopup.record.sentenceClinicDetail.keywordQuestion}
+                      </div>
+                    )}
+                    {/* 선택지 */}
+                    <div className="space-y-2 mb-3">
+                      {(detailPopup.record.sentenceClinicDetail.keywordOptions || []).map((option, idx) => {
+                        const optionNum = idx + 1;
+                        const isCorrectAnswer = optionNum === detailPopup.record.sentenceClinicDetail!.keywordAnswer;
+                        const isStudentChoice = optionNum === detailPopup.record.sentenceClinicDetail!.keywordSelectedAnswer;
+                        return option ? (
+                          <div
+                            key={idx}
+                            className={`p-2 rounded text-sm flex items-center gap-2 ${
+                              isCorrectAnswer
+                                ? 'bg-green-100 border border-green-300'
+                                : isStudentChoice && !isCorrectAnswer
+                                  ? 'bg-red-100 border border-red-300'
+                                  : 'bg-white border border-gray-200'
+                            }`}
+                          >
+                            <span className="font-medium w-6">{optionNum}.</span>
+                            <span className="flex-1">{option}</span>
+                            {isCorrectAnswer && <span className="text-green-600 font-bold">정답</span>}
+                            {isStudentChoice && <span className={isCorrectAnswer ? 'text-green-600' : 'text-red-600'}>선택</span>}
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                    {/* 해설 */}
+                    {detailPopup.record.sentenceClinicDetail.keywordExplanation && (
+                      <div className="p-3 bg-blue-50 rounded border border-blue-200 text-sm">
+                        <span className="font-medium text-blue-700">해설: </span>
+                        {detailPopup.record.sentenceClinicDetail.keywordExplanation}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {detailPopup.type === 'passage_quiz' && detailPopup.record.passageQuizDetails && (
+                <div className="space-y-3">
+                  {detailPopup.record.passageQuizDetails.map((detail, idx) => (
+                    <div
+                      key={idx}
+                      className={`rounded-lg p-4 border ${
+                        detail.isCorrect
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-red-50 border-red-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="text-sm text-gray-500 mb-1">
+                            <Badge className="bg-gray-100 text-gray-600 text-xs mr-2">
+                              {detail.oxType}
+                            </Badge>
+                            정답: <span className="font-medium">{detail.answer === 'O' ? 'O (참)' : 'X (거짓)'}</span>
+                          </div>
+                          <div className="text-gray-800">{detail.statement}</div>
+                        </div>
+                        <div className={`text-lg font-bold ${
+                          detail.isCorrect ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {detail.isCorrect ? '✓' : '✗'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

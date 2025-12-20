@@ -13,6 +13,32 @@ interface LearningRecord {
   accuracyRate: number;
   correctWords?: string[]; // 단어팡 맞은 단어들
   wrongWords?: string[]; // 단어팡 틀린 단어들
+  // 문장클리닉 상세 정보
+  sentenceClinicDetail?: {
+    keyword: string;
+    text: string; // 지문
+    // 빈칸 문제
+    clozeSummary: string;
+    clozeOptions: string[];
+    clozeAnswer: number;
+    clozeSelectedAnswer: number | null;
+    clozeIsCorrect: boolean | null;
+    clozeExplanation: string;
+    // 키워드 문제
+    keywordQuestion: string;
+    keywordOptions: string[];
+    keywordAnswer: number;
+    keywordSelectedAnswer: number | null;
+    keywordIsCorrect: boolean | null;
+    keywordExplanation: string;
+  };
+  // 보물찾기 상세 정보
+  passageQuizDetails?: Array<{
+    statement: string;
+    oxType: string;
+    isCorrect: boolean;
+    answer: string;
+  }>;
 }
 
 interface StudentWordCount {
@@ -122,7 +148,7 @@ async function getInitialData(): Promise<InitialData> {
     }
   }
 
-  // short_passage_learning_history에서 오늘의 문장클리닉 데이터 가져오기
+  // short_passage_learning_history에서 오늘의 문장클리닉 데이터 가져오기 (short_passage 조인)
   const { data: sentenceClinicData, error: sentenceClinicError } = await supabase
     .from('short_passage_learning_history')
     .select(`
@@ -131,7 +157,27 @@ async function getInitialData(): Promise<InitialData> {
       started_at,
       completed_at,
       cloze_is_correct,
-      keyword_is_correct
+      keyword_is_correct,
+      cloze_selected_answer,
+      keyword_selected_answer,
+      short_passage:short_passage_id (
+        keyword,
+        text,
+        cloze_summary,
+        cloze_option_1,
+        cloze_option_2,
+        cloze_option_3,
+        cloze_option_4,
+        cloze_answer,
+        cloze_explanation,
+        keyword_question,
+        keyword_option_1,
+        keyword_option_2,
+        keyword_option_3,
+        keyword_option_4,
+        keyword_answer,
+        keyword_explanation
+      )
     `)
     .gte('started_at', startDate)
     .lte('started_at', endDate)
@@ -208,6 +254,62 @@ async function getInitialData(): Promise<InitialData> {
     }
   }
 
+  // 보물찾기 세션별 O/X 문제 상세 정보 조회
+  const sessionPassageQuizMap = new Map<number, Array<{ statement: string; oxType: string; isCorrect: boolean; answer: string }>>();
+  if (testSessionData) {
+    const passageQuizSessionIds = testSessionData
+      .filter(r => r.test_type === 'passage_quiz')
+      .map(r => r.id);
+
+    if (passageQuizSessionIds.length > 0) {
+      // test_result에서 세션별 문제 결과 가져오기
+      const { data: quizResultData } = await supabase
+        .from('test_result')
+        .select('session_id, item_uuid, is_correct')
+        .eq('test_type', 'passage_quiz')
+        .in('session_id', passageQuizSessionIds)
+        .not('item_uuid', 'is', null);
+
+      if (quizResultData && quizResultData.length > 0) {
+        // UUID 목록 추출
+        const itemUuids = [...new Set(quizResultData.map(r => r.item_uuid).filter(Boolean))];
+
+        // passage_quiz_ox에서 문제 정보 가져오기
+        const { data: oxData } = await supabase
+          .from('passage_quiz_ox')
+          .select('quiz_id, statement, ox_type, answer')
+          .in('quiz_id', itemUuids);
+
+        // quiz_id -> 문제 정보 맵 생성
+        const oxMap = new Map<string, { statement: string; oxType: string; answer: string }>();
+        oxData?.forEach(ox => oxMap.set(ox.quiz_id, {
+          statement: ox.statement,
+          oxType: ox.ox_type,
+          answer: ox.answer
+        }));
+
+        // 세션별 문제 상세 정보 분류
+        for (const result of quizResultData) {
+          const sessionId = Number(result.session_id);
+          const oxInfo = oxMap.get(result.item_uuid);
+
+          if (!sessionPassageQuizMap.has(sessionId)) {
+            sessionPassageQuizMap.set(sessionId, []);
+          }
+
+          if (oxInfo) {
+            sessionPassageQuizMap.get(sessionId)!.push({
+              statement: oxInfo.statement,
+              oxType: oxInfo.oxType,
+              isCorrect: result.is_correct,
+              answer: oxInfo.answer
+            });
+          }
+        }
+      }
+    }
+  }
+
   // 결과 데이터 생성
   const records: LearningRecord[] = [];
 
@@ -222,6 +324,11 @@ async function getInitialData(): Promise<InitialData> {
         ? sessionWordMap.get(Number(record.id))
         : undefined;
 
+      // 보물찾기인 경우 O/X 문제 상세 정보 추가
+      const passageQuizDetails = record.test_type === 'passage_quiz'
+        ? sessionPassageQuizMap.get(Number(record.id))
+        : undefined;
+
       records.push({
         id: `ts_${record.id}`,
         studentId,
@@ -233,7 +340,8 @@ async function getInitialData(): Promise<InitialData> {
         correctCount: record.correct_count || 0,
         accuracyRate: record.accuracy_rate || 0,
         correctWords: wordData?.correctWords,
-        wrongWords: wordData?.wrongWords
+        wrongWords: wordData?.wrongWords,
+        passageQuizDetails
       });
     }
   }
@@ -249,6 +357,26 @@ async function getInitialData(): Promise<InitialData> {
       const correctCount = clozeCorrect + keywordCorrect;
       const accuracyRate = (correctCount / 2) * 100;
 
+      // short_passage에서 상세 정보 추출
+      const shortPassage = record.short_passage as unknown as {
+        keyword: string;
+        text: string;
+        cloze_summary: string;
+        cloze_option_1: string;
+        cloze_option_2: string;
+        cloze_option_3: string;
+        cloze_option_4: string;
+        cloze_answer: number;
+        cloze_explanation: string;
+        keyword_question: string;
+        keyword_option_1: string;
+        keyword_option_2: string;
+        keyword_option_3: string;
+        keyword_option_4: string;
+        keyword_answer: number;
+        keyword_explanation: string;
+      } | null;
+
       records.push({
         id: `sc_${record.id}`,
         studentId,
@@ -258,7 +386,33 @@ async function getInitialData(): Promise<InitialData> {
         completedAt: record.completed_at,
         totalItems: 2,
         correctCount,
-        accuracyRate
+        accuracyRate,
+        sentenceClinicDetail: {
+          keyword: shortPassage?.keyword || '',
+          text: shortPassage?.text || '',
+          clozeSummary: shortPassage?.cloze_summary || '',
+          clozeOptions: [
+            shortPassage?.cloze_option_1 || '',
+            shortPassage?.cloze_option_2 || '',
+            shortPassage?.cloze_option_3 || '',
+            shortPassage?.cloze_option_4 || ''
+          ],
+          clozeAnswer: shortPassage?.cloze_answer ?? 0,
+          clozeSelectedAnswer: record.cloze_selected_answer ?? null,
+          clozeIsCorrect: record.cloze_is_correct,
+          clozeExplanation: shortPassage?.cloze_explanation || '',
+          keywordQuestion: shortPassage?.keyword_question || '',
+          keywordOptions: [
+            shortPassage?.keyword_option_1 || '',
+            shortPassage?.keyword_option_2 || '',
+            shortPassage?.keyword_option_3 || '',
+            shortPassage?.keyword_option_4 || ''
+          ],
+          keywordAnswer: shortPassage?.keyword_answer ?? 0,
+          keywordSelectedAnswer: record.keyword_selected_answer ?? null,
+          keywordIsCorrect: record.keyword_is_correct,
+          keywordExplanation: shortPassage?.keyword_explanation || ''
+        }
       });
     }
   }
