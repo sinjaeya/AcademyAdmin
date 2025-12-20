@@ -177,6 +177,48 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
     return data?.name || `학생 ${studentId}`;
   }, []);
 
+  // 세션별 단어 정보 조회 함수
+  const fetchSessionWords = useCallback(async (sessionId: number): Promise<{ correctWords: string[]; wrongWords: string[] } | null> => {
+    if (!supabase) return null;
+
+    // test_result에서 세션별 문제 결과 가져오기
+    const { data: wordResultData } = await supabase
+      .from('test_result')
+      .select('item_id, is_correct')
+      .eq('test_type', 'word_pang')
+      .eq('session_id', sessionId);
+
+    if (!wordResultData || wordResultData.length === 0) return null;
+
+    // 단어 ID 목록 추출
+    const itemIds = [...new Set(wordResultData.map(r => r.item_id))];
+
+    // 단어 정보 가져오기
+    const { data: wordData } = await supabase
+      .from('word_pang_valid_words')
+      .select('voca_id, word')
+      .in('voca_id', itemIds);
+
+    // 단어 ID -> 단어 맵 생성
+    const wordMap = new Map<number, string>();
+    wordData?.forEach(w => wordMap.set(Number(w.voca_id), w.word));
+
+    // 맞은/틀린 단어 분류
+    const correctWords: string[] = [];
+    const wrongWords: string[] = [];
+
+    for (const result of wordResultData) {
+      const word = wordMap.get(Number(result.item_id)) || '';
+      if (result.is_correct) {
+        correctWords.push(word);
+      } else {
+        wrongWords.push(word);
+      }
+    }
+
+    return { correctWords, wrongWords };
+  }, []);
+
   // 학생별 요약 데이터 생성
   const studentSummaries = useMemo(() => {
     const summaryMap = new Map<number, StudentSummary>();
@@ -352,6 +394,12 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
 
             const studentName = await fetchStudentName(newRecord.student_id);
 
+            // 단어팡 세션인 경우 단어 정보 조회
+            let wordData: { correctWords: string[]; wrongWords: string[] } | null = null;
+            if (newRecord.test_type === 'word_pang') {
+              wordData = await fetchSessionWords(newRecord.id);
+            }
+
             const record: LearningRecord = {
               id: `ts_${newRecord.id}`,
               studentId: newRecord.student_id,
@@ -361,7 +409,9 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
               completedAt: newRecord.completed_at,
               totalItems: newRecord.total_items || 0,
               correctCount: newRecord.correct_count || 0,
-              accuracyRate: newRecord.accuracy_rate || 0
+              accuracyRate: newRecord.accuracy_rate || 0,
+              correctWords: wordData?.correctWords,
+              wrongWords: wordData?.wrongWords
             };
 
             setRecords(prev => {
@@ -531,7 +581,7 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
       }
       setIsConnected(false);
     };
-  }, [fetchStudentName]);
+  }, [fetchStudentName, fetchSessionWords]);
 
   return (
     <div className="space-y-6">

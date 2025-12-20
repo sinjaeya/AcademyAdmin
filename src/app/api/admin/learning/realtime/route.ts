@@ -11,6 +11,8 @@ interface LearningRecord {
   totalItems: number;
   correctCount: number;
   accuracyRate: number;
+  correctWords?: string[];
+  wrongWords?: string[];
 }
 
 export async function GET() {
@@ -137,6 +139,55 @@ export async function GET() {
       }
     }
 
+    // 단어팡 세션별 단어 정보 조회
+    const sessionWordMap = new Map<number, { correctWords: string[]; wrongWords: string[] }>();
+    if (testSessionData) {
+      const wordPangSessionIds = testSessionData
+        .filter(r => r.test_type === 'word_pang')
+        .map(r => r.id);
+
+      if (wordPangSessionIds.length > 0) {
+        // test_result에서 세션별 문제 결과 가져오기
+        const { data: wordResultData } = await supabase
+          .from('test_result')
+          .select('session_id, item_id, is_correct')
+          .eq('test_type', 'word_pang')
+          .in('session_id', wordPangSessionIds);
+
+        if (wordResultData && wordResultData.length > 0) {
+          // 단어 ID 목록 추출
+          const itemIds = [...new Set(wordResultData.map(r => r.item_id))];
+
+          // 단어 정보 가져오기
+          const { data: wordData } = await supabase
+            .from('word_pang_valid_words')
+            .select('voca_id, word')
+            .in('voca_id', itemIds);
+
+          // 단어 ID -> 단어 맵 생성
+          const wordMap = new Map<number, string>();
+          wordData?.forEach(w => wordMap.set(Number(w.voca_id), w.word));
+
+          // 세션별 맞은/틀린 단어 분류
+          for (const result of wordResultData) {
+            const sessionId = Number(result.session_id);
+            const word = wordMap.get(Number(result.item_id)) || '';
+
+            if (!sessionWordMap.has(sessionId)) {
+              sessionWordMap.set(sessionId, { correctWords: [], wrongWords: [] });
+            }
+
+            const sessionData = sessionWordMap.get(sessionId)!;
+            if (result.is_correct) {
+              sessionData.correctWords.push(word);
+            } else {
+              sessionData.wrongWords.push(word);
+            }
+          }
+        }
+      }
+    }
+
     // 결과 데이터 생성
     const records: LearningRecord[] = [];
 
@@ -145,6 +196,11 @@ export async function GET() {
       for (const record of testSessionData) {
         const studentId = Number(record.student_id);
         const studentName = studentInfoMap.get(studentId) || `학생 ${studentId}`;
+
+        // 단어팡인 경우 단어 정보 추가
+        const wordData = record.test_type === 'word_pang'
+          ? sessionWordMap.get(Number(record.id))
+          : undefined;
 
         records.push({
           id: `ts_${record.id}`,
@@ -155,7 +211,9 @@ export async function GET() {
           completedAt: record.completed_at,
           totalItems: record.total_items || 0,
           correctCount: record.correct_count || 0,
-          accuracyRate: record.accuracy_rate || 0
+          accuracyRate: record.accuracy_rate || 0,
+          correctWords: wordData?.correctWords,
+          wrongWords: wordData?.wrongWords
         });
       }
     }
