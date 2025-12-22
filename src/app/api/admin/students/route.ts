@@ -127,12 +127,17 @@ export async function POST(request: NextRequest) {
       rubric_difficulty_level: body.rubric_difficulty_level || 'medium',
       sentence_level: body.sentence_level || 'Lv3_Mid1',  // 기본값: 'Lv3_Mid1' (중1)
       status: body.status || '재원',
-      study_time: body.study_time ? parseInt(body.study_time, 10) : 60,  // 기본값: 60분
+      study_time: body.study_time ? String(body.study_time) : '60',  // TEXT 타입, 기본값: '60'
     };
 
-    // academy_id가 제공된 경우 사용, 없으면 currentAcademy로 academy_id 찾기
+    // currentAcademy 값 저장 (학원 이름 TEXT 컬럼)
+    if (body.currentAcademy) {
+      studentToInsert.currentAcademy = body.currentAcademy;
+    }
+
+    // academy_id가 제공된 경우 사용 (UUID 타입), 없으면 currentAcademy로 academy_id 찾기
     if (body.academy_id) {
-      studentToInsert.academy_id = parseInt(body.academy_id, 10);
+      studentToInsert.academy_id = body.academy_id;  // UUID는 문자열 그대로 전달
     } else if (body.currentAcademy) {
       // currentAcademy 이름으로 academy_id 찾기
       const { data: academy } = await supabase
@@ -140,7 +145,7 @@ export async function POST(request: NextRequest) {
         .select('id')
         .eq('name', body.currentAcademy)
         .single();
-      
+
       if (academy) {
         studentToInsert.academy_id = academy.id;
       }
