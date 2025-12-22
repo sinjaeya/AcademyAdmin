@@ -126,12 +126,13 @@ export async function POST(request: NextRequest) {
       rubric_grade_level: body.rubric_grade_level || 'middle',
       rubric_difficulty_level: body.rubric_difficulty_level || 'medium',
       sentence_level: body.sentence_level || 'Lv3_Mid1',  // 기본값: 'Lv3_Mid1' (중1)
-      status: body.status || 'active',
+      status: body.status || '재원',
+      study_time: body.study_time ? parseInt(body.study_time, 10) : 60,  // 기본값: 60분
     };
 
     // academy_id가 제공된 경우 사용, 없으면 currentAcademy로 academy_id 찾기
     if (body.academy_id) {
-      studentToInsert.academy_id = body.academy_id;
+      studentToInsert.academy_id = parseInt(body.academy_id, 10);
     } else if (body.currentAcademy) {
       // currentAcademy 이름으로 academy_id 찾기
       const { data: academy } = await supabase
