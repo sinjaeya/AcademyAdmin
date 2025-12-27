@@ -85,6 +85,8 @@ interface TestResultPayload {
   test_type: 'word_pang' | 'passage_quiz';
   is_correct: boolean;
   answered_at: string;
+  item_id: number | null; // 단어팡용
+  item_uuid: string | null; // 보물찾기용
 }
 
 interface SentenceClinicPayload {
@@ -289,6 +291,25 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
     if (!data) return null;
 
     return data as ShortPassageDetail;
+  }, []);
+
+  // 보물찾기 문제 정보 조회 함수
+  const fetchPassageQuizDetail = useCallback(async (quizId: string) => {
+    if (!supabase) return null;
+
+    const { data } = await supabase
+      .from('passage_quiz_ox')
+      .select('statement, ox_type, answer')
+      .eq('quiz_id', quizId)
+      .single();
+
+    if (!data) return null;
+
+    return {
+      statement: data.statement,
+      oxType: data.ox_type,
+      answer: data.answer
+    };
   }, []);
 
   // 학생별 요약 데이터 생성
@@ -632,9 +653,54 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
 
           if (resultDate !== today) return;
 
+
           const studentId = newResult.student_id;
           const testType = newResult.test_type;
           const isCorrect = newResult.is_correct;
+          const sessionId = newResult.session_id;
+
+          // 보물찾기 상세 정보 조회
+          let passageQuizDetail = null;
+          if (testType === 'passage_quiz' && newResult.item_uuid) {
+            passageQuizDetail = await fetchPassageQuizDetail(newResult.item_uuid);
+          }
+
+          // 레코드 업데이트 (실시간 반영)
+          setRecords(prev => {
+            const updated = [...prev];
+            // 해당 세션의 레코드 찾기
+            const recordIndex = updated.findIndex(r => r.id === `ts_${sessionId}`);
+
+            if (recordIndex >= 0) {
+              const record = { ...updated[recordIndex] };
+
+              // 카운트 증가
+              record.totalItems += 1; // 총 문항 수 증가 (가정: 푼 문제 수 = 전체 항목 수 증가)
+              if (isCorrect) record.correctCount += 1;
+              record.accuracyRate = (record.correctCount / record.totalItems) * 100;
+
+              // 보물찾기 목록에 추가
+              if (testType === 'passage_quiz' && passageQuizDetail) {
+                const newDetail = {
+                  statement: passageQuizDetail.statement,
+                  oxType: passageQuizDetail.oxType,
+                  isCorrect: isCorrect,
+                  answer: passageQuizDetail.answer
+                };
+
+                record.passageQuizDetails = record.passageQuizDetails
+                  ? [...record.passageQuizDetails, newDetail]
+                  : [newDetail];
+              }
+
+              updated[recordIndex] = record;
+              return updated;
+            } else {
+              // 화면에 없는 세션이면 새로 가져오거나 무시 (학생 목록 등재 안됨 방지 위해 일단 무시하지는 않아야 좋으나, 여기서는 업데이트 위주)
+              // 다만 test_session이 먼저 생기고 result가 생기므로 보통은 존재함.
+              return updated;
+            }
+          });
 
           // 학생별 문제 수 업데이트
           setStudentWordCounts(prev => {
@@ -682,7 +748,7 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
       }
       setIsConnected(false);
     };
-  }, [fetchStudentName, fetchSessionWords, fetchShortPassage]);
+  }, [fetchStudentName, fetchSessionWords, fetchShortPassage, fetchPassageQuizDetail]);
 
   return (
     <div className="space-y-6">
