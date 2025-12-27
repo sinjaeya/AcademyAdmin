@@ -95,6 +95,8 @@ interface SentenceClinicPayload {
   completed_at: string | null;
   cloze_is_correct: boolean;
   keyword_is_correct: boolean;
+  cloze_selected_answer: number | null;
+  keyword_selected_answer: number | null;
 }
 
 // 문장클리닉 문장 상세 정보
@@ -566,7 +568,7 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                   shortPassage.cloze_option_4
                 ],
                 clozeAnswer: shortPassage.cloze_answer,
-                clozeSelectedAnswer: null, // 실시간 업데이트에서는 사용자가 선택한 답까지는 가져오지 않음 (필요시 추가 조회)
+                clozeSelectedAnswer: newRecord.cloze_selected_answer,
                 clozeIsCorrect: newRecord.cloze_is_correct,
                 clozeExplanation: shortPassage.cloze_explanation,
                 keywordQuestion: shortPassage.keyword_question,
@@ -577,7 +579,7 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                   shortPassage.keyword_option_4
                 ],
                 keywordAnswer: shortPassage.keyword_answer,
-                keywordSelectedAnswer: null,
+                keywordSelectedAnswer: newRecord.keyword_selected_answer,
                 keywordIsCorrect: newRecord.keyword_is_correct,
                 keywordExplanation: shortPassage.keyword_explanation
               } : undefined
