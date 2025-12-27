@@ -90,10 +90,31 @@ interface TestResultPayload {
 interface SentenceClinicPayload {
   id: string;
   student_id: number;
+  short_passage_id: number;
   started_at: string;
   completed_at: string | null;
   cloze_is_correct: boolean;
   keyword_is_correct: boolean;
+}
+
+// 문장클리닉 문장 상세 정보
+interface ShortPassageDetail {
+  keyword: string;
+  text: string;
+  cloze_summary: string;
+  cloze_option_1: string;
+  cloze_option_2: string;
+  cloze_option_3: string;
+  cloze_option_4: string;
+  cloze_answer: number;
+  cloze_explanation: string;
+  keyword_question: string;
+  keyword_option_1: string;
+  keyword_option_2: string;
+  keyword_option_3: string;
+  keyword_option_4: string;
+  keyword_answer: number;
+  keyword_explanation: string;
 }
 
 // 학생별 개별 문제 수 타입 (외부용)
@@ -251,6 +272,21 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
     }
 
     return { correctWords, wrongWords };
+  }, []);
+
+  // 문장클리닉 지문 정보 조회 함수
+  const fetchShortPassage = useCallback(async (shortPassageId: number): Promise<ShortPassageDetail | null> => {
+    if (!supabase) return null;
+
+    const { data } = await supabase
+      .from('short_passage')
+      .select('*')
+      .eq('id', shortPassageId)
+      .single();
+
+    if (!data) return null;
+
+    return data as ShortPassageDetail;
   }, []);
 
   // 학생별 요약 데이터 생성
@@ -501,6 +537,9 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
 
             const studentName = await fetchStudentName(newRecord.student_id);
 
+            // 지문 상세 정보 조회
+            const shortPassage = await fetchShortPassage(newRecord.short_passage_id);
+
             const clozeCorrect = newRecord.cloze_is_correct ? 1 : 0;
             const keywordCorrect = newRecord.keyword_is_correct ? 1 : 0;
             const correctCount = clozeCorrect + keywordCorrect;
@@ -515,7 +554,33 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
               completedAt: newRecord.completed_at,
               totalItems: 2,
               correctCount,
-              accuracyRate
+              accuracyRate,
+              sentenceClinicDetail: shortPassage ? {
+                keyword: shortPassage.keyword,
+                text: shortPassage.text,
+                clozeSummary: shortPassage.cloze_summary,
+                clozeOptions: [
+                  shortPassage.cloze_option_1,
+                  shortPassage.cloze_option_2,
+                  shortPassage.cloze_option_3,
+                  shortPassage.cloze_option_4
+                ],
+                clozeAnswer: shortPassage.cloze_answer,
+                clozeSelectedAnswer: null, // 실시간 업데이트에서는 사용자가 선택한 답까지는 가져오지 않음 (필요시 추가 조회)
+                clozeIsCorrect: newRecord.cloze_is_correct,
+                clozeExplanation: shortPassage.cloze_explanation,
+                keywordQuestion: shortPassage.keyword_question,
+                keywordOptions: [
+                  shortPassage.keyword_option_1,
+                  shortPassage.keyword_option_2,
+                  shortPassage.keyword_option_3,
+                  shortPassage.keyword_option_4
+                ],
+                keywordAnswer: shortPassage.keyword_answer,
+                keywordSelectedAnswer: null,
+                keywordIsCorrect: newRecord.keyword_is_correct,
+                keywordExplanation: shortPassage.keyword_explanation
+              } : undefined
             };
 
             setRecords(prev => {
@@ -615,7 +680,7 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
       }
       setIsConnected(false);
     };
-  }, [fetchStudentName, fetchSessionWords]);
+  }, [fetchStudentName, fetchSessionWords, fetchShortPassage]);
 
   return (
     <div className="space-y-6">
@@ -672,9 +737,8 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
           {studentSummaries.map((summary) => (
             <Card
               key={summary.studentId}
-              className={`p-4 cursor-pointer hover:shadow-lg transition-all duration-300 ${
-                newStudentIds.has(summary.studentId) ? 'ring-2 ring-yellow-400 bg-yellow-50' : ''
-              } ${summary.currentActivity ? 'border-2 border-blue-400' : ''}`}
+              className={`p-4 cursor-pointer hover:shadow-lg transition-all duration-300 ${newStudentIds.has(summary.studentId) ? 'ring-2 ring-yellow-400 bg-yellow-50' : ''
+                } ${summary.currentActivity ? 'border-2 border-blue-400' : ''}`}
               onClick={() => setSelectedStudent(summary)}
             >
               {/* 학생 이름 & 실시간 상태 */}
@@ -862,11 +926,10 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                             {record.passageQuizDetails.slice(0, 3).map((detail, idx) => (
                               <Badge
                                 key={idx}
-                                className={`text-xs cursor-pointer hover:opacity-80 ${
-                                  detail.isCorrect
-                                    ? 'bg-green-100 text-green-700 border-green-200'
-                                    : 'bg-red-100 text-red-700 border-red-200'
-                                }`}
+                                className={`text-xs cursor-pointer hover:opacity-80 ${detail.isCorrect
+                                  ? 'bg-green-100 text-green-700 border-green-200'
+                                  : 'bg-red-100 text-red-700 border-red-200'
+                                  }`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setDetailPopup({ type: 'passage_quiz', record });
@@ -892,11 +955,10 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                         )}
                       </td>
                       <td className="px-4 py-2 text-center text-sm">
-                        <span className={`font-medium ${
-                          record.accuracyRate >= 80 ? 'text-green-600' :
+                        <span className={`font-medium ${record.accuracyRate >= 80 ? 'text-green-600' :
                           record.accuracyRate >= 60 ? 'text-yellow-600' :
-                          'text-red-600'
-                        }`}>
+                            'text-red-600'
+                          }`}>
                           {record.accuracyRate.toFixed(0)}%
                         </span>
                       </td>
@@ -975,11 +1037,10 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                   )}
 
                   {/* 빈칸 문제 */}
-                  <div className={`rounded-lg p-4 border ${
-                    detailPopup.record.sentenceClinicDetail.clozeIsCorrect
-                      ? 'bg-green-50 border-green-200'
-                      : 'bg-red-50 border-red-200'
-                  }`}>
+                  <div className={`rounded-lg p-4 border ${detailPopup.record.sentenceClinicDetail.clozeIsCorrect
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-red-50 border-red-200'
+                    }`}>
                     <div className="flex items-center justify-between mb-3">
                       <div className="text-sm font-bold text-gray-700">빈칸 문제</div>
                       <Badge className={
@@ -1005,13 +1066,12 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                         return option ? (
                           <div
                             key={idx}
-                            className={`p-2 rounded text-sm flex items-center gap-2 ${
-                              isCorrectAnswer
-                                ? 'bg-green-100 border border-green-300'
-                                : isStudentChoice && !isCorrectAnswer
-                                  ? 'bg-red-100 border border-red-300'
-                                  : 'bg-white border border-gray-200'
-                            }`}
+                            className={`p-2 rounded text-sm flex items-center gap-2 ${isCorrectAnswer
+                              ? 'bg-green-100 border border-green-300'
+                              : isStudentChoice && !isCorrectAnswer
+                                ? 'bg-red-100 border border-red-300'
+                                : 'bg-white border border-gray-200'
+                              }`}
                           >
                             <span className="font-medium w-6">{optionNum}.</span>
                             <span className="flex-1">{option}</span>
@@ -1031,11 +1091,10 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                   </div>
 
                   {/* 키워드 문제 */}
-                  <div className={`rounded-lg p-4 border ${
-                    detailPopup.record.sentenceClinicDetail.keywordIsCorrect
-                      ? 'bg-green-50 border-green-200'
-                      : 'bg-red-50 border-red-200'
-                  }`}>
+                  <div className={`rounded-lg p-4 border ${detailPopup.record.sentenceClinicDetail.keywordIsCorrect
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-red-50 border-red-200'
+                    }`}>
                     <div className="flex items-center justify-between mb-3">
                       <div className="text-sm font-bold text-gray-700">키워드 문제</div>
                       <Badge className={
@@ -1061,13 +1120,12 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                         return option ? (
                           <div
                             key={idx}
-                            className={`p-2 rounded text-sm flex items-center gap-2 ${
-                              isCorrectAnswer
-                                ? 'bg-green-100 border border-green-300'
-                                : isStudentChoice && !isCorrectAnswer
-                                  ? 'bg-red-100 border border-red-300'
-                                  : 'bg-white border border-gray-200'
-                            }`}
+                            className={`p-2 rounded text-sm flex items-center gap-2 ${isCorrectAnswer
+                              ? 'bg-green-100 border border-green-300'
+                              : isStudentChoice && !isCorrectAnswer
+                                ? 'bg-red-100 border border-red-300'
+                                : 'bg-white border border-gray-200'
+                              }`}
                           >
                             <span className="font-medium w-6">{optionNum}.</span>
                             <span className="flex-1">{option}</span>
@@ -1093,11 +1151,10 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                   {detailPopup.record.passageQuizDetails.map((detail, idx) => (
                     <div
                       key={idx}
-                      className={`rounded-lg p-4 border ${
-                        detail.isCorrect
-                          ? 'bg-green-50 border-green-200'
-                          : 'bg-red-50 border-red-200'
-                      }`}
+                      className={`rounded-lg p-4 border ${detail.isCorrect
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-red-50 border-red-200'
+                        }`}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
@@ -1109,9 +1166,8 @@ export function RealtimeLearningTable({ initialData, initialWordCounts, initialH
                           </div>
                           <div className="text-gray-800">{detail.statement}</div>
                         </div>
-                        <div className={`text-lg font-bold ${
-                          detail.isCorrect ? 'text-green-600' : 'text-red-600'
-                        }`}>
+                        <div className={`text-lg font-bold ${detail.isCorrect ? 'text-green-600' : 'text-red-600'
+                          }`}>
                           {detail.isCorrect ? '✓' : '✗'}
                         </div>
                       </div>
