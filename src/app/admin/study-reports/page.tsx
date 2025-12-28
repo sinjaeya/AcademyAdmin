@@ -34,7 +34,8 @@ interface Student {
   school: string;
   grade: string;
   parent_phone: string;
-  currentAcademy: string;
+  academy_id?: string | null;
+  academy_name?: string | null;
   status: string;
   study_time?: string;
   created_at: string;
@@ -474,7 +475,7 @@ export default function StudyReportsPage() {
           const webhookUrl = 'https://hook.us2.make.com/q46vjxgc89g8ne27f6kpht08pzb6n6a5';
           
           const webhookPayload = {
-            academy: student.currentAcademy,
+            academy: student.academy_name || '',
             student_name: student.name,
             parent_phone: student.parent_phone,
             message: messageText
@@ -703,22 +704,40 @@ export default function StudyReportsPage() {
     try {
       setLoading(true);
       setError(null);
-      
+
       if (!supabase) {
         throw new Error('Supabase client is not available');
       }
 
       const { data, error: fetchError } = await supabase
         .from('student')
-        .select('*')
+        .select(`
+          *,
+          academy:academy_id (
+            id,
+            name
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (fetchError) {
         throw fetchError;
       }
 
-      console.log('학생 데이터:', data);
-      setStudents(data || []);
+      // academy 정보 정리
+      const studentsWithAcademy = (data || []).map((student: any) => {
+        const academy = student.academy && typeof student.academy === 'object' && !Array.isArray(student.academy)
+          ? student.academy
+          : null;
+
+        return {
+          ...student,
+          academy_name: academy?.name || null,
+        };
+      });
+
+      console.log('학생 데이터:', studentsWithAcademy);
+      setStudents(studentsWithAcademy);
     } catch (err) {
       console.error('Error fetching students:', err);
       setError(err instanceof Error ? err.message : '데이터를 가져오는 중 오류가 발생했습니다.');
@@ -833,7 +852,7 @@ export default function StudyReportsPage() {
   const filteredStudents = students
     .filter(student => {
       if (selectedAcademy === '전체') return true;
-      return student.currentAcademy === selectedAcademy;
+      return student.academy_name === selectedAcademy;
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
 

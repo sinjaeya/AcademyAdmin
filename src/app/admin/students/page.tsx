@@ -68,7 +68,6 @@ interface Student {
   sentence_level?: string | null;
   academy_id?: string | null;
   academy_name?: string | null;
-  currentAcademy?: string; // 하위 호환성을 위해 유지
   status: string;
   study_time?: string;
   created_at: string;
@@ -91,7 +90,6 @@ interface NewStudentForm {
   rubric_difficulty_level: string;
   sentence_level: string;
   academy_id?: string | null;
-  currentAcademy?: string; // 하위 호환성을 위해 유지
   status: string;
   study_time: string;
 }
@@ -112,7 +110,6 @@ interface EditStudentForm {
   rubric_difficulty_level: string;
   sentence_level: string;
   academy_id?: string | null;
-  currentAcademy?: string; // 하위 호환성을 위해 유지
   status: string;
   study_time: string;
 }
@@ -411,7 +408,6 @@ export default function StudentsPage() {
       rubric_difficulty_level: student.rubric_difficulty_level || 'medium',
       sentence_level: student.sentence_level || 'Lv3_Mid1',
       academy_id: student.academy_id || null,
-      currentAcademy: student.academy_name || student.currentAcademy || '',
       status: student.status,
       study_time: student.study_time || '60'
     });
@@ -667,7 +663,7 @@ export default function StudentsPage() {
                                 : ''
                             }
                           >
-                            {student.academy_name || student.currentAcademy || 'N/A'}
+                            {student.academy_name || 'N/A'}
                           </Badge>
                         </TableCell>
                         <TableCell>

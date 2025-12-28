@@ -47,7 +47,8 @@ interface Student {
   id: string;
   name: string;
   phone_number?: string;
-  currentAcademy?: string;
+  academy_id?: string | null;
+  academy_name?: string | null;
 }
 
 // 새 입금내역 추가 폼 데이터 타입

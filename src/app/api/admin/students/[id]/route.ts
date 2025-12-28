@@ -47,27 +47,9 @@ export async function PUT(
     if (body.rubric_grade_level !== undefined) updateData.rubric_grade_level = body.rubric_grade_level || null;
     if (body.rubric_difficulty_level !== undefined) updateData.rubric_difficulty_level = body.rubric_difficulty_level || null;
     if (body.sentence_level !== undefined) updateData.sentence_level = body.sentence_level || null;
-    // currentAcademy 값 저장 (학원 이름 TEXT 컬럼)
-    if (body.currentAcademy !== undefined) {
-      updateData.currentAcademy = body.currentAcademy || null;
-    }
-
-    // academy_id가 제공된 경우 사용 (UUID 타입), 없으면 currentAcademy로 academy_id 찾기
+    // academy_id가 제공된 경우 사용 (UUID 타입)
     if (body.academy_id !== undefined) {
-      updateData.academy_id = body.academy_id || null;  // UUID는 문자열 그대로 전달
-    } else if (body.currentAcademy !== undefined) {
-      // currentAcademy 이름으로 academy_id 찾기
-      const { data: academy } = await supabase
-        .from('academy')
-        .select('id')
-        .eq('name', body.currentAcademy)
-        .single();
-
-      if (academy) {
-        updateData.academy_id = academy.id;
-      } else {
-        updateData.academy_id = null;
-      }
+      updateData.academy_id = body.academy_id || null;
     }
     if (body.status !== undefined) updateData.status = body.status;
     if (body.study_time !== undefined) updateData.study_time = String(body.study_time);  // TEXT 타입
@@ -125,7 +107,7 @@ export async function PUT(
       data: {
         ...updatedStudent,
         academy_id: updatedStudent.academy_id || null,
-        academy_name: academy?.name || updatedStudent.currentAcademy || null,
+        academy_name: academy?.name || null,
       },
       message: '학생 정보가 성공적으로 업데이트되었습니다.'
     }, { status: 200 });

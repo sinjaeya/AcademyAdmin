@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     // 학생 정보 조회하여 academy_id 확인
     const { data: studentData, error: studentError } = await supabase
       .from('student')
-      .select('currentAcademy')
+      .select('academy_id')
       .eq('id', body.student_id)
       .single();
 
@@ -135,9 +135,8 @@ export async function POST(request: NextRequest) {
     // academy_id 결정: body에 있으면 사용, 없으면 학생의 학원 또는 현재 사용자의 학원
     let finalAcademyId = body.academy_id;
     if (!finalAcademyId) {
-      // 학생의 학원 정보는 다른 방식으로 저장되어 있을 수 있으므로
-      // 현재 사용자의 학원 ID를 사용
-      finalAcademyId = academyId;
+      // 학생의 academy_id 사용, 없으면 현재 사용자의 학원 ID 사용
+      finalAcademyId = studentData.academy_id || academyId;
     }
 
     // payment_date 처리: 클라이언트에서 전달된 값 사용 (없으면 서버 시간)

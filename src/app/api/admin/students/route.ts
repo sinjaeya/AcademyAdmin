@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       return {
         ...student,
         academy_id: student.academy_id || null,
-        academy_name: academy?.name || student.currentAcademy || null, // 하위 호환성을 위해 currentAcademy도 유지
+        academy_name: academy?.name || null,
         hasPaidThisMonth: !isNaN(studentId) && paidStudentIds.has(studentId)
       };
     });
@@ -130,25 +130,9 @@ export async function POST(request: NextRequest) {
       study_time: body.study_time ? String(body.study_time) : '60',  // TEXT 타입, 기본값: '60'
     };
 
-    // currentAcademy 값 저장 (학원 이름 TEXT 컬럼)
-    if (body.currentAcademy) {
-      studentToInsert.currentAcademy = body.currentAcademy;
-    }
-
-    // academy_id가 제공된 경우 사용 (UUID 타입), 없으면 currentAcademy로 academy_id 찾기
+    // academy_id가 제공된 경우 사용 (UUID 타입)
     if (body.academy_id) {
-      studentToInsert.academy_id = body.academy_id;  // UUID는 문자열 그대로 전달
-    } else if (body.currentAcademy) {
-      // currentAcademy 이름으로 academy_id 찾기
-      const { data: academy } = await supabase
-        .from('academy')
-        .select('id')
-        .eq('name', body.currentAcademy)
-        .single();
-
-      if (academy) {
-        studentToInsert.academy_id = academy.id;
-      }
+      studentToInsert.academy_id = body.academy_id;
     }
 
     // 1단계: student 테이블에 학생 정보 추가
