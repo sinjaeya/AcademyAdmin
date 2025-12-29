@@ -14,13 +14,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 명령어
 
 ```bash
+# 개발
 npm run dev          # 개발 서버 실행 (Turbopack)
 npm run build        # 프로덕션 빌드 (Turbopack)
 npm run lint         # ESLint 검사
 npm run lint:fix     # ESLint 자동 수정
 npm run type-check   # TypeScript 타입 검사
+
+# 데이터베이스
 npm run db:studio    # Prisma Studio 실행
+npm run db:generate  # Prisma 타입 생성
+npm run db:push      # DB 스키마 푸시
+npm run db:migrate   # 마이그레이션 실행
+
+# 기타
 npm run pwa:icons    # PWA 아이콘 생성
+npm run setup        # Supabase 초기 설정
+npm run clean        # .next, node_modules 삭제
+npm run fresh        # clean + npm install
 ```
 
 ## 아키텍처
@@ -60,6 +71,11 @@ Supabase 프로젝트: `mhorwnwhcyxynfxmlhit`
 - 함수형 컴포넌트만 사용
 - Server Component 우선, 필요시에만 `'use client'` 사용
 - 파일당 하나의 컴포넌트
+
+### 금지 사항
+- `localStorage`/`sessionStorage` 직접 사용 금지 (Zustand persist 또는 Supabase session 사용)
+- 컴포넌트에서 직접 DB 쿼리 금지 (`lib/supabase` 함수 사용)
+- 하드코딩된 권한 체크 금지 (`lib/permissions.ts` 통해서만)
 
 ## 데이터베이스 테이블 생성
 
@@ -180,6 +196,12 @@ medium, advanced, highest, extreme, high_mock_1, high_mock_2, high_mock_3, csat
 // 실패
 { error: string }
 ```
+
+### API 보안 규칙
+- 모든 API Route에서 권한 검증 필수
+- SQL 인젝션 방지를 위한 파라미터화된 쿼리 사용
+- 민감 데이터는 Admin/Owner만 접근 가능
+- 로그에 개인정보 기록 금지
 
 ## 환경변수
 

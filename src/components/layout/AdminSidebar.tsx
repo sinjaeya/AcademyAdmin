@@ -26,7 +26,8 @@ import {
   MessageSquare,
   BarChart3,
   TrendingUp,
-  Send
+  Send,
+  Camera
 } from 'lucide-react';
 
 // 네비게이션 아이템 타입 정의
@@ -147,6 +148,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
     { name: '국어', href: '/admin/learning', icon: BookText },
     { name: '풀스택-국어 캘린더뷰', href: '/admin/learning/korean2', icon: BookText },
     { name: '풀스택-국어 실시간뷰', href: '/admin/learning/realtime-korean', icon: Radio },
+    { name: '공부스크린샷', href: '/admin/learning/study-screenshots', icon: Camera },
     { name: '수학', href: '/admin/learning/math', icon: BookText }
   ], []);
 
