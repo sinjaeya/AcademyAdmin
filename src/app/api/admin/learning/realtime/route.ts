@@ -400,6 +400,54 @@ export async function GET() {
     // 시작 시간 기준 내림차순 정렬
     records.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
 
+    // 학생별 문장클리닉 복습 대상 카운트 조회
+    const reviewCounts: Record<number, number> = {};
+
+    if (studentIds.length > 0) {
+      // 각 학생별로 복습 대상 지문 수 조회
+      // 가장 최근 학습에서 틀린 문제가 있는 지문 = 복습 대상
+      const { data: reviewData, error: reviewError } = await supabase.rpc('get_review_count_by_students', {
+        p_student_ids: studentIds
+      });
+
+      if (reviewError) {
+        console.error('Error fetching review counts:', reviewError);
+        // RPC 실패 시 직접 쿼리로 대체
+        for (const studentId of studentIds) {
+          const { data: fallbackData } = await supabase
+            .from('short_passage_learning_history')
+            .select('short_passage_id, cloze_is_correct, keyword_is_correct, completed_at')
+            .eq('student_id', studentId)
+            .not('completed_at', 'is', null)
+            .order('completed_at', { ascending: false });
+
+          if (fallbackData) {
+            // 지문별 최신 결과만 추출
+            const latestByPassage = new Map<number, { cloze: boolean; keyword: boolean }>();
+            for (const row of fallbackData) {
+              if (!latestByPassage.has(row.short_passage_id)) {
+                latestByPassage.set(row.short_passage_id, {
+                  cloze: row.cloze_is_correct,
+                  keyword: row.keyword_is_correct
+                });
+              }
+            }
+
+            // 복습 대상 카운트 (둘 중 하나라도 틀린 경우)
+            let count = 0;
+            latestByPassage.forEach(({ cloze, keyword }) => {
+              if (!cloze || !keyword) count++;
+            });
+            reviewCounts[studentId] = count;
+          }
+        }
+      } else if (reviewData) {
+        for (const row of reviewData) {
+          reviewCounts[row.student_id] = row.review_count;
+        }
+      }
+    }
+
     // 오늘 학습한 학생들의 오늘 이전 누적 정답률 조회
     const historicalAccuracy: Record<number, { wordPangTotal: number; wordPangCorrect: number; wordPangAccuracyRate: number | null }> = {};
 
@@ -441,7 +489,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ data: records, wordCounts, historicalAccuracy });
+    return NextResponse.json({ data: records, wordCounts, historicalAccuracy, reviewCounts });
   } catch (error) {
     console.error('Error in realtime learning API:', error);
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });

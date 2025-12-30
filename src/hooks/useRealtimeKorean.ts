@@ -1,0 +1,545 @@
+'use client';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '@/lib/supabase/client';
+import type {
+  LearningRecord,
+  StudentWordCount,
+  StudentHistoricalAccuracy,
+  SentenceClinicDetail,
+  PassageQuizDetail,
+  RealtimeKoreanApiResponse
+} from '@/types/realtime-korean';
+
+// Supabase Realtime payload 타입
+interface TestSessionPayload {
+  id: number;
+  student_id: number;
+  test_type: 'word_pang' | 'passage_quiz';
+  started_at: string;
+  completed_at: string | null;
+  total_items: number;
+  correct_count: number;
+  accuracy_rate: number;
+}
+
+interface TestResultPayload {
+  id: number;
+  session_id: number;
+  student_id: number;
+  test_type: 'word_pang' | 'passage_quiz';
+  is_correct: boolean;
+  answered_at: string;
+  item_id: number | null;
+  item_uuid: string | null;
+}
+
+interface SentenceClinicPayload {
+  id: string;
+  student_id: number;
+  short_passage_id: number;
+  started_at: string;
+  completed_at: string | null;
+  cloze_is_correct: boolean;
+  keyword_is_correct: boolean;
+  cloze_selected_answer: number | null;
+  keyword_selected_answer: number | null;
+}
+
+// 연결 상태 타입
+export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
+
+// KST 기준 날짜 문자열 반환
+const getKSTDateString = (date: Date): string => {
+  const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  return kstDate.toISOString().split('T')[0];
+};
+
+export function useRealtimeKorean() {
+  const [records, setRecords] = useState<LearningRecord[]>([]);
+  const [wordCounts, setWordCounts] = useState<Map<number, StudentWordCount>>(new Map());
+  const [historicalAccuracy, setHistoricalAccuracy] = useState<Map<number, StudentHistoricalAccuracy>>(new Map());
+  const [reviewCounts, setReviewCounts] = useState<Map<number, number>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+
+  // 채널 참조 (타입은 any로 처리 - Supabase 채널 타입)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const channelsRef = useRef<any[]>([]);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 데이터 로드 함수
+  const loadData = useCallback(async (): Promise<void> => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/learning/realtime');
+      const result: RealtimeKoreanApiResponse = await response.json();
+
+      if (result.data) {
+        setRecords(result.data);
+      }
+      if (result.wordCounts) {
+        const newWordCounts = new Map<number, StudentWordCount>();
+        for (const [studentId, counts] of Object.entries(result.wordCounts)) {
+          newWordCounts.set(Number(studentId), counts);
+        }
+        setWordCounts(newWordCounts);
+      }
+      if (result.historicalAccuracy) {
+        const newHistorical = new Map<number, StudentHistoricalAccuracy>();
+        for (const [studentId, data] of Object.entries(result.historicalAccuracy)) {
+          newHistorical.set(Number(studentId), data);
+        }
+        setHistoricalAccuracy(newHistorical);
+      }
+      if (result.reviewCounts) {
+        const newReviewCounts = new Map<number, number>();
+        for (const [studentId, count] of Object.entries(result.reviewCounts)) {
+          newReviewCounts.set(Number(studentId), count as number);
+        }
+        setReviewCounts(newReviewCounts);
+      }
+      setLastUpdate(new Date());
+    } catch (error) {
+      console.error('데이터 로드 실패:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 학생 이름 조회
+  const fetchStudentName = useCallback(async (studentId: number): Promise<string> => {
+    if (!supabase) return `학생 ${studentId}`;
+    const { data } = await supabase
+      .from('student')
+      .select('name')
+      .eq('id', studentId)
+      .single();
+    return data?.name || `학생 ${studentId}`;
+  }, []);
+
+  // 단어팡 세션 단어 조회
+  const fetchSessionWords = useCallback(async (sessionId: number): Promise<{ correctWords: string[]; wrongWords: string[] } | null> => {
+    if (!supabase) return null;
+
+    const { data: wordResultData } = await supabase
+      .from('test_result')
+      .select('item_id, is_correct')
+      .eq('test_type', 'word_pang')
+      .eq('session_id', sessionId);
+
+    if (!wordResultData || wordResultData.length === 0) return null;
+
+    const itemIds = [...new Set(wordResultData.map(r => r.item_id))];
+    const { data: wordData } = await supabase
+      .from('word_pang_valid_words')
+      .select('voca_id, word')
+      .in('voca_id', itemIds);
+
+    const wordMap = new Map<number, string>();
+    wordData?.forEach(w => wordMap.set(Number(w.voca_id), w.word));
+
+    const correctWords: string[] = [];
+    const wrongWords: string[] = [];
+
+    for (const result of wordResultData) {
+      const word = wordMap.get(Number(result.item_id)) || '';
+      if (result.is_correct) {
+        correctWords.push(word);
+      } else {
+        wrongWords.push(word);
+      }
+    }
+
+    return { correctWords, wrongWords };
+  }, []);
+
+  // 문장클리닉 지문 정보 조회
+  const fetchShortPassage = useCallback(async (shortPassageId: number): Promise<SentenceClinicDetail | null> => {
+    if (!supabase) return null;
+
+    const { data } = await supabase
+      .from('short_passage')
+      .select('*')
+      .eq('id', shortPassageId)
+      .single();
+
+    if (!data) return null;
+
+    return {
+      keyword: data.keyword || '',
+      text: data.text || '',
+      clozeSummary: data.cloze_summary || '',
+      clozeOptions: [
+        data.cloze_option_1 || '',
+        data.cloze_option_2 || '',
+        data.cloze_option_3 || '',
+        data.cloze_option_4 || ''
+      ],
+      clozeAnswer: data.cloze_answer ?? 0,
+      clozeSelectedAnswer: null,
+      clozeIsCorrect: null,
+      clozeExplanation: data.cloze_explanation || '',
+      keywordQuestion: data.keyword_question || '',
+      keywordOptions: [
+        data.keyword_option_1 || '',
+        data.keyword_option_2 || '',
+        data.keyword_option_3 || '',
+        data.keyword_option_4 || ''
+      ],
+      keywordAnswer: data.keyword_answer ?? 0,
+      keywordSelectedAnswer: null,
+      keywordIsCorrect: null,
+      keywordExplanation: data.keyword_explanation || ''
+    };
+  }, []);
+
+  // 보물찾기 문제 정보 조회
+  const fetchPassageQuizDetail = useCallback(async (quizId: string): Promise<PassageQuizDetail | null> => {
+    if (!supabase) return null;
+
+    const { data } = await supabase
+      .from('passage_quiz_ox')
+      .select('statement, ox_type, answer')
+      .eq('quiz_id', quizId)
+      .single();
+
+    if (!data) return null;
+
+    return {
+      statement: data.statement,
+      oxType: data.ox_type,
+      answer: data.answer,
+      isCorrect: false // 실시간에서 업데이트됨
+    };
+  }, []);
+
+  // 학생별 복습 카운트 재조회
+  const refreshReviewCount = useCallback(async (studentId: number): Promise<void> => {
+    if (!supabase) return;
+
+    const { data } = await supabase
+      .from('short_passage_learning_history')
+      .select('short_passage_id, cloze_is_correct, keyword_is_correct, completed_at')
+      .eq('student_id', studentId)
+      .not('completed_at', 'is', null)
+      .order('completed_at', { ascending: false });
+
+    if (data) {
+      // 지문별 최신 결과만 추출
+      const latestByPassage = new Map<number, { cloze: boolean; keyword: boolean }>();
+      for (const row of data) {
+        if (!latestByPassage.has(row.short_passage_id)) {
+          latestByPassage.set(row.short_passage_id, {
+            cloze: row.cloze_is_correct,
+            keyword: row.keyword_is_correct
+          });
+        }
+      }
+
+      // 복습 대상 카운트 (둘 중 하나라도 틀린 경우)
+      let count = 0;
+      latestByPassage.forEach(({ cloze, keyword }) => {
+        if (!cloze || !keyword) count++;
+      });
+
+      setReviewCounts(prev => {
+        const newMap = new Map(prev);
+        newMap.set(studentId, count);
+        return newMap;
+      });
+    }
+  }, []);
+
+  // 모든 구독 해제
+  const unsubscribeAll = useCallback(() => {
+    channelsRef.current.forEach(channel => {
+      supabase?.removeChannel(channel);
+    });
+    channelsRef.current = [];
+  }, []);
+
+  // 구독 설정
+  const setupSubscriptions = useCallback(() => {
+    if (!supabase) {
+      setConnectionStatus('error');
+      return;
+    }
+
+    unsubscribeAll();
+    setConnectionStatus('connecting');
+
+    // test_session 채널
+    const testSessionChannel = supabase
+      .channel('realtime_korean_test_session')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'test_session',
+          filter: `test_type=in.(word_pang,passage_quiz)`
+        },
+        async (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const newRecord = payload.new as TestSessionPayload;
+            const today = getKSTDateString(new Date());
+            const recordDate = getKSTDateString(new Date(newRecord.started_at));
+            if (recordDate !== today) return;
+
+            const studentName = await fetchStudentName(newRecord.student_id);
+            let wordData: { correctWords: string[]; wrongWords: string[] } | null = null;
+            if (newRecord.test_type === 'word_pang') {
+              wordData = await fetchSessionWords(newRecord.id);
+            }
+
+            const record: LearningRecord = {
+              id: `ts_${newRecord.id}`,
+              studentId: newRecord.student_id,
+              studentName,
+              learningType: newRecord.test_type,
+              startedAt: newRecord.started_at,
+              completedAt: newRecord.completed_at,
+              totalItems: newRecord.total_items || 0,
+              correctCount: newRecord.correct_count || 0,
+              accuracyRate: newRecord.accuracy_rate || 0,
+              correctWords: wordData?.correctWords,
+              wrongWords: wordData?.wrongWords
+            };
+
+            setRecords(prev => {
+              const existingIndex = prev.findIndex(r => r.id === record.id);
+              if (existingIndex >= 0) {
+                const updated = [...prev];
+                updated[existingIndex] = record;
+                return updated;
+              }
+              return [record, ...prev];
+            });
+            setLastUpdate(new Date());
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setConnectionStatus('connected');
+        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          setConnectionStatus('disconnected');
+        }
+      });
+
+    // sentence_clinic 채널
+    const sentenceClinicChannel = supabase
+      .channel('realtime_korean_sentence_clinic')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'short_passage_learning_history'
+        },
+        async (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const newRecord = payload.new as SentenceClinicPayload;
+            const today = getKSTDateString(new Date());
+            const recordDate = getKSTDateString(new Date(newRecord.started_at));
+            if (recordDate !== today) return;
+
+            const studentName = await fetchStudentName(newRecord.student_id);
+            const shortPassage = await fetchShortPassage(newRecord.short_passage_id);
+
+            const clozeCorrect = newRecord.cloze_is_correct ? 1 : 0;
+            const keywordCorrect = newRecord.keyword_is_correct ? 1 : 0;
+            const correctCount = clozeCorrect + keywordCorrect;
+
+            const record: LearningRecord = {
+              id: `sc_${newRecord.id}`,
+              studentId: newRecord.student_id,
+              studentName,
+              learningType: 'sentence_clinic',
+              startedAt: newRecord.started_at,
+              completedAt: newRecord.completed_at,
+              totalItems: 2,
+              correctCount,
+              accuracyRate: (correctCount / 2) * 100,
+              sentenceClinicDetail: shortPassage ? {
+                ...shortPassage,
+                clozeSelectedAnswer: newRecord.cloze_selected_answer,
+                clozeIsCorrect: newRecord.cloze_is_correct,
+                keywordSelectedAnswer: newRecord.keyword_selected_answer,
+                keywordIsCorrect: newRecord.keyword_is_correct
+              } : undefined
+            };
+
+            setRecords(prev => {
+              const existingIndex = prev.findIndex(r => r.id === record.id);
+              if (existingIndex >= 0) {
+                const updated = [...prev];
+                updated[existingIndex] = record;
+                return updated;
+              }
+              return [record, ...prev];
+            });
+            setLastUpdate(new Date());
+
+            // 완료된 학습인 경우 복습 카운트 재조회
+            if (newRecord.completed_at) {
+              refreshReviewCount(newRecord.student_id);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    // test_result 채널 (개별 문제)
+    const testResultChannel = supabase
+      .channel('realtime_korean_test_result')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'test_result',
+          filter: `test_type=in.(word_pang,passage_quiz)`
+        },
+        async (payload) => {
+          const newResult = payload.new as TestResultPayload;
+          const today = getKSTDateString(new Date());
+          const resultDate = getKSTDateString(new Date(newResult.answered_at));
+          if (resultDate !== today) return;
+
+          const studentId = newResult.student_id;
+          const testType = newResult.test_type;
+          const isCorrect = newResult.is_correct;
+          const sessionId = newResult.session_id;
+
+          // 보물찾기 상세 정보
+          let passageQuizDetail: PassageQuizDetail | null = null;
+          if (testType === 'passage_quiz' && newResult.item_uuid) {
+            passageQuizDetail = await fetchPassageQuizDetail(newResult.item_uuid);
+            if (passageQuizDetail) {
+              passageQuizDetail.isCorrect = isCorrect;
+            }
+          }
+
+          // 단어팡 단어 정보 조회
+          let wordText: string | null = null;
+          if (testType === 'word_pang' && newResult.item_id) {
+            const { data: wordData } = await supabase!
+              .from('word_pang_valid_words')
+              .select('word')
+              .eq('voca_id', newResult.item_id)
+              .single();
+            wordText = wordData?.word || null;
+          }
+
+          // 레코드 업데이트
+          setRecords(prev => {
+            const updated = [...prev];
+            const recordIndex = updated.findIndex(r => r.id === `ts_${sessionId}`);
+
+            if (recordIndex >= 0) {
+              const record = { ...updated[recordIndex] };
+              record.totalItems += 1;
+              if (isCorrect) record.correctCount += 1;
+              record.accuracyRate = (record.correctCount / record.totalItems) * 100;
+
+              // 보물찾기 상세 추가
+              if (testType === 'passage_quiz' && passageQuizDetail) {
+                record.passageQuizDetails = record.passageQuizDetails
+                  ? [...record.passageQuizDetails, passageQuizDetail]
+                  : [passageQuizDetail];
+              }
+
+              // 단어팡 단어 추가
+              if (testType === 'word_pang' && wordText) {
+                if (isCorrect) {
+                  record.correctWords = record.correctWords
+                    ? [...record.correctWords, wordText]
+                    : [wordText];
+                } else {
+                  record.wrongWords = record.wrongWords
+                    ? [...record.wrongWords, wordText]
+                    : [wordText];
+                }
+              }
+
+              updated[recordIndex] = record;
+            }
+            return updated;
+          });
+
+          // 학생별 문제 수 업데이트
+          setWordCounts(prev => {
+            const newMap = new Map(prev);
+            const current = newMap.get(studentId) || {
+              wordPangCount: 0,
+              wordPangCorrect: 0,
+              passageQuizCount: 0,
+              passageQuizCorrect: 0
+            };
+
+            if (testType === 'word_pang') {
+              current.wordPangCount += 1;
+              if (isCorrect) current.wordPangCorrect += 1;
+            } else if (testType === 'passage_quiz') {
+              current.passageQuizCount += 1;
+              if (isCorrect) current.passageQuizCorrect += 1;
+            }
+
+            newMap.set(studentId, { ...current });
+            return newMap;
+          });
+
+          setLastUpdate(new Date());
+        }
+      )
+      .subscribe();
+
+    channelsRef.current = [testSessionChannel, sentenceClinicChannel, testResultChannel];
+  }, [fetchStudentName, fetchSessionWords, fetchShortPassage, fetchPassageQuizDetail, refreshReviewCount, unsubscribeAll]);
+
+  // 재연결 시도
+  const reconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+
+    reconnectTimeoutRef.current = setTimeout(() => {
+      console.log('실시간 연결 재시도...');
+      setupSubscriptions();
+    }, 3000);
+  }, [setupSubscriptions]);
+
+  // 초기 로드 및 구독 설정
+  useEffect(() => {
+    loadData();
+    setupSubscriptions();
+
+    return () => {
+      unsubscribeAll();
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
+  }, [loadData, setupSubscriptions, unsubscribeAll]);
+
+  // 연결 끊김 시 재연결
+  useEffect(() => {
+    if (connectionStatus === 'disconnected') {
+      reconnect();
+    }
+  }, [connectionStatus, reconnect]);
+
+  return {
+    records,
+    wordCounts,
+    historicalAccuracy,
+    reviewCounts,
+    loading,
+    connectionStatus,
+    lastUpdate,
+    refresh: loadData
+  };
+}

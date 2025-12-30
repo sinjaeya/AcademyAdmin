@@ -57,7 +57,8 @@ const navigationCategories: NavigationCategory[] = [
   {
     title: 'OVERVIEW',
     items: [
-      { name: '대시보드', href: '/admin', icon: LayoutDashboard, badge: '3', requiredPermission: null }
+      { name: '대시보드', href: '/admin', icon: LayoutDashboard, badge: '3', requiredPermission: null },
+      { name: '실시간 국어 (v2)', href: '/admin/learning/realtime-korean2', icon: Radio, requiredPermission: null }
     ]
   },
   {
