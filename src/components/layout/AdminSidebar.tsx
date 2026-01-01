@@ -27,7 +27,8 @@ import {
   BarChart3,
   TrendingUp,
   Send,
-  Camera
+  Camera,
+  PenTool
 } from 'lucide-react';
 
 // 네비게이션 아이템 타입 정의
@@ -58,7 +59,8 @@ const navigationCategories: NavigationCategory[] = [
     title: 'OVERVIEW',
     items: [
       { name: '대시보드', href: '/admin', icon: LayoutDashboard, badge: '3', requiredPermission: null },
-      { name: '실시간 국어 (v2)', href: '/admin/learning/realtime-korean2', icon: Radio, requiredPermission: null }
+      { name: '실시간 국어 (v2)', href: '/admin/learning/realtime-korean2', icon: Radio, requiredPermission: null },
+      { name: '내손내줄 실시간', href: '/admin/handwriting/live', icon: PenTool, requiredPermission: null }
     ]
   },
   {
@@ -148,7 +150,6 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
   const learningSubMenus = useMemo(() => [
     { name: '국어', href: '/admin/learning', icon: BookText },
     { name: '풀스택-국어 캘린더뷰', href: '/admin/learning/korean2', icon: BookText },
-    { name: '풀스택-국어 실시간뷰', href: '/admin/learning/realtime-korean', icon: Radio },
     { name: '공부스크린샷', href: '/admin/learning/study-screenshots', icon: Camera },
     { name: '수학', href: '/admin/learning/math', icon: BookText }
   ], []);

@@ -55,7 +55,7 @@ const getKSTDateString = (date: Date): string => {
   return kstDate.toISOString().split('T')[0];
 };
 
-export function useRealtimeKorean() {
+export function useRealtimeKorean(academyId: string | null) {
   const [records, setRecords] = useState<LearningRecord[]>([]);
   const [wordCounts, setWordCounts] = useState<Map<number, StudentWordCount>>(new Map());
   const [historicalAccuracy, setHistoricalAccuracy] = useState<Map<number, StudentHistoricalAccuracy>>(new Map());
@@ -69,11 +69,33 @@ export function useRealtimeKorean() {
   const channelsRef = useRef<any[]>([]);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 학원 학생 ID 목록 (실시간 필터링용)
+  const academyStudentIdsRef = useRef<Set<number>>(new Set());
+
   // 데이터 로드 함수
   const loadData = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/learning/realtime');
+
+      // 학원 학생 ID 목록 조회 (실시간 필터링용)
+      if (academyId && supabase) {
+        const { data: students } = await supabase
+          .from('student')
+          .select('id')
+          .eq('academy_id', academyId);
+
+        if (students) {
+          academyStudentIdsRef.current = new Set(students.map(s => Number(s.id)));
+        }
+      } else {
+        academyStudentIdsRef.current = new Set();
+      }
+
+      // API 호출 (academy_id 쿼리 파라미터 추가)
+      const url = academyId
+        ? `/api/admin/learning/realtime?academy_id=${academyId}`
+        : '/api/admin/learning/realtime';
+      const response = await fetch(url);
       const result: RealtimeKoreanApiResponse = await response.json();
 
       if (result.data) {
@@ -106,7 +128,7 @@ export function useRealtimeKorean() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [academyId]);
 
   // 학생 이름 조회
   const fetchStudentName = useCallback(async (studentId: number): Promise<string> => {
@@ -288,6 +310,11 @@ export function useRealtimeKorean() {
             const recordDate = getKSTDateString(new Date(newRecord.started_at));
             if (recordDate !== today) return;
 
+            // 학원 학생 필터링 (academyId가 있는 경우)
+            if (academyStudentIdsRef.current.size > 0 && !academyStudentIdsRef.current.has(newRecord.student_id)) {
+              return;
+            }
+
             const studentName = await fetchStudentName(newRecord.student_id);
             let wordData: { correctWords: string[]; wrongWords: string[] } | null = null;
             if (newRecord.test_type === 'word_pang') {
@@ -345,6 +372,11 @@ export function useRealtimeKorean() {
             const today = getKSTDateString(new Date());
             const recordDate = getKSTDateString(new Date(newRecord.started_at));
             if (recordDate !== today) return;
+
+            // 학원 학생 필터링 (academyId가 있는 경우)
+            if (academyStudentIdsRef.current.size > 0 && !academyStudentIdsRef.current.has(newRecord.student_id)) {
+              return;
+            }
 
             const studentName = await fetchStudentName(newRecord.student_id);
             const shortPassage = await fetchShortPassage(newRecord.short_passage_id);
@@ -408,6 +440,11 @@ export function useRealtimeKorean() {
           const today = getKSTDateString(new Date());
           const resultDate = getKSTDateString(new Date(newResult.answered_at));
           if (resultDate !== today) return;
+
+          // 학원 학생 필터링 (academyId가 있는 경우)
+          if (academyStudentIdsRef.current.size > 0 && !academyStudentIdsRef.current.has(newResult.student_id)) {
+            return;
+          }
 
           const studentId = newResult.student_id;
           const testType = newResult.test_type;

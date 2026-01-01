@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Radio, Wifi, WifiOff, AlertCircle, X } from 'lucide-react';
 import { useRealtimeKorean, ConnectionStatus } from '@/hooks/useRealtimeKorean';
+import { useAuthStore } from '@/store/auth';
 import type { LearningRecord, StudentSummary } from '@/types/realtime-korean';
 
 // 학습 유형 한글 변환
@@ -291,7 +292,8 @@ function StudentRow({ summary, onHide }: { summary: StudentSummary; onHide: () =
 
 // 메인 컴포넌트
 export function RealtimeKoreanV2() {
-  const { records, wordCounts, historicalAccuracy, reviewCounts, loading, connectionStatus, lastUpdate } = useRealtimeKorean();
+  const { academyId } = useAuthStore();
+  const { records, wordCounts, historicalAccuracy, reviewCounts, loading, connectionStatus, lastUpdate } = useRealtimeKorean(academyId);
 
   // 숨긴 학생 목록
   const [hiddenStudents, setHiddenStudents] = useState<Set<number>>(new Set());

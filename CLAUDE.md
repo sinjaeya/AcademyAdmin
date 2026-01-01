@@ -44,9 +44,16 @@ npm run fresh        # clean + npm install
 - **폼**: React Hook Form + Zod 유효성 검증
 
 ### 주요 디렉토리
-- `src/app/admin/` - 어드민 페이지 (대시보드, 사용자, 학생, 결제 등)
+- `src/app/admin/` - 어드민 페이지
+  - `students/`, `payments/` - 학생/결제 관리
+  - `learning/` - 실시간 학습 모니터링 (국어, 수학, 실시간 뷰)
+  - `statistics/` - 학습 통계 (문장클리닉, 학생별)
+  - `contents/` - 콘텐츠 관리 (지문, 단어팡, 문장클리닉)
+  - `teacher/` - 선생님 도구 (지문 가이드)
+  - `settings/` - 시스템 설정 (변수, 권한, 학원, 사용자)
 - `src/app/api/` - API 라우트 (RESTful, 응답 형식: `{ success, data, message, error }`)
 - `src/components/ui/` - shadcn/ui 컴포넌트
+- `src/config/constants.ts` - 모든 ENUM 옵션과 라벨 정의
 - `src/lib/permissions.ts` - 역할 기반 접근 제어 (5분 캐시)
 - `src/store/auth.ts` - Zustand 인증 스토어
 - `scripts/` - SQL 스크립트 및 설정 유틸리티
@@ -76,6 +83,9 @@ Supabase 프로젝트: `mhorwnwhcyxynfxmlhit`
 - `localStorage`/`sessionStorage` 직접 사용 금지 (Zustand persist 또는 Supabase session 사용)
 - 컴포넌트에서 직접 DB 쿼리 금지 (`lib/supabase` 함수 사용)
 - 하드코딩된 권한 체크 금지 (`lib/permissions.ts` 통해서만)
+
+### 권한 카테고리
+`students`, `payments`, `users`, `academy`, `reports` - 권한 추가 시 해당 카테고리 사용
 
 ## 데이터베이스 테이블 생성
 
@@ -174,19 +184,18 @@ medium, advanced, highest, extreme, high_mock_1, high_mock_2, high_mock_3, csat
 재원, 휴원, 해지
 ```
 
-### 상수 파일 위치
-모든 ENUM 옵션과 라벨은 `src/config/constants.ts`에 정의됨.
 
 ## 주요 API 엔드포인트
 
-| 엔드포인트 | 메서드 | 설명 |
-|-----------|--------|------|
-| `/api/admin/students` | GET | 학생 목록 (status 파라미터로 필터링) |
-| `/api/admin/students` | POST | 학생 추가 |
-| `/api/admin/students/[id]` | PUT | 학생 정보 수정 |
-| `/api/admin/students/[id]` | DELETE | 학생 삭제 |
-| `/api/admin/payment` | GET/POST | 수납 내역 조회/추가 |
-| `/api/admin/settings/variables` | GET/POST/PUT/DELETE | 변수 관리 |
+| 그룹 | 엔드포인트 | 설명 |
+|------|-----------|------|
+| 학생 | `/api/admin/students`, `/api/admin/students/[id]` | CRUD (status 파라미터로 필터링) |
+| 결제 | `/api/admin/payments`, `/api/admin/payments/[id]` | 수납 내역 CRUD |
+| 학습 | `/api/admin/learning/realtime`, `/api/admin/learning/realtime/[id]` | 실시간 학습 모니터링 |
+| 콘텐츠 | `/api/admin/contents/passages`, `/api/admin/contents/word-pang`, `/api/admin/contents/sentence-clinic` | 지문/단어/문장 관리 |
+| 통계 | `/api/admin/statistics/sentence-clinic`, `/api/admin/statistics/student-learning` | 학습 통계 |
+| 학원 | `/api/admin/academy`, `/api/admin/academy/[id]` | 학원 CRUD |
+| 설정 | `/api/admin/settings`, `/api/admin/permissions` | 변수/권한 관리 |
 
 ### API 응답 형식
 ```typescript
