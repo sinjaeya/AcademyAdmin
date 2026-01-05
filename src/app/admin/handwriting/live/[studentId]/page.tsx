@@ -355,52 +355,64 @@ export default function HandwritingStudentPage() {
 
   // Fabric.js 캔버스 초기화
   useEffect(() => {
-    if (!canvasRef.current || !screenshot || fabricCanvasRef.current) return;
+    if (!screenshot || fabricCanvasRef.current) return;
 
-    // 이미지 로드 후 캔버스 크기 설정
-    const img = new Image();
-    img.onload = () => {
-      if (!canvasRef.current || !containerRef.current) return;
-
-      // 컨테이너 크기에 맞게 조정
-      const containerWidth = containerRef.current.clientWidth;
-      const scale = containerWidth / img.width;
-      const scaledHeight = img.height * scale;
-
-      // 캔버스 크기 설정
-      canvasRef.current.width = containerWidth;
-      canvasRef.current.height = scaledHeight;
-
-      // Fabric.js 캔버스 생성
-      const canvas = new fabric.Canvas(canvasRef.current, {
-        isDrawingMode: true,
-        width: containerWidth,
-        height: scaledHeight,
-        backgroundColor: 'transparent',
-      });
-
-      // Fabric.js wrapper에 absolute positioning 적용
-      const wrapper = canvas.wrapperEl;
-      if (wrapper) {
-        wrapper.style.position = 'absolute';
-        wrapper.style.top = '0';
-        wrapper.style.left = '0';
+    // DOM 렌더링 완료 후 캔버스 초기화 (타이밍 이슈 해결)
+    const initCanvas = (): void => {
+      if (!canvasRef.current || !containerRef.current) {
+        // ref가 아직 할당 안 됐으면 다음 프레임에 재시도
+        requestAnimationFrame(initCanvas);
+        return;
       }
 
-      // 브러시 설정
-      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-      canvas.freeDrawingBrush.color = penColor;
-      canvas.freeDrawingBrush.width = strokeWidth;
+      // 이미지 로드 후 캔버스 크기 설정
+      const img = new Image();
+      img.onload = () => {
+        if (!canvasRef.current || !containerRef.current) return;
 
-      fabricCanvasRef.current = canvas;
-      setCanvasReady(true);
+        // 컨테이너 크기에 맞게 조정
+        const containerWidth = containerRef.current.clientWidth;
+        const scale = containerWidth / img.width;
+        const scaledHeight = img.height * scale;
 
-      // 드로잉 완료 시 저장
-      canvas.on('path:created', () => {
-        saveTeacherDrawings();
-      });
+        // 캔버스 크기 설정
+        canvasRef.current.width = containerWidth;
+        canvasRef.current.height = scaledHeight;
+
+        // Fabric.js 캔버스 생성
+        const canvas = new fabric.Canvas(canvasRef.current, {
+          isDrawingMode: true,
+          width: containerWidth,
+          height: scaledHeight,
+          backgroundColor: 'transparent',
+        });
+
+        // Fabric.js wrapper에 absolute positioning 적용
+        const wrapper = canvas.wrapperEl;
+        if (wrapper) {
+          wrapper.style.position = 'absolute';
+          wrapper.style.top = '0';
+          wrapper.style.left = '0';
+        }
+
+        // 브러시 설정
+        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+        canvas.freeDrawingBrush.color = penColor;
+        canvas.freeDrawingBrush.width = strokeWidth;
+
+        fabricCanvasRef.current = canvas;
+        setCanvasReady(true);
+
+        // 드로잉 완료 시 저장
+        canvas.on('path:created', () => {
+          saveTeacherDrawings();
+        });
+      };
+      img.src = screenshot;
     };
-    img.src = screenshot;
+
+    // 캔버스 초기화 시작
+    initCanvas();
 
     return () => {
       if (fabricCanvasRef.current) {
