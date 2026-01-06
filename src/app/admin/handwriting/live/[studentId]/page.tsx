@@ -403,9 +403,9 @@ export default function HandwritingStudentPage() {
         fabricCanvasRef.current = canvas;
         setCanvasReady(true);
 
-        // 드로잉 완료 시 저장
+        // 드로잉 완료 시 저장 (3초 debounce 적용)
         canvas.on('path:created', () => {
-          saveTeacherDrawings();
+          saveTeacherDrawingsDebounced();
         });
       };
       img.src = screenshot;
@@ -517,13 +517,33 @@ export default function HandwritingStudentPage() {
     }
   }, [studentId]);
 
+  // Debounced 저장 (3초 후 저장 - 연속 드로잉 시 과도한 업데이트 방지)
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTeacherDrawingsDebounced = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      saveTeacherDrawings();
+    }, 3000);
+  }, [saveTeacherDrawings]);
+
+  // 컴포넌트 언마운트 시 debounce 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
   // 실행 취소
   const handleUndo = () => {
     if (!fabricCanvasRef.current) return;
     const objects = fabricCanvasRef.current.getObjects();
     if (objects.length > 0) {
       fabricCanvasRef.current.remove(objects[objects.length - 1]);
-      saveTeacherDrawings();
+      saveTeacherDrawingsDebounced();
     }
   };
 
@@ -531,7 +551,7 @@ export default function HandwritingStudentPage() {
   const handleClearAll = () => {
     if (!fabricCanvasRef.current) return;
     fabricCanvasRef.current.clear();
-    saveTeacherDrawings();
+    saveTeacherDrawings(); // 전체 삭제는 즉시 저장
   };
 
   // 시간 포맷
