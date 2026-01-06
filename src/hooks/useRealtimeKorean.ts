@@ -636,10 +636,35 @@ export function useRealtimeKorean(academyId: string | null) {
         }
       } else {
         // 단어팡, 보물찾기, 내손내줄: test_session 삭제
+        const sessionId = Number(dbId);
+
+        // 1. 내손내줄인 경우 handwriting_canvas 먼저 삭제 (FK 제약조건)
+        if (learningType === 'handwriting') {
+          const { error: canvasError } = await supabase
+            .from('handwriting_canvas')
+            .delete()
+            .eq('session_id', sessionId);
+
+          if (canvasError) {
+            console.error('[deleteSession] handwriting_canvas 삭제 실패:', canvasError);
+          }
+        }
+
+        // 2. test_result 삭제 (FK 제약조건)
+        const { error: resultError } = await supabase
+          .from('test_result')
+          .delete()
+          .eq('session_id', sessionId);
+
+        if (resultError) {
+          console.error('[deleteSession] test_result 삭제 실패:', resultError);
+        }
+
+        // 3. test_session 삭제
         const { error } = await supabase
           .from('test_session')
           .delete()
-          .eq('id', Number(dbId));
+          .eq('id', sessionId);
 
         if (error) {
           console.error('[deleteSession] test_session 삭제 실패:', error);

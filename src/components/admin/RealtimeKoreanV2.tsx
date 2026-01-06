@@ -175,8 +175,14 @@ function StudentRow({ summary, onDeleteOrphanSessions }: {
 
   // 고아 세션 전체 삭제
   const handleDeleteOrphans = async (): Promise<void> => {
-    if (!hasOrphans) return;
+    console.log('[handleDeleteOrphans] 클릭됨, orphanRecords:', orphanRecords.length);
+    if (!hasOrphans) {
+      console.log('[handleDeleteOrphans] hasOrphans가 false');
+      return;
+    }
+    console.log('[handleDeleteOrphans] 삭제 시작:', orphanRecords.map(r => r.id));
     await onDeleteOrphanSessions(orphanRecords.map(r => ({ id: r.id, learningType: r.learningType })));
+    console.log('[handleDeleteOrphans] 삭제 완료');
   };
 
   return (
@@ -193,7 +199,11 @@ function StudentRow({ summary, onDeleteOrphanSessions }: {
         </div>
         {hasOrphans && (
           <button
-            onClick={handleDeleteOrphans}
+            type="button"
+            onClick={() => {
+              console.log('[삭제버튼] 클릭!');
+              handleDeleteOrphans();
+            }}
             className="text-red-400 hover:text-red-600 text-sm flex items-center gap-1 cursor-pointer"
             title={`미완료 세션 ${orphanRecords.length}개 삭제`}
           >

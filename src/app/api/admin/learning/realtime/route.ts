@@ -347,6 +347,34 @@ export async function GET(request: Request) {
       }
     }
 
+    // 내손내줄 세션별 실제 정답 수 집계 (test_session.correct_count가 업데이트 안 되는 문제 해결)
+    const handwritingResultMap = new Map<number, { totalItems: number; correctCount: number }>();
+    if (testSessionData) {
+      const handwritingSessionIds = testSessionData
+        .filter(r => r.test_type === 'handwriting')
+        .map(r => r.id);
+
+      if (handwritingSessionIds.length > 0) {
+        const { data: hwResultData } = await supabase
+          .from('test_result')
+          .select('session_id, is_correct')
+          .eq('test_type', 'handwriting')
+          .in('session_id', handwritingSessionIds);
+
+        if (hwResultData) {
+          for (const result of hwResultData) {
+            const sessionId = Number(result.session_id);
+            if (!handwritingResultMap.has(sessionId)) {
+              handwritingResultMap.set(sessionId, { totalItems: 0, correctCount: 0 });
+            }
+            const data = handwritingResultMap.get(sessionId)!;
+            data.totalItems += 1;
+            if (result.is_correct) data.correctCount += 1;
+          }
+        }
+      }
+    }
+
     // 결과 데이터 생성
     const records: LearningRecord[] = [];
 
@@ -375,6 +403,14 @@ export async function GET(request: Request) {
             }
           : undefined;
 
+        // 내손내줄인 경우 test_result 집계 값 사용 (test_session.correct_count 업데이트 안 되는 문제 해결)
+        const hwResult = record.test_type === 'handwriting'
+          ? handwritingResultMap.get(Number(record.id))
+          : undefined;
+        const totalItems = hwResult ? hwResult.totalItems : (record.total_items || 0);
+        const correctCount = hwResult ? hwResult.correctCount : (record.correct_count || 0);
+        const accuracyRate = totalItems > 0 ? (correctCount / totalItems) * 100 : 0;
+
         records.push({
           id: `ts_${record.id}`,
           studentId,
@@ -382,9 +418,9 @@ export async function GET(request: Request) {
           learningType: record.test_type as 'word_pang' | 'passage_quiz' | 'handwriting',
           startedAt: record.started_at,
           completedAt: record.completed_at,
-          totalItems: record.total_items || 0,
-          correctCount: record.correct_count || 0,
-          accuracyRate: record.accuracy_rate || 0,
+          totalItems,
+          correctCount,
+          accuracyRate,
           correctWords: wordData?.correctWords,
           wrongWords: wordData?.wrongWords,
           passageQuizDetails,
@@ -515,38 +551,27 @@ export async function GET(request: Request) {
       }
     }
 
-    // 오늘 학습한 학생들의 오늘 이전 누적 정답률 조회 (단일 쿼리로 N+1 문제 해결)
+    // 오늘 학습한 학생들의 오늘 이전 누적 정답률 조회 (RPC 함수로 limit 1000 문제 해결)
     const historicalAccuracy: Record<number, { wordPangTotal: number; wordPangCorrect: number; wordPangAccuracyRate: number | null }> = {};
 
     if (studentIds.length > 0) {
-      // 단일 쿼리로 학생별 오늘 이전 단어팡 결과 조회
+      // RPC 함수로 서버사이드 집계 (Supabase JS 기본 limit 1000 문제 해결)
       const { data: historicalData } = await supabase
-        .from('test_result')
-        .select('student_id, is_correct')
-        .in('student_id', studentIds)
-        .eq('test_type', 'word_pang')
-        .lt('answered_at', startDate);
+        .rpc('get_historical_word_pang_accuracy', {
+          p_student_ids: studentIds,
+          p_before_date: startDate
+        });
 
-      // 결과를 집계
+      // 결과 변환
       if (historicalData) {
-        const tempAccuracy: Record<number, { total: number; correct: number }> = {};
-
         for (const row of historicalData) {
-          const studentId = Number(row.student_id);
-          if (!tempAccuracy[studentId]) {
-            tempAccuracy[studentId] = { total: 0, correct: 0 };
-          }
-          tempAccuracy[studentId].total += 1;
-          if (row.is_correct) tempAccuracy[studentId].correct += 1;
-        }
-
-        // 정답률 계산
-        for (const [studentId, data] of Object.entries(tempAccuracy)) {
-          if (data.total > 0) {
-            historicalAccuracy[Number(studentId)] = {
-              wordPangTotal: data.total,
-              wordPangCorrect: data.correct,
-              wordPangAccuracyRate: (data.correct / data.total) * 100
+          const total = Number(row.total_count);
+          const correct = Number(row.correct_count);
+          if (total > 0) {
+            historicalAccuracy[row.student_id] = {
+              wordPangTotal: total,
+              wordPangCorrect: correct,
+              wordPangAccuracyRate: (correct / total) * 100
             };
           }
         }
