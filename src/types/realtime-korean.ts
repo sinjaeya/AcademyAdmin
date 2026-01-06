@@ -1,7 +1,7 @@
 // 풀스택-국어 실시간뷰 공통 타입 정의
 
 // 학습 유형
-export type LearningType = 'word_pang' | 'passage_quiz' | 'sentence_clinic';
+export type LearningType = 'word_pang' | 'passage_quiz' | 'sentence_clinic' | 'handwriting';
 
 // 문장클리닉 상세 정보
 export interface SentenceClinicDetail {
@@ -31,6 +31,12 @@ export interface PassageQuizDetail {
   answer: string;
 }
 
+// 내손내줄 상세 정보
+export interface HandwritingDetail {
+  passageCode: string;  // 지문 코드
+  passageId?: string;   // 지문 ID (UUID)
+}
+
 // 학습 기록
 export interface LearningRecord {
   id: string;
@@ -49,6 +55,8 @@ export interface LearningRecord {
   sentenceClinicDetail?: SentenceClinicDetail;
   // 보물찾기 전용
   passageQuizDetails?: PassageQuizDetail[];
+  // 내손내줄 전용
+  handwritingDetail?: HandwritingDetail;
 }
 
 // 학생별 문제 수 카운트
@@ -57,6 +65,8 @@ export interface StudentWordCount {
   wordPangCorrect: number;
   passageQuizCount: number;
   passageQuizCorrect: number;
+  handwritingCount: number;
+  handwritingCorrect: number;
 }
 
 // 학생별 누적 정답률 (오늘 이전)
@@ -87,6 +97,12 @@ export interface StudentSummary {
     correctCount: number;
     accuracyRate: number;
     reviewCount: number; // 복습 대상 지문 수
+  };
+  handwriting: {
+    sessionCount: number;
+    count: number;
+    correctCount: number;
+    accuracyRate: number;
   };
   records: LearningRecord[];
   historicalAccuracy?: StudentHistoricalAccuracy;

@@ -5,7 +5,7 @@ interface LearningRecord {
   id: string;
   studentId: number;
   studentName: string;
-  learningType: 'word_pang' | 'passage_quiz' | 'sentence_clinic';
+  learningType: 'word_pang' | 'passage_quiz' | 'sentence_clinic' | 'handwriting';
   startedAt: string;
   completedAt: string | null;
   totalItems: number;
@@ -39,6 +39,11 @@ interface LearningRecord {
     isCorrect: boolean;
     answer: string;
   }>;
+  // 내손내줄 상세 정보
+  handwritingDetail?: {
+    passageCode: string;
+    passageId?: string;
+  };
 }
 
 export async function GET(request: Request) {
@@ -80,7 +85,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // test_session에서 오늘의 단어팡, 보물찾기 데이터 가져오기
+    // test_session에서 오늘의 단어팡, 보물찾기, 내손내줄 데이터 가져오기
     let testSessionQuery = supabase
       .from('test_session')
       .select(`
@@ -91,9 +96,10 @@ export async function GET(request: Request) {
         completed_at,
         total_items,
         correct_count,
-        accuracy_rate
+        accuracy_rate,
+        metadata
       `)
-      .in('test_type', ['word_pang', 'passage_quiz'])
+      .in('test_type', ['word_pang', 'passage_quiz', 'handwriting'])
       .gte('started_at', startDate)
       .lte('started_at', endDate);
 
@@ -176,54 +182,61 @@ export async function GET(request: Request) {
       });
     }
 
-    // 학생별 개별 문제 수 계산 (Supabase 1000개 제한 우회 - count 쿼리 사용)
-    const wordCounts: Record<number, { wordPangCount: number; wordPangCorrect: number; passageQuizCount: number; passageQuizCorrect: number }> = {};
+    // 학생별 개별 문제 수 계산 (단일 GROUP BY 쿼리로 N+1 문제 해결)
+    const wordCounts: Record<number, { wordPangCount: number; wordPangCorrect: number; passageQuizCount: number; passageQuizCorrect: number; handwritingCount: number; handwritingCorrect: number }> = {};
 
-    for (const studentId of studentIds) {
-      // 단어팡 총 개수
-      const { count: wordPangTotal } = await supabase
+    if (studentIds.length > 0) {
+      // 단일 쿼리로 학생별, 테스트 타입별 총 개수와 정답 개수 조회
+      const { data: countData } = await supabase
         .from('test_result')
-        .select('*', { count: 'exact', head: true })
-        .eq('test_type', 'word_pang')
-        .eq('student_id', studentId)
+        .select('student_id, test_type, is_correct')
+        .in('student_id', studentIds)
+        .in('test_type', ['word_pang', 'passage_quiz', 'handwriting'])
         .gte('answered_at', startDate)
         .lte('answered_at', endDate);
 
-      // 단어팡 정답 개수
-      const { count: wordPangCorrect } = await supabase
-        .from('test_result')
-        .select('*', { count: 'exact', head: true })
-        .eq('test_type', 'word_pang')
-        .eq('student_id', studentId)
-        .eq('is_correct', true)
-        .gte('answered_at', startDate)
-        .lte('answered_at', endDate);
+      // 결과를 집계
+      if (countData) {
+        for (const row of countData) {
+          const studentId = Number(row.student_id);
+          if (!wordCounts[studentId]) {
+            wordCounts[studentId] = {
+              wordPangCount: 0,
+              wordPangCorrect: 0,
+              passageQuizCount: 0,
+              passageQuizCorrect: 0,
+              handwritingCount: 0,
+              handwritingCorrect: 0
+            };
+          }
 
-      // 보물찾기 총 개수
-      const { count: passageQuizTotal } = await supabase
-        .from('test_result')
-        .select('*', { count: 'exact', head: true })
-        .eq('test_type', 'passage_quiz')
-        .eq('student_id', studentId)
-        .gte('answered_at', startDate)
-        .lte('answered_at', endDate);
+          const counts = wordCounts[studentId];
+          if (row.test_type === 'word_pang') {
+            counts.wordPangCount += 1;
+            if (row.is_correct) counts.wordPangCorrect += 1;
+          } else if (row.test_type === 'passage_quiz') {
+            counts.passageQuizCount += 1;
+            if (row.is_correct) counts.passageQuizCorrect += 1;
+          } else if (row.test_type === 'handwriting') {
+            counts.handwritingCount += 1;
+            if (row.is_correct) counts.handwritingCorrect += 1;
+          }
+        }
+      }
 
-      // 보물찾기 정답 개수
-      const { count: passageQuizCorrect } = await supabase
-        .from('test_result')
-        .select('*', { count: 'exact', head: true })
-        .eq('test_type', 'passage_quiz')
-        .eq('student_id', studentId)
-        .eq('is_correct', true)
-        .gte('answered_at', startDate)
-        .lte('answered_at', endDate);
-
-      wordCounts[studentId] = {
-        wordPangCount: wordPangTotal || 0,
-        wordPangCorrect: wordPangCorrect || 0,
-        passageQuizCount: passageQuizTotal || 0,
-        passageQuizCorrect: passageQuizCorrect || 0
-      };
+      // 학습 기록이 없는 학생도 초기화
+      for (const studentId of studentIds) {
+        if (!wordCounts[studentId]) {
+          wordCounts[studentId] = {
+            wordPangCount: 0,
+            wordPangCorrect: 0,
+            passageQuizCount: 0,
+            passageQuizCorrect: 0,
+            handwritingCount: 0,
+            handwritingCorrect: 0
+          };
+        }
+      }
     }
 
     // 단어팡 세션별 단어 정보 조회
@@ -353,11 +366,20 @@ export async function GET(request: Request) {
           ? sessionPassageQuizMap.get(Number(record.id))
           : undefined;
 
+        // 내손내줄인 경우 metadata에서 code_id 추출
+        const metadata = record.metadata as { code_id?: string; passage_id?: string } | null;
+        const handwritingDetail = record.test_type === 'handwriting'
+          ? {
+              passageCode: metadata?.code_id || '-',
+              passageId: metadata?.passage_id
+            }
+          : undefined;
+
         records.push({
           id: `ts_${record.id}`,
           studentId,
           studentName,
-          learningType: record.test_type as 'word_pang' | 'passage_quiz',
+          learningType: record.test_type as 'word_pang' | 'passage_quiz' | 'handwriting',
           startedAt: record.started_at,
           completedAt: record.completed_at,
           totalItems: record.total_items || 0,
@@ -365,7 +387,8 @@ export async function GET(request: Request) {
           accuracyRate: record.accuracy_rate || 0,
           correctWords: wordData?.correctWords,
           wrongWords: wordData?.wrongWords,
-          passageQuizDetails
+          passageQuizDetails,
+          handwritingDetail
         });
       }
     }
@@ -492,33 +515,40 @@ export async function GET(request: Request) {
       }
     }
 
-    // 오늘 학습한 학생들의 오늘 이전 누적 정답률 조회
+    // 오늘 학습한 학생들의 오늘 이전 누적 정답률 조회 (단일 쿼리로 N+1 문제 해결)
     const historicalAccuracy: Record<number, { wordPangTotal: number; wordPangCorrect: number; wordPangAccuracyRate: number | null }> = {};
 
     if (studentIds.length > 0) {
-      // 학생별로 오늘 이전 단어팡 결과 집계 (Supabase 기본 1000개 제한 우회)
-      for (const studentId of studentIds) {
-        const { count: total, error: totalError } = await supabase
-          .from('test_result')
-          .select('*', { count: 'exact', head: true })
-          .eq('test_type', 'word_pang')
-          .eq('student_id', studentId)
-          .lt('answered_at', startDate);
+      // 단일 쿼리로 학생별 오늘 이전 단어팡 결과 조회
+      const { data: historicalData } = await supabase
+        .from('test_result')
+        .select('student_id, is_correct')
+        .in('student_id', studentIds)
+        .eq('test_type', 'word_pang')
+        .lt('answered_at', startDate);
 
-        const { count: correct, error: correctError } = await supabase
-          .from('test_result')
-          .select('*', { count: 'exact', head: true })
-          .eq('test_type', 'word_pang')
-          .eq('student_id', studentId)
-          .eq('is_correct', true)
-          .lt('answered_at', startDate);
+      // 결과를 집계
+      if (historicalData) {
+        const tempAccuracy: Record<number, { total: number; correct: number }> = {};
 
-        if (!totalError && !correctError && total && total > 0) {
-          historicalAccuracy[studentId] = {
-            wordPangTotal: total,
-            wordPangCorrect: correct || 0,
-            wordPangAccuracyRate: ((correct || 0) / total) * 100
-          };
+        for (const row of historicalData) {
+          const studentId = Number(row.student_id);
+          if (!tempAccuracy[studentId]) {
+            tempAccuracy[studentId] = { total: 0, correct: 0 };
+          }
+          tempAccuracy[studentId].total += 1;
+          if (row.is_correct) tempAccuracy[studentId].correct += 1;
+        }
+
+        // 정답률 계산
+        for (const [studentId, data] of Object.entries(tempAccuracy)) {
+          if (data.total > 0) {
+            historicalAccuracy[Number(studentId)] = {
+              wordPangTotal: data.total,
+              wordPangCorrect: data.correct,
+              wordPangAccuracyRate: (data.correct / data.total) * 100
+            };
+          }
         }
       }
     }

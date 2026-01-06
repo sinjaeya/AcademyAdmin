@@ -8,6 +8,7 @@ import type {
   StudentHistoricalAccuracy,
   SentenceClinicDetail,
   PassageQuizDetail,
+  HandwritingDetail,
   RealtimeKoreanApiResponse
 } from '@/types/realtime-korean';
 
@@ -15,19 +16,23 @@ import type {
 interface TestSessionPayload {
   id: number;
   student_id: number;
-  test_type: 'word_pang' | 'passage_quiz';
+  test_type: 'word_pang' | 'passage_quiz' | 'handwriting';
   started_at: string;
   completed_at: string | null;
   total_items: number;
   correct_count: number;
   accuracy_rate: number;
+  metadata?: {
+    code_id?: string;
+    passage_id?: string;
+  };
 }
 
 interface TestResultPayload {
   id: number;
   session_id: number;
   student_id: number;
-  test_type: 'word_pang' | 'passage_quiz';
+  test_type: 'word_pang' | 'passage_quiz' | 'handwriting';
   is_correct: boolean;
   answered_at: string;
   item_id: number | null;
@@ -177,6 +182,48 @@ export function useRealtimeKorean(academyId: string | null) {
     return { correctWords, wrongWords };
   }, []);
 
+  // 보물찾기 세션의 기존 문제 결과 조회
+  const fetchSessionPassageQuiz = useCallback(async (sessionId: number): Promise<PassageQuizDetail[] | null> => {
+    if (!supabase) return null;
+
+    const { data: quizResultData } = await supabase
+      .from('test_result')
+      .select('item_uuid, is_correct')
+      .eq('test_type', 'passage_quiz')
+      .eq('session_id', sessionId)
+      .not('item_uuid', 'is', null);
+
+    if (!quizResultData || quizResultData.length === 0) return null;
+
+    const itemUuids = [...new Set(quizResultData.map(r => r.item_uuid).filter(Boolean))];
+    const { data: oxData } = await supabase
+      .from('passage_quiz_ox')
+      .select('quiz_id, statement, ox_type, answer')
+      .in('quiz_id', itemUuids);
+
+    const oxMap = new Map<string, { statement: string; oxType: string; answer: string }>();
+    oxData?.forEach(ox => oxMap.set(ox.quiz_id, {
+      statement: ox.statement,
+      oxType: ox.ox_type,
+      answer: ox.answer
+    }));
+
+    const details: PassageQuizDetail[] = [];
+    for (const result of quizResultData) {
+      const oxInfo = oxMap.get(result.item_uuid);
+      if (oxInfo) {
+        details.push({
+          statement: oxInfo.statement,
+          oxType: oxInfo.oxType,
+          isCorrect: result.is_correct,
+          answer: oxInfo.answer
+        });
+      }
+    }
+
+    return details.length > 0 ? details : null;
+  }, []);
+
   // 문장클리닉 지문 정보 조회
   const fetchShortPassage = useCallback(async (shortPassageId: number): Promise<SentenceClinicDetail | null> => {
     if (!supabase) return null;
@@ -301,24 +348,48 @@ export function useRealtimeKorean(academyId: string | null) {
           event: '*',
           schema: 'public',
           table: 'test_session',
-          filter: `test_type=in.(word_pang,passage_quiz)`
+          filter: `test_type=in.(word_pang,passage_quiz,handwriting)`
         },
         async (payload) => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const newRecord = payload.new as TestSessionPayload;
+            const payloadRecord = payload.new as TestSessionPayload;
             const today = getKSTDateString(new Date());
-            const recordDate = getKSTDateString(new Date(newRecord.started_at));
+            const recordDate = getKSTDateString(new Date(payloadRecord.started_at));
             if (recordDate !== today) return;
 
             // 학원 학생 필터링 (academyId가 있는 경우)
-            if (academyStudentIdsRef.current.size > 0 && !academyStudentIdsRef.current.has(newRecord.student_id)) {
+            if (academyStudentIdsRef.current.size > 0 && !academyStudentIdsRef.current.has(payloadRecord.student_id)) {
               return;
+            }
+
+            // UPDATE 이벤트의 경우 DB에서 최신 데이터 직접 조회 (Realtime payload가 불완전할 수 있음)
+            let newRecord = payloadRecord;
+            if (payload.eventType === 'UPDATE' && supabase) {
+              const { data: freshData } = await supabase
+                .from('test_session')
+                .select('id, student_id, test_type, started_at, completed_at, total_items, correct_count, accuracy_rate, metadata')
+                .eq('id', payloadRecord.id)
+                .single();
+              if (freshData) {
+                newRecord = freshData as TestSessionPayload;
+              }
             }
 
             const studentName = await fetchStudentName(newRecord.student_id);
             let wordData: { correctWords: string[]; wrongWords: string[] } | null = null;
+            let passageQuizData: PassageQuizDetail[] | null = null;
+            let handwritingData: HandwritingDetail | null = null;
+
             if (newRecord.test_type === 'word_pang') {
               wordData = await fetchSessionWords(newRecord.id);
+            } else if (newRecord.test_type === 'passage_quiz') {
+              passageQuizData = await fetchSessionPassageQuiz(newRecord.id);
+            } else if (newRecord.test_type === 'handwriting') {
+              // metadata에서 code_id 추출
+              handwritingData = {
+                passageCode: newRecord.metadata?.code_id || '-',
+                passageId: newRecord.metadata?.passage_id
+              };
             }
 
             const record: LearningRecord = {
@@ -332,7 +403,9 @@ export function useRealtimeKorean(academyId: string | null) {
               correctCount: newRecord.correct_count || 0,
               accuracyRate: newRecord.accuracy_rate || 0,
               correctWords: wordData?.correctWords,
-              wrongWords: wordData?.wrongWords
+              wrongWords: wordData?.wrongWords,
+              passageQuizDetails: passageQuizData || undefined,
+              handwritingDetail: handwritingData || undefined
             };
 
             setRecords(prev => {
@@ -433,7 +506,7 @@ export function useRealtimeKorean(academyId: string | null) {
           event: 'INSERT',
           schema: 'public',
           table: 'test_result',
-          filter: `test_type=in.(word_pang,passage_quiz)`
+          filter: `test_type=in.(word_pang,passage_quiz,handwriting)`
         },
         async (payload) => {
           const newResult = payload.new as TestResultPayload;
@@ -514,7 +587,9 @@ export function useRealtimeKorean(academyId: string | null) {
               wordPangCount: 0,
               wordPangCorrect: 0,
               passageQuizCount: 0,
-              passageQuizCorrect: 0
+              passageQuizCorrect: 0,
+              handwritingCount: 0,
+              handwritingCorrect: 0
             };
 
             if (testType === 'word_pang') {
@@ -523,6 +598,9 @@ export function useRealtimeKorean(academyId: string | null) {
             } else if (testType === 'passage_quiz') {
               current.passageQuizCount += 1;
               if (isCorrect) current.passageQuizCorrect += 1;
+            } else if (testType === 'handwriting') {
+              current.handwritingCount += 1;
+              if (isCorrect) current.handwritingCorrect += 1;
             }
 
             newMap.set(studentId, { ...current });
@@ -535,7 +613,7 @@ export function useRealtimeKorean(academyId: string | null) {
       .subscribe();
 
     channelsRef.current = [testSessionChannel, sentenceClinicChannel, testResultChannel];
-  }, [fetchStudentName, fetchSessionWords, fetchShortPassage, fetchPassageQuizDetail, refreshReviewCount, unsubscribeAll]);
+  }, [fetchStudentName, fetchSessionWords, fetchSessionPassageQuiz, fetchShortPassage, fetchPassageQuizDetail, refreshReviewCount, unsubscribeAll]);
 
   // 재연결 시도
   const reconnect = useCallback(() => {
@@ -549,10 +627,14 @@ export function useRealtimeKorean(academyId: string | null) {
     }, 3000);
   }, [setupSubscriptions]);
 
-  // 초기 로드 및 구독 설정
+  // 초기 로드 및 구독 설정 (순서 보장: 데이터 로드 완료 후 구독 설정)
   useEffect(() => {
-    loadData();
-    setupSubscriptions();
+    const initialize = async (): Promise<void> => {
+      await loadData();  // 데이터 로드 완료 후
+      setupSubscriptions();  // 구독 설정 (중복 카운트 방지)
+    };
+
+    initialize();
 
     return () => {
       unsubscribeAll();

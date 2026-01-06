@@ -14,6 +14,7 @@ const getLearningTypeLabel = (type: string): string => {
     case 'word_pang': return '단어팡';
     case 'passage_quiz': return '보물찾기';
     case 'sentence_clinic': return '문장클리닉';
+    case 'handwriting': return '내손내줄';
     default: return type;
   }
 };
@@ -137,6 +138,30 @@ function SentenceClinicBadges({ record }: { record: LearningRecord }) {
   );
 }
 
+// 내손내줄 결과 배지
+function HandwritingBadges({ record }: { record: LearningRecord }) {
+  const detail = record.handwritingDetail;
+
+  return (
+    <div className="flex items-center gap-2">
+      <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">
+        {detail?.passageCode || '-'}
+      </Badge>
+      <span className="text-xs text-gray-500">
+        {record.correctCount}/{record.totalItems}문장
+        {record.totalItems > 0 && (
+          <span className={`ml-1 ${
+            record.accuracyRate >= 80 ? 'text-green-600' :
+            record.accuracyRate >= 60 ? 'text-yellow-600' : 'text-red-600'
+          }`}>
+            ({record.accuracyRate.toFixed(0)}%)
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
 // 학생 로우 컴포넌트
 function StudentRow({ summary, onHide }: { summary: StudentSummary; onHide: () => void }) {
   const isActive = summary.currentActivity !== null;
@@ -237,7 +262,7 @@ function StudentRow({ summary, onHide }: { summary: StudentSummary; onHide: () =
 
         {/* 문장클리닉 */}
         {(summary.sentenceClinic.count > 0 || summary.sentenceClinic.reviewCount > 0) && (
-          <div className="flex items-start gap-3 py-2">
+          <div className="flex items-start gap-3 py-2 border-b border-gray-100">
             <Badge className="bg-purple-100 text-purple-800 border-purple-200 shrink-0 w-20 justify-center">
               문장클리닉
             </Badge>
@@ -279,8 +304,41 @@ function StudentRow({ summary, onHide }: { summary: StudentSummary; onHide: () =
           </div>
         )}
 
+        {/* 내손내줄 */}
+        {summary.handwriting.count > 0 && (
+          <div className="flex items-start gap-3 py-2">
+            <Badge className="bg-amber-100 text-amber-800 border-amber-200 shrink-0 w-20 justify-center">
+              내손내줄
+            </Badge>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-medium text-gray-700">
+                  {summary.handwriting.sessionCount}지문 / {summary.handwriting.count}문장
+                </span>
+                <span className={`text-sm font-medium ${
+                  summary.handwriting.accuracyRate >= 80 ? 'text-green-600' :
+                  summary.handwriting.accuracyRate >= 60 ? 'text-yellow-600' : 'text-red-600'
+                }`}>
+                  ({summary.handwriting.accuracyRate.toFixed(0)}%)
+                </span>
+              </div>
+              {/* 개별 세션 기록 */}
+              <div className="space-y-1">
+                {summary.records
+                  .filter(r => r.learningType === 'handwriting')
+                  .map(record => (
+                    <div key={record.id} className="flex items-center gap-2 text-xs">
+                      <span className="text-gray-400 w-12">{formatTime(record.startedAt)}</span>
+                      <HandwritingBadges record={record} />
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 학습 기록 없음 */}
-        {summary.wordPang.count === 0 && summary.passageQuiz.count === 0 && summary.sentenceClinic.count === 0 && (
+        {summary.wordPang.count === 0 && summary.passageQuiz.count === 0 && summary.sentenceClinic.count === 0 && summary.handwriting.count === 0 && (
           <div className="text-center text-gray-400 py-4">
             학습 기록이 없습니다
           </div>
@@ -344,6 +402,7 @@ export function RealtimeKoreanV2() {
           wordPang: { count: 0, correctCount: 0, accuracyRate: 0 },
           passageQuiz: { sessionCount: 0, count: 0, correctCount: 0, accuracyRate: 0 },
           sentenceClinic: { count: 0, correctCount: 0, accuracyRate: 0, reviewCount: reviewCounts.get(record.studentId) || 0 },
+          handwriting: { sessionCount: 0, count: 0, correctCount: 0, accuracyRate: 0 },
           records: [],
           historicalAccuracy: historicalAccuracy.get(record.studentId)
         });
@@ -362,6 +421,11 @@ export function RealtimeKoreanV2() {
         summary.passageQuiz.sessionCount += 1;
       }
 
+      // 세션 카운트 (내손내줄)
+      if (record.completedAt && record.learningType === 'handwriting') {
+        summary.handwriting.sessionCount += 1;
+      }
+
       // 문장클리닉 통계
       if (record.completedAt && record.learningType === 'sentence_clinic') {
         summary.sentenceClinic.count += 1;
@@ -369,7 +433,7 @@ export function RealtimeKoreanV2() {
       }
     }
 
-    // wordCounts에서 단어팡/보물찾기 개별 문제 수 가져오기
+    // wordCounts에서 단어팡/보물찾기/내손내줄 개별 문제 수 가져오기
     summaryMap.forEach((summary, studentId) => {
       const wc = wordCounts.get(studentId);
       if (wc) {
@@ -377,6 +441,8 @@ export function RealtimeKoreanV2() {
         summary.wordPang.correctCount = wc.wordPangCorrect;
         summary.passageQuiz.count = wc.passageQuizCount;
         summary.passageQuiz.correctCount = wc.passageQuizCorrect;
+        summary.handwriting.count = wc.handwritingCount;
+        summary.handwriting.correctCount = wc.handwritingCorrect;
       }
 
       // 정답률 계산
@@ -388,6 +454,9 @@ export function RealtimeKoreanV2() {
       }
       if (summary.sentenceClinic.count > 0) {
         summary.sentenceClinic.accuracyRate = (summary.sentenceClinic.correctCount / (summary.sentenceClinic.count * 2)) * 100;
+      }
+      if (summary.handwriting.count > 0) {
+        summary.handwriting.accuracyRate = (summary.handwriting.correctCount / summary.handwriting.count) * 100;
       }
 
       // 레코드 정렬
