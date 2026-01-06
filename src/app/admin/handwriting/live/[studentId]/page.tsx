@@ -99,7 +99,7 @@ export default function HandwritingStudentPage() {
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentTool, setCurrentTool] = useState<DrawingTool>('pen');
-  const [penColor, setPenColor] = useState('#ef4444');
+  const [penColor, setPenColor] = useState('#22c55e'); // 초록색 기본
   const [highlighterColor, setHighlighterColor] = useState('rgba(250, 204, 21, 0.4)');
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [canvasReady, setCanvasReady] = useState(false);
