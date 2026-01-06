@@ -163,7 +163,11 @@ function HandwritingBadges({ record }: { record: LearningRecord }) {
 }
 
 // 학생 로우 컴포넌트
-function StudentRow({ summary, onHide }: { summary: StudentSummary; onHide: () => void }) {
+function StudentRow({ summary, onHide, onDeleteSession }: {
+  summary: StudentSummary;
+  onHide: () => void;
+  onDeleteSession: (recordId: string, learningType: string) => Promise<boolean>;
+}) {
   const isActive = summary.currentActivity !== null;
 
   return (
@@ -217,9 +221,19 @@ function StudentRow({ summary, onHide }: { summary: StudentSummary; onHide: () =
                 {summary.records
                   .filter(r => r.learningType === 'word_pang')
                   .map(record => (
-                    <div key={record.id} className="flex items-center gap-2 text-xs">
+                    <div key={record.id} className="flex items-center gap-2 text-xs group">
                       <span className="text-gray-400 w-12">{formatTime(record.startedAt)}</span>
                       <WordPangBadges record={record} />
+                      {/* 미완료 세션(고아)만 삭제 버튼 표시 */}
+                      {record.completedAt === null && (
+                        <button
+                          onClick={() => onDeleteSession(record.id, record.learningType)}
+                          className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity cursor-pointer ml-auto"
+                          title="세션 삭제"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   ))}
               </div>
@@ -250,9 +264,18 @@ function StudentRow({ summary, onHide }: { summary: StudentSummary; onHide: () =
                 {summary.records
                   .filter(r => r.learningType === 'passage_quiz')
                   .map(record => (
-                    <div key={record.id} className="flex items-center gap-2 text-xs">
+                    <div key={record.id} className="flex items-center gap-2 text-xs group">
                       <span className="text-gray-400 w-12">{formatTime(record.startedAt)}</span>
                       <PassageQuizBadges record={record} />
+                      {record.completedAt === null && (
+                        <button
+                          onClick={() => onDeleteSession(record.id, record.learningType)}
+                          className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity cursor-pointer ml-auto"
+                          title="세션 삭제"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   ))}
               </div>
@@ -293,9 +316,18 @@ function StudentRow({ summary, onHide }: { summary: StudentSummary; onHide: () =
                   {summary.records
                     .filter(r => r.learningType === 'sentence_clinic')
                     .map(record => (
-                      <div key={record.id} className="flex items-center gap-2 text-xs">
+                      <div key={record.id} className="flex items-center gap-2 text-xs group">
                         <span className="text-gray-400 w-12">{formatTime(record.startedAt)}</span>
                         <SentenceClinicBadges record={record} />
+                        {record.completedAt === null && (
+                          <button
+                            onClick={() => onDeleteSession(record.id, record.learningType)}
+                            className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity cursor-pointer ml-auto"
+                            title="세션 삭제"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                     ))}
                 </div>
@@ -327,9 +359,18 @@ function StudentRow({ summary, onHide }: { summary: StudentSummary; onHide: () =
                 {summary.records
                   .filter(r => r.learningType === 'handwriting')
                   .map(record => (
-                    <div key={record.id} className="flex items-center gap-2 text-xs">
+                    <div key={record.id} className="flex items-center gap-2 text-xs group">
                       <span className="text-gray-400 w-12">{formatTime(record.startedAt)}</span>
                       <HandwritingBadges record={record} />
+                      {record.completedAt === null && (
+                        <button
+                          onClick={() => onDeleteSession(record.id, record.learningType)}
+                          className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity cursor-pointer ml-auto"
+                          title="세션 삭제"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   ))}
               </div>
@@ -351,7 +392,7 @@ function StudentRow({ summary, onHide }: { summary: StudentSummary; onHide: () =
 // 메인 컴포넌트
 export function RealtimeKoreanV2() {
   const { academyId } = useAuthStore();
-  const { records, wordCounts, historicalAccuracy, reviewCounts, loading, connectionStatus, lastUpdate } = useRealtimeKorean(academyId);
+  const { records, wordCounts, historicalAccuracy, reviewCounts, loading, connectionStatus, lastUpdate, deleteSession } = useRealtimeKorean(academyId);
 
   // 숨긴 학생 목록
   const [hiddenStudents, setHiddenStudents] = useState<Set<number>>(new Set());
@@ -549,6 +590,7 @@ export function RealtimeKoreanV2() {
               key={summary.studentId}
               summary={summary}
               onHide={() => hideStudent(summary.studentId)}
+              onDeleteSession={deleteSession}
             />
           ))}
         </div>

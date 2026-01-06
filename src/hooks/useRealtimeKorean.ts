@@ -615,6 +615,48 @@ export function useRealtimeKorean(academyId: string | null) {
     channelsRef.current = [testSessionChannel, sentenceClinicChannel, testResultChannel];
   }, [fetchStudentName, fetchSessionWords, fetchSessionPassageQuiz, fetchShortPassage, fetchPassageQuizDetail, refreshReviewCount, unsubscribeAll]);
 
+  // 세션 삭제 (고아 세션 정리용)
+  const deleteSession = useCallback(async (recordId: string, learningType: string): Promise<boolean> => {
+    if (!supabase) return false;
+
+    try {
+      // 레코드 ID에서 실제 DB ID 추출 (ts_123 -> 123, sc_abc -> abc)
+      const dbId = recordId.replace(/^(ts_|sc_)/, '');
+
+      if (learningType === 'sentence_clinic') {
+        // 문장클리닉: short_passage_learning_history 삭제
+        const { error } = await supabase
+          .from('short_passage_learning_history')
+          .delete()
+          .eq('id', dbId);
+
+        if (error) {
+          console.error('[deleteSession] 문장클리닉 삭제 실패:', error);
+          return false;
+        }
+      } else {
+        // 단어팡, 보물찾기, 내손내줄: test_session 삭제
+        const { error } = await supabase
+          .from('test_session')
+          .delete()
+          .eq('id', Number(dbId));
+
+        if (error) {
+          console.error('[deleteSession] test_session 삭제 실패:', error);
+          return false;
+        }
+      }
+
+      // 로컬 상태에서 제거
+      setRecords(prev => prev.filter(r => r.id !== recordId));
+      console.log('[deleteSession] 삭제 완료:', recordId);
+      return true;
+    } catch (error) {
+      console.error('[deleteSession] 삭제 오류:', error);
+      return false;
+    }
+  }, []);
+
   // 재연결 시도
   const reconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -659,6 +701,7 @@ export function useRealtimeKorean(academyId: string | null) {
     loading,
     connectionStatus,
     lastUpdate,
-    refresh: loadData
+    refresh: loadData,
+    deleteSession
   };
 }

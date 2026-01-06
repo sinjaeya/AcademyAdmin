@@ -160,16 +160,17 @@ export default function HandwritingLivePage() {
             // 학습 완료 - 목록에서 제거
             const deletedRecord = payload.old as { id: string; student_id: number };
 
-            // 삭제된 학생 찾기
-            const deletedSession = progressSessions.find(s => s.id === deletedRecord.id);
-            if (deletedSession) {
-              toast({
-                type: 'success',
-                description: `${deletedSession.studentName}님이 학습을 완료했습니다`
-              });
-            }
-
-            setProgressSessions(prev => prev.filter(s => s.id !== deletedRecord.id));
+            // setProgressSessions 콜백 내에서 삭제된 학생 찾기 (stale closure 방지)
+            setProgressSessions(prev => {
+              const deletedSession = prev.find(s => s.id === deletedRecord.id);
+              if (deletedSession) {
+                toast({
+                  type: 'success',
+                  description: `${deletedSession.studentName}님이 학습을 완료했습니다`
+                });
+              }
+              return prev.filter(s => s.id !== deletedRecord.id);
+            });
           }
         }
       )
@@ -182,7 +183,8 @@ export default function HandwritingLivePage() {
         supabase.removeChannel(channel);
       }
     };
-  }, [academyId, loadProgressSessions, toast, progressSessions]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [academyId, loadProgressSessions, toast]); // progressSessions 제거 - stale closure 및 무한 루프 방지
 
   // 시간 포맷
   const formatTime = (dateStr: string): string => {

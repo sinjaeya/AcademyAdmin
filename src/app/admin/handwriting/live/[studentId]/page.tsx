@@ -519,23 +519,64 @@ export default function HandwritingStudentPage() {
 
   // Debounced 저장 (3초 후 저장 - 연속 드로잉 시 과도한 업데이트 방지)
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasPendingDrawingRef = useRef<boolean>(false); // pending 드로잉 추적
+
   const saveTeacherDrawingsDebounced = useCallback(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
+    hasPendingDrawingRef.current = true; // 저장 대기 중 표시
     debounceTimerRef.current = setTimeout(() => {
       saveTeacherDrawings();
+      hasPendingDrawingRef.current = false; // 저장 완료
     }, 3000);
   }, [saveTeacherDrawings]);
 
-  // 컴포넌트 언마운트 시 debounce 타이머 정리
+  // 컴포넌트 언마운트 시 pending 드로잉 즉시 저장
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
+      // pending 드로잉이 있으면 즉시 저장
+      if (hasPendingDrawingRef.current && fabricCanvasRef.current) {
+        // 동기적으로 저장 요청 (비동기 완료 보장 안 됨, 하지만 최선의 노력)
+        const canvas = fabricCanvasRef.current;
+        const objects = canvas.getObjects();
+        const drawingData = objects.map(obj => obj.toObject(['stroke', 'strokeWidth', 'fill', 'opacity']));
+        const canvasWidth = canvas.getWidth();
+        const canvasHeight = canvas.getHeight();
+
+        // 비동기 저장 시도 (페이지 이탈 시에도 동작)
+        const client = supabase;
+        if (client) {
+          client
+            .from('handwriting_progress')
+            .select('canvas_data')
+            .eq('student_id', studentId)
+            .single()
+            .then(({ data: progress }) => {
+              const currentCanvasData = (progress?.canvas_data as Record<string, unknown>) || {};
+              client
+                .from('handwriting_progress')
+                .update({
+                  canvas_data: {
+                    ...currentCanvasData,
+                    teacherDrawings: {
+                      width: canvasWidth,
+                      height: canvasHeight,
+                      objects: drawingData
+                    }
+                  },
+                  updated_at: new Date().toISOString()
+                })
+                .eq('student_id', studentId);
+            });
+        }
+      }
     };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentId]);
 
   // 실행 취소
   const handleUndo = () => {
