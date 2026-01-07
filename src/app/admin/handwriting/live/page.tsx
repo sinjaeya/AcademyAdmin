@@ -160,14 +160,17 @@ export default function HandwritingLivePage() {
             // 학습 완료 - 목록에서 제거
             const deletedRecord = payload.old as { id: string; student_id: number };
 
-            // setProgressSessions 콜백 내에서 삭제된 학생 찾기 (stale closure 방지)
+            // 삭제된 학생 이름을 먼저 찾고, 상태 업데이트 후 toast 호출
             setProgressSessions(prev => {
               const deletedSession = prev.find(s => s.id === deletedRecord.id);
+              // 렌더링 완료 후 toast 호출 (setState 콜백 내에서 다른 상태 업데이트 방지)
               if (deletedSession) {
-                toast({
-                  type: 'success',
-                  description: `${deletedSession.studentName}님이 학습을 완료했습니다`
-                });
+                setTimeout(() => {
+                  toast({
+                    type: 'success',
+                    description: `${deletedSession.studentName}님이 학습을 완료했습니다`
+                  });
+                }, 0);
               }
               return prev.filter(s => s.id !== deletedRecord.id);
             });

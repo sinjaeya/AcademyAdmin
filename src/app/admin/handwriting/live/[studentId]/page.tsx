@@ -103,6 +103,10 @@ export default function HandwritingStudentPage() {
   const [highlighterColor, setHighlighterColor] = useState('rgba(250, 204, 21, 0.4)');
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [canvasReady, setCanvasReady] = useState(false);
+  const [pendingTeacherDrawings, setPendingTeacherDrawings] = useState<CanvasData['teacherDrawings'] | null>(null);
+  const [pendingStudentDrawings, setPendingStudentDrawings] = useState<{ width: number; height: number; objects: Record<string, unknown>[] } | null>(null);
+  const saveTeacherDrawingsDebouncedRef = useRef<() => void>(() => {});
+  const isUpdatingStudentDrawingsRef = useRef<boolean>(false); // 학생 드로잉 업데이트 중 플래그
 
   // 모니터링 상태 관리 (is_watched + heartbeat)
   useEffect(() => {
@@ -219,12 +223,28 @@ export default function HandwritingStudentPage() {
         updatedAt: progress.updated_at
       });
 
-      // 캔버스 데이터에서 스크린샷 추출
+      // 캔버스 데이터에서 스크린샷 및 teacherDrawings 추출
       const canvasData = progress.canvas_data as CanvasData | null;
       console.log('[loadProgressData] canvas_data:', canvasData ? 'exists' : 'null');
       console.log('[loadProgressData] screenshot:', canvasData?.screenshot ? `${canvasData.screenshot.substring(0, 50)}...` : 'null');
+      console.log('[loadProgressData] teacherDrawings:', canvasData?.teacherDrawings?.objects?.length ?? 0, '개 객체');
+      console.log('[loadProgressData] studentDrawings (objects):', canvasData?.objects?.length ?? 0, '개 객체');
       if (canvasData?.screenshot) {
         setScreenshot(canvasData.screenshot);
+      }
+      // 캔버스가 아직 준비되지 않은 경우에만 드로잉 로드 (UPDATE 감지 시 재로드 방지)
+      if (!canvasReady) {
+        if (canvasData?.teacherDrawings) {
+          setPendingTeacherDrawings(canvasData.teacherDrawings);
+        }
+        // 학생 드로잉 로드 (objects 필드)
+        if (canvasData?.objects && canvasData.objects.length > 0 && canvasData.width && canvasData.height) {
+          setPendingStudentDrawings({
+            width: canvasData.width,
+            height: canvasData.height,
+            objects: canvasData.objects
+          });
+        }
       }
 
       // 답변 데이터
@@ -294,6 +314,55 @@ export default function HandwritingStudentPage() {
       const canvasData = progress.canvas_data as CanvasData | null;
       if (canvasData?.screenshot) {
         setScreenshot(canvasData.screenshot);
+      }
+
+      // 학생 드로잉 실시간 업데이트 (캔버스가 준비된 경우에만)
+      if (fabricCanvasRef.current && canvasData?.objects && canvasData.width && canvasData.height) {
+        const canvas = fabricCanvasRef.current;
+        const serverObjects = canvasData.objects;
+
+        // 현재 캔버스의 학생 드로잉 개수
+        const currentStudentObjects = canvas.getObjects().filter(obj =>
+          (obj as fabric.FabricObject & { isStudentDrawing?: boolean }).isStudentDrawing
+        );
+
+        // 개수가 다르면 업데이트 (새로운 드로잉이 추가된 경우)
+        if (currentStudentObjects.length !== serverObjects.length) {
+          console.log('[Refetch] 학생 드로잉 업데이트:', currentStudentObjects.length, '→', serverObjects.length);
+
+          // 업데이트 시작 플래그
+          isUpdatingStudentDrawingsRef.current = true;
+
+          // 기존 학생 드로잉 제거
+          currentStudentObjects.forEach(obj => canvas.remove(obj));
+
+          // 스케일 계산
+          const currentWidth = canvas.getWidth();
+          const currentHeight = canvas.getHeight();
+          const scaleX = currentWidth / canvasData.width;
+          const scaleY = currentHeight / canvasData.height;
+
+          // 새 학생 드로잉 추가
+          fabric.util.enlivenObjects(serverObjects as unknown as fabric.FabricObject[]).then((enlivenedObjects) => {
+            enlivenedObjects.forEach((item) => {
+              if (item && typeof item === 'object' && 'scaleX' in item) {
+                const obj = item as fabric.FabricObject;
+                obj.scaleX = (obj.scaleX || 1) * scaleX;
+                obj.scaleY = (obj.scaleY || 1) * scaleY;
+                obj.left = (obj.left || 0) * scaleX;
+                obj.top = (obj.top || 0) * scaleY;
+                obj.selectable = false;
+                obj.evented = false;
+                (obj as fabric.FabricObject & { isStudentDrawing?: boolean }).isStudentDrawing = true;
+                obj.setCoords();
+                canvas.add(obj);
+              }
+            });
+            canvas.renderAll();
+            // 업데이트 완료 플래그
+            isUpdatingStudentDrawingsRef.current = false;
+          });
+        }
       }
 
       // 답변 업데이트
@@ -403,9 +472,10 @@ export default function HandwritingStudentPage() {
         fabricCanvasRef.current = canvas;
         setCanvasReady(true);
 
-        // 드로잉 완료 시 저장 (3초 debounce 적용)
+        // 드로잉 완료 시 저장 (3초 debounce 적용, ref 사용으로 stale closure 방지)
         canvas.on('path:created', () => {
-          saveTeacherDrawingsDebounced();
+          console.log('[TeacherDrawing] path:created 이벤트 발생');
+          saveTeacherDrawingsDebouncedRef.current();
         });
       };
       img.src = screenshot;
@@ -471,6 +541,92 @@ export default function HandwritingStudentPage() {
     }
   }, [currentTool, penColor, highlighterColor, strokeWidth]);
 
+  // 캔버스 준비 후 기존 teacherDrawings 로드
+  useEffect(() => {
+    if (!canvasReady || !fabricCanvasRef.current || !pendingTeacherDrawings) return;
+
+    const canvas = fabricCanvasRef.current;
+    const { width: serverWidth, height: serverHeight, objects } = pendingTeacherDrawings;
+
+    if (!objects || objects.length === 0) return;
+
+    // 스케일 계산
+    const currentWidth = canvas.getWidth();
+    const currentHeight = canvas.getHeight();
+    const scaleX = currentWidth / serverWidth;
+    const scaleY = currentHeight / serverHeight;
+
+    console.log('[TeacherDrawing] 기존 드로잉 로드:', objects.length, '개, 스케일:', scaleX.toFixed(2), 'x', scaleY.toFixed(2));
+
+    // 각 객체를 스케일 조정하여 추가
+    fabric.util.enlivenObjects(objects as unknown as fabric.FabricObject[]).then((enlivenedObjects) => {
+      enlivenedObjects.forEach((item) => {
+        // FabricObject 타입 체크
+        if (item && typeof item === 'object' && 'scaleX' in item) {
+          const obj = item as fabric.FabricObject;
+          // 스케일 적용
+          obj.scaleX = (obj.scaleX || 1) * scaleX;
+          obj.scaleY = (obj.scaleY || 1) * scaleY;
+          obj.left = (obj.left || 0) * scaleX;
+          obj.top = (obj.top || 0) * scaleY;
+          obj.setCoords();
+          canvas.add(obj);
+        }
+      });
+      canvas.renderAll();
+    });
+
+    // 한 번만 로드하도록 클리어
+    setPendingTeacherDrawings(null);
+  }, [canvasReady, pendingTeacherDrawings]);
+
+  // 캔버스 준비 후 기존 학생 드로잉 로드
+  useEffect(() => {
+    if (!canvasReady || !fabricCanvasRef.current || !pendingStudentDrawings) return;
+
+    const canvas = fabricCanvasRef.current;
+    const { width: serverWidth, height: serverHeight, objects } = pendingStudentDrawings;
+
+    if (!objects || objects.length === 0) return;
+
+    // 스케일 계산
+    const currentWidth = canvas.getWidth();
+    const currentHeight = canvas.getHeight();
+    const scaleX = currentWidth / serverWidth;
+    const scaleY = currentHeight / serverHeight;
+
+    console.log('[StudentDrawing] 학생 드로잉 로드:', objects.length, '개, 스케일:', scaleX.toFixed(2), 'x', scaleY.toFixed(2));
+    console.log('[StudentDrawing] 원본 객체:', JSON.stringify(objects[0]).substring(0, 200));
+
+    // 각 객체를 스케일 조정하여 추가 (선택 불가능하게 설정)
+    fabric.util.enlivenObjects(objects as unknown as fabric.FabricObject[]).then((enlivenedObjects) => {
+      console.log('[StudentDrawing] enlivenObjects 결과:', enlivenedObjects.length, '개');
+      enlivenedObjects.forEach((item, idx) => {
+        if (item && typeof item === 'object' && 'scaleX' in item) {
+          const obj = item as fabric.FabricObject;
+          console.log(`[StudentDrawing] 객체 ${idx}:`, obj.type, 'stroke:', (obj as unknown as { stroke?: string }).stroke, 'left:', obj.left, 'top:', obj.top);
+          // 스케일 적용
+          obj.scaleX = (obj.scaleX || 1) * scaleX;
+          obj.scaleY = (obj.scaleY || 1) * scaleY;
+          obj.left = (obj.left || 0) * scaleX;
+          obj.top = (obj.top || 0) * scaleY;
+          // 학생 드로잉은 선택/수정 불가
+          obj.selectable = false;
+          obj.evented = false;
+          // 학생 드로잉 구분용 속성 추가
+          (obj as fabric.FabricObject & { isStudentDrawing?: boolean }).isStudentDrawing = true;
+          obj.setCoords();
+          canvas.add(obj);
+          console.log(`[StudentDrawing] 객체 ${idx} 추가 완료, 캔버스 객체 수:`, canvas.getObjects().length);
+        }
+      });
+      canvas.renderAll();
+    });
+
+    // 한 번만 로드하도록 클리어
+    setPendingStudentDrawings(null);
+  }, [canvasReady, pendingStudentDrawings]);
+
   // 선생님 드로잉 저장
   const saveTeacherDrawings = useCallback(async () => {
     if (!supabase || !studentId || !fabricCanvasRef.current) return;
@@ -479,8 +635,27 @@ export default function HandwritingStudentPage() {
       const canvas = fabricCanvasRef.current;
       const objects = canvas.getObjects();
 
+      // 학생 드로잉 제외 (isStudentDrawing 속성이 없는 객체만)
+      const teacherObjects = objects.filter(obj =>
+        !(obj as fabric.FabricObject & { isStudentDrawing?: boolean }).isStudentDrawing
+      );
+
+      console.log('[TeacherDrawing] 캔버스 전체 객체:', objects.length, '개');
+      console.log('[TeacherDrawing] 선생님 객체 (필터 후):', teacherObjects.length, '개');
+
+      // 학생 드로잉 업데이트 중이면 저장 스킵 (race condition 방지)
+      if (isUpdatingStudentDrawingsRef.current) {
+        console.log('[TeacherDrawing] 저장 스킵 - 학생 드로잉 업데이트 중');
+        return;
+      }
+
+      objects.forEach((obj, idx) => {
+        const isStudent = (obj as fabric.FabricObject & { isStudentDrawing?: boolean }).isStudentDrawing;
+        console.log(`  [${idx}] type:`, obj.type, 'isStudentDrawing:', isStudent, 'stroke:', (obj as unknown as { stroke?: string }).stroke);
+      });
+
       // Fabric.js 객체를 JSON으로 변환
-      const drawingData = objects.map(obj => obj.toObject(['stroke', 'strokeWidth', 'fill', 'opacity']));
+      const drawingData = teacherObjects.map(obj => obj.toObject(['stroke', 'strokeWidth', 'fill', 'opacity']));
 
       // 현재 캔버스 크기 (클라이언트에서 스케일 조정에 사용)
       const canvasWidth = canvas.getWidth();
@@ -522,6 +697,7 @@ export default function HandwritingStudentPage() {
   const hasPendingDrawingRef = useRef<boolean>(false); // pending 드로잉 추적
 
   const saveTeacherDrawingsDebounced = useCallback(() => {
+    console.log('[TeacherDrawing] debounced 호출됨');
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
@@ -531,6 +707,11 @@ export default function HandwritingStudentPage() {
       hasPendingDrawingRef.current = false; // 저장 완료
     }, 3000);
   }, [saveTeacherDrawings]);
+
+  // ref를 최신 함수로 업데이트 (stale closure 방지)
+  useEffect(() => {
+    saveTeacherDrawingsDebouncedRef.current = saveTeacherDrawingsDebounced;
+  }, [saveTeacherDrawingsDebounced]);
 
   // 컴포넌트 언마운트 시 pending 드로잉 즉시 저장
   useEffect(() => {

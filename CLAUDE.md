@@ -46,17 +46,25 @@ npm run fresh        # clean + npm install
 ### 주요 디렉토리
 - `src/app/admin/` - 어드민 페이지
   - `students/`, `payments/` - 학생/결제 관리
-  - `learning/` - 실시간 학습 모니터링 (국어, 수학, 실시간 뷰)
+  - `learning/` - 실시간 학습 모니터링 (국어, 국어v2, 수학, 스크린샷)
+  - `handwriting/live/` - 내손내줄 실시간 필기 모니터링 (Fabric.js 캔버스)
   - `statistics/` - 학습 통계 (문장클리닉, 학생별)
   - `contents/` - 콘텐츠 관리 (지문, 단어팡, 문장클리닉)
   - `teacher/` - 선생님 도구 (지문 가이드)
   - `settings/` - 시스템 설정 (변수, 권한, 학원, 사용자)
 - `src/app/api/` - API 라우트 (RESTful, 응답 형식: `{ success, data, message, error }`)
 - `src/components/ui/` - shadcn/ui 컴포넌트
-- `src/config/constants.ts` - 모든 ENUM 옵션과 라벨 정의
-- `src/lib/permissions.ts` - 역할 기반 접근 제어 (5분 캐시)
+- `src/config/constants.ts` - 모든 ENUM 옵션과 라벨 정의 (타입 포함)
+- `src/types/` - TypeScript 타입 정의 (`index.ts`: 공통 타입, `realtime-korean.ts`: 실시간 국어 타입)
 - `src/store/auth.ts` - Zustand 인증 스토어
 - `scripts/` - SQL 스크립트 및 설정 유틸리티
+
+### 주요 lib 파일
+- `src/lib/permissions.ts` - 역할 기반 접근 제어 (5분 캐시, `clearPermissionCache()` 무효화)
+- `src/lib/supabase/client.ts` - 클라이언트 사이드 Supabase 인스턴스
+- `src/lib/supabase/server.ts` - 서버 사이드 Supabase 인스턴스
+- `src/lib/utils.ts` - `cn()` 등 공통 유틸리티
+- `src/lib/db/academy-queries.ts` - 학원 관련 DB 쿼리 함수
 
 ### 데이터베이스 프로젝트 ID
 Supabase 프로젝트: `mhorwnwhcyxynfxmlhit`
@@ -192,6 +200,8 @@ medium, advanced, highest, extreme, high_mock_1, high_mock_2, high_mock_3, csat
 | 학생 | `/api/admin/students`, `/api/admin/students/[id]` | CRUD (status 파라미터로 필터링) |
 | 결제 | `/api/admin/payments`, `/api/admin/payments/[id]` | 수납 내역 CRUD |
 | 학습 | `/api/admin/learning/realtime`, `/api/admin/learning/realtime/[id]` | 실시간 학습 모니터링 |
+| 학습v2 | `/api/admin/learning/realtime-korean2` | 실시간 국어 v2 |
+| 필기 | `/api/admin/handwriting/live` | 내손내줄 실시간 필기 |
 | 콘텐츠 | `/api/admin/contents/passages`, `/api/admin/contents/word-pang`, `/api/admin/contents/sentence-clinic` | 지문/단어/문장 관리 |
 | 통계 | `/api/admin/statistics/sentence-clinic`, `/api/admin/statistics/student-learning` | 학습 통계 |
 | 학원 | `/api/admin/academy`, `/api/admin/academy/[id]` | 학원 CRUD |

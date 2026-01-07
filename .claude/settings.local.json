@@ -14,7 +14,11 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\n보안 취약점 패치 (npm audit fix).\n\n- next: 16.0.8 → 16.0.10 (Server Actions 소스코드 노출, DoS 취약점 수정)\n- @modelcontextprotocol/sdk: 1.20.2 → 1.24.3 (DNS rebinding 보호)\n- body-parser: DoS 취약점 수정\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nrefactor: currentAcademy TEXT 컬럼 제거, academy_id FK 참조로 변경\n\n- student 테이블의 currentAcademy TEXT 컬럼 사용 제거\n- academy_id FK를 통한 academy 테이블 JOIN으로 변경\n- 학생 목록, 결제, 학습리포트 페이지 모두 반영\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nrefactor: currentAcademy TEXT 컬럼 제거, academy_id FK 참조로 변경\n\n- student 테이블의 currentAcademy TEXT 컬럼 사용 제거\n- academy_id FK를 통한 academy 테이블 JOIN으로 변경\n- 학생 목록, 결제, 학습리포트 페이지 모두 반영\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(taskkill:*)",
+      "Bash(git commit:*)",
+      "Bash(curl:*)",
+      "Bash(git show:*)"
     ],
     "deny": [],
     "ask": []
