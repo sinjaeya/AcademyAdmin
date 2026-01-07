@@ -148,7 +148,7 @@ function HandwritingBadges({ record }: { record: LearningRecord }) {
         {detail?.passageCode || '-'}
       </Badge>
       <span className="text-xs text-gray-500">
-        {record.correctCount}/{record.totalItems}문장
+        {record.correctCount}/{record.totalItems}문제
         {record.totalItems > 0 && (
           <span className={`ml-1 ${
             record.accuracyRate >= 80 ? 'text-green-600' :
@@ -339,7 +339,7 @@ function StudentRow({ summary, onDeleteOrphanSessions }: {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-sm font-medium text-gray-700">
-                  {summary.handwriting.sessionCount}지문 / {summary.handwriting.count}문장
+                  {summary.handwriting.sessionCount}지문 / {summary.handwriting.count}문제
                 </span>
                 <span className={`text-sm font-medium ${
                   summary.handwriting.accuracyRate >= 80 ? 'text-green-600' :
