@@ -83,6 +83,8 @@ export default function WordPangManagementPage(): React.ReactElement {
 
   // 수정 폼 상태
   const [editForm, setEditForm] = useState({
+    word: '',
+    voca_id: 0,
     option_1: '',
     option_2: '',
     option_3: '',
@@ -142,6 +144,8 @@ export default function WordPangManagementPage(): React.ReactElement {
   const openEditDialog = (quiz: WordPangQuiz): void => {
     setSelectedQuiz(quiz);
     setEditForm({
+      word: quiz.korean_voca.word,
+      voca_id: quiz.voca_id,
       option_1: quiz.option_1,
       option_2: quiz.option_2,
       option_3: quiz.option_3,
@@ -397,6 +401,17 @@ export default function WordPangManagementPage(): React.ReactElement {
             </DialogHeader>
 
             <div className="grid gap-4 py-4">
+              {/* 단어 수정 */}
+              <div>
+                <Label htmlFor="word">단어</Label>
+                <Input
+                  id="word"
+                  value={editForm.word}
+                  onChange={(e) => setEditForm({ ...editForm, word: e.target.value })}
+                  className="font-semibold"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="option_1">선택지 1</Label>

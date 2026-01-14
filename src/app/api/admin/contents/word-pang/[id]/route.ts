@@ -61,7 +61,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams): Promis
   try {
     const { id } = await params;
     const body = await request.json();
-    const { option_1, option_2, option_3, option_4, correct_answer, explanation, qa_score } = body;
+    const { option_1, option_2, option_3, option_4, correct_answer, explanation, qa_score, word, voca_id } = body;
 
     // 필수 필드 검증
     if (!option_1 || !option_2 || !option_3 || !option_4 || !correct_answer) {
@@ -73,6 +73,20 @@ export async function PUT(request: NextRequest, { params }: RouteParams): Promis
       return NextResponse.json({ error: '정답은 1~4 사이여야 합니다.' }, { status: 400 });
     }
 
+    // 단어 수정 (word 필드가 있고 voca_id가 있는 경우)
+    if (word && voca_id) {
+      const { error: vocaError } = await supabase
+        .from('korean_voca')
+        .update({ word })
+        .eq('id', voca_id);
+
+      if (vocaError) {
+        console.error('단어 수정 오류:', vocaError);
+        return NextResponse.json({ error: '단어 수정 실패: ' + vocaError.message }, { status: 500 });
+      }
+    }
+
+    // 퀴즈 수정
     const { data, error } = await supabase
       .from('korean_voca_quiz')
       .update({
