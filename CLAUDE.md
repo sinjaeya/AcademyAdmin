@@ -66,9 +66,6 @@ npm run fresh        # clean + npm install
 - `src/lib/utils.ts` - `cn()` 등 공통 유틸리티
 - `src/lib/db/academy-queries.ts` - 학원 관련 DB 쿼리 함수
 
-### 데이터베이스 프로젝트 ID
-Supabase 프로젝트: `mhorwnwhcyxynfxmlhit`
-
 ## 코딩 규칙
 
 ### 네이밍 규칙
@@ -88,18 +85,26 @@ Supabase 프로젝트: `mhorwnwhcyxynfxmlhit`
 - 파일당 하나의 컴포넌트
 
 ### 금지 사항
-- `localStorage`/`sessionStorage` 직접 사용 금지 (Zustand persist 또는 Supabase session 사용)
+- `localStorage`/`sessionStorage` 직접 사용 금지 (예외: Zustand persist 미들웨어만 허용)
 - 컴포넌트에서 직접 DB 쿼리 금지 (`lib/supabase` 함수 사용)
 - 하드코딩된 권한 체크 금지 (`lib/permissions.ts` 통해서만)
 
 ### 권한 카테고리
 `students`, `payments`, `users`, `academy`, `reports` - 권한 추가 시 해당 카테고리 사용
 
-## 데이터베이스 테이블 생성
+### Zustand 상태관리
+- 인증 상태: `src/store/auth.ts` (`auth-storage` 키)
+- persist 미들웨어로 localStorage 연동 시에만 클라이언트 저장소 접근
 
-**반드시 Supabase MCP를 사용하여 마이그레이션을 직접 적용** - SQL 스크립트만 작성하지 말 것.
+## 데이터베이스 작업
 
-절차:
+### MCP 직접 접근 우선 원칙
+데이터베이스 조회/수정 요청 시 **Supabase MCP를 통해 직접 실행** - SQL 스크립트 생성 금지.
+- 조회: `mcp_supabase_execute_sql`로 즉시 실행
+- DDL/마이그레이션: `mcp_supabase_apply_migration`으로 적용
+- 프로젝트 ID: `mhorwnwhcyxynfxmlhit`
+
+### 테이블 생성 절차
 1. `scripts/` 디렉토리에 SQL 스크립트 작성
 2. `mcp_supabase_apply_migration`으로 적용
 3. 성공 후 TypeScript 타입 업데이트
@@ -210,9 +215,11 @@ medium, advanced, highest, extreme, high_mock_1, high_mock_2, high_mock_3, csat
 ### API 응답 형식
 ```typescript
 // 성공
-{ success: true, data: any, message: string }
+{ success: true, data: T, message?: string }
 
 // 실패
+{ success: false, error: string }
+// 또는 단순 에러
 { error: string }
 ```
 

@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
 import { Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Calendar } from 'lucide-react';
 import {
@@ -22,10 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { CheckInOutDetailDialog } from './CheckInOutDetailDialog';
 
 // CheckInOut 데이터 타입 정의
 interface CheckInOut {
   id: string;
+  student_Id: number | null; // 학생 ID (student 테이블 FK)
   student_name: string;
   check_in_time: string;
   check_in_status: string;
@@ -40,17 +42,25 @@ interface CheckInOutTableProps {
   refreshKey?: number;
 }
 
-export function CheckInOutTable({ refreshKey }: CheckInOutTableProps) {
+export function CheckInOutTable({ refreshKey }: CheckInOutTableProps): JSX.Element {
   const [data, setData] = useState<CheckInOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
-  
+
   // 날짜 필터 상태 - 기본값은 오늘 날짜
   const todayString = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState<string>(todayString);
+
+  // 상세 모달 상태
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<{
+    studentId: number | null;
+    studentName: string;
+    date: string;
+  }>({ studentId: null, studentName: '', date: '' });
 
   // 페이지네이션 계산
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -130,10 +140,10 @@ export function CheckInOutTable({ refreshKey }: CheckInOutTableProps) {
     });
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string): JSX.Element => {
     if (status === 'CheckIn') {
       return (
-        <Badge 
+        <Badge
           variant="outline"
           className="bg-green-500 text-white border-green-500 hover:bg-green-600"
         >
@@ -142,7 +152,7 @@ export function CheckInOutTable({ refreshKey }: CheckInOutTableProps) {
       );
     } else if (status === 'CheckOut') {
       return (
-        <Badge 
+        <Badge
           variant="outline"
           className="bg-red-500 text-white border-red-500 hover:bg-red-600"
         >
@@ -158,6 +168,15 @@ export function CheckInOutTable({ refreshKey }: CheckInOutTableProps) {
     }
   };
 
+  // 행 클릭 핸들러
+  const handleRowClick = (record: CheckInOut): void => {
+    setSelectedRecord({
+      studentId: record.student_Id,
+      studentName: record.student_name,
+      date: selectedDate
+    });
+    setDialogOpen(true);
+  };
 
   return (
     <Card>
@@ -229,7 +248,11 @@ export function CheckInOutTable({ refreshKey }: CheckInOutTableProps) {
               </TableHeader>
               <TableBody>
                 {currentData.map((record) => (
-                  <TableRow key={record.id}>
+                  <TableRow
+                    key={record.id}
+                    onClick={() => handleRowClick(record)}
+                    className="cursor-pointer hover:bg-gray-50"
+                  >
                     <TableCell>
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
@@ -350,6 +373,15 @@ export function CheckInOutTable({ refreshKey }: CheckInOutTableProps) {
           </div>
         )}
       </CardContent>
+
+      {/* 상세 정보 모달 */}
+      <CheckInOutDetailDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        studentId={selectedRecord.studentId}
+        studentName={selectedRecord.studentName}
+        checkInDate={selectedRecord.date}
+      />
     </Card>
   );
 }

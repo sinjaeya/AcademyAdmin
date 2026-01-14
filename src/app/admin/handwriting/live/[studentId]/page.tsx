@@ -301,13 +301,61 @@ export default function HandwritingStudentPage() {
     try {
       const { data: progress, error } = await supabase
         .from('handwriting_progress')
-        .select('canvas_data, answers, updated_at')
+        .select('canvas_data, answers, updated_at, passage_id, passage_code')
         .eq('student_id', studentId)
         .single();
 
       if (error || !progress) {
         console.log('[Refetch] 데이터 없음 또는 에러:', error);
         return;
+      }
+
+      // 지문 변경 감지 및 업데이트
+      if (progress.passage_id && progressInfo?.passageId !== progress.passage_id) {
+        console.log('[Refetch] 지문 변경 감지:', progressInfo?.passageId, '→', progress.passage_id);
+
+        // progressInfo 업데이트
+        setProgressInfo(prev => prev ? {
+          ...prev,
+          passageId: progress.passage_id,
+          passageCode: progress.passage_code || '-',
+          updatedAt: progress.updated_at
+        } : null);
+
+        // 지문 정보 조회 (코드ID)
+        const { data: passageData } = await supabase
+          .from('handwriting_passage')
+          .select('code_id')
+          .eq('id', progress.passage_id)
+          .single();
+
+        if (passageData) {
+          setPassageCodeId(passageData.code_id);
+
+          // 퀴즈 조회
+          const { data: quizData } = await supabase
+            .from('handwriting_quiz')
+            .select('id, question, option_1, option_2, option_3, option_4, option_5, correct_answer, points, sort_order')
+            .eq('passage_id', progress.passage_id)
+            .order('sort_order');
+
+          if (quizData) {
+            setQuizzes(quizData.map(q => ({
+              id: q.id,
+              question: q.question,
+              options: [q.option_1, q.option_2, q.option_3, q.option_4, q.option_5].filter(Boolean),
+              correctAnswer: q.correct_answer,
+              points: q.points,
+              sortOrder: q.sort_order
+            })));
+          }
+        }
+
+        // 답변 초기화 (새 지문)
+        setAnswers({});
+      } else if (progress.answers) {
+        // 지문이 같으면 답변만 업데이트
+        setAnswers(progress.answers as AnswersMap);
       }
 
       // 스크린샷 업데이트
@@ -692,7 +740,7 @@ export default function HandwritingStudentPage() {
     }
   }, [studentId]);
 
-  // Debounced 저장 (3초 후 저장 - 연속 드로잉 시 과도한 업데이트 방지)
+  // Debounced 저장 (1초 후 저장 - 연속 드로잉 시 과도한 업데이트 방지)
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasPendingDrawingRef = useRef<boolean>(false); // pending 드로잉 추적
 
@@ -705,7 +753,7 @@ export default function HandwritingStudentPage() {
     debounceTimerRef.current = setTimeout(() => {
       saveTeacherDrawings();
       hasPendingDrawingRef.current = false; // 저장 완료
-    }, 3000);
+    }, 1000);
   }, [saveTeacherDrawings]);
 
   // ref를 최신 함수로 업데이트 (stale closure 방지)

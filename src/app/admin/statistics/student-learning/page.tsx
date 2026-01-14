@@ -19,7 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, TrendingUp, Zap, BookText, Search, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { Loader2, TrendingUp, Zap, BookText, Search, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown, X, PenLine } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -48,6 +48,8 @@ interface StudentStat {
   sentenceLearningAccuracy: number | null;
   passageQuizCount: number;
   passageQuizAccuracy: number | null;
+  handwritingCount: number;
+  handwritingPassageCount: number;
   totalCount: number;
 }
 
@@ -56,6 +58,7 @@ interface SummaryStats {
   totalWordPang: number;
   totalSentenceLearning: number;
   totalPassageQuiz: number;
+  totalHandwriting: number;
 }
 
 interface StatisticsData {
@@ -75,7 +78,7 @@ interface LearningHistory {
   passageQuiz: DailyData[];
 }
 
-type SortField = 'wordPangCount' | 'sentenceLearningCount' | 'passageQuizCount' | null;
+type SortField = 'wordPangCount' | 'sentenceLearningCount' | 'passageQuizCount' | 'handwritingCount' | null;
 type SortDirection = 'asc' | 'desc';
 
 // 문장클리닉 레벨 라벨 변환
@@ -401,13 +404,23 @@ export default function StudentLearningStatisticsPage(): React.ReactElement {
                       {renderSortIcon('passageQuizCount')}
                     </button>
                   </TableHead>
+                  <TableHead className="w-[120px] text-center">
+                    <button
+                      onClick={() => handleSort('handwritingCount')}
+                      className="flex items-center justify-center gap-1 w-full cursor-pointer hover:text-orange-600 transition-colors"
+                    >
+                      <PenLine className="w-4 h-4 text-orange-500" />
+                      <span>내손내줄</span>
+                      {renderSortIcon('handwritingCount')}
+                    </button>
+                  </TableHead>
                   <TableHead className="w-[100px] text-center">총합</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedStudents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={9} className="text-center py-12 text-gray-500">
                       {searchTerm ? '검색 결과가 없습니다.' : '등록된 학생이 없습니다.'}
                     </TableCell>
                   </TableRow>
@@ -459,6 +472,14 @@ export default function StudentLearningStatisticsPage(): React.ReactElement {
                             ({student.passageQuizAccuracy}%)
                           </span>
                         )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="font-semibold text-orange-600">
+                          {(student.handwritingCount || 0).toLocaleString()}
+                        </span>
+                        <span className="ml-1 text-xs text-gray-500">
+                          (-)
+                        </span>
                       </TableCell>
                       <TableCell className="text-center">
                         <span className="font-bold text-blue-600">
