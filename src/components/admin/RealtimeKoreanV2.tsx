@@ -184,14 +184,63 @@ function HandwritingBadges({ record }: { record: LearningRecord }) {
   );
 }
 
+// 경과 시간 표시 컴포넌트 (1분마다 업데이트)
+function ElapsedTime({ onlineAt }: { onlineAt: string }) {
+  const [elapsed, setElapsed] = useState('');
+
+  useEffect(() => {
+    // 경과 시간 계산 함수
+    const calcElapsed = (): string => {
+      // check_in_time이 KST를 UTC로 잘못 저장되어 있어 보정 필요
+      // DB에 저장된 시간을 그대로 로컬 시간으로 해석
+      // "2026-01-15 13:36:15.708108+00" → "2026-01-15T13:36:15" (ISO 형식으로 변환)
+      const timeStr = onlineAt
+        .replace(/\+00:00$/, '')  // +00:00 제거
+        .replace(/\+00$/, '')     // +00 제거
+        .replace(/Z$/, '')        // Z 제거
+        .replace(/\.\d+/, '')     // 밀리초 제거
+        .replace(' ', 'T');       // 공백을 T로 변환
+      const start = new Date(timeStr).getTime();
+      const now = Date.now();
+      const diffMs = now - start;
+
+      if (isNaN(start)) return '시간오류';
+      if (diffMs < 0) return '0분';
+
+      const diffMin = Math.floor(diffMs / (1000 * 60));
+      const hours = Math.floor(diffMin / 60);
+      const mins = diffMin % 60;
+
+      if (hours > 0) {
+        return `${hours}시간 ${mins}분`;
+      }
+      return `${mins}분`;
+    };
+
+    // 초기 계산
+    setElapsed(calcElapsed());
+
+    // 1분마다 업데이트
+    const interval = setInterval(() => {
+      setElapsed(calcElapsed());
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [onlineAt]);
+
+  return <span className="text-xs text-green-600 font-medium">{elapsed}</span>;
+}
+
 // 학생 로우 컴포넌트
-function StudentRow({ summary, onDeleteOrphanSessions, presence }: {
+function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime }: {
   summary: StudentSummary;
   onDeleteOrphanSessions: (records: { id: string; learningType: string }[]) => Promise<void>;
   presence?: StudentPresenceState;
+  checkInTime?: string; // 체크인 시간 (등원 후 경과 시간 표시용)
 }) {
   const isActive = summary.currentActivity !== null;
   const isOnline = !!presence;
+  const isCheckedIn = !!checkInTime; // 체크인 상태 (등원 중)
 
   // 미완료(고아) 세션 목록
   const orphanRecords = summary.records.filter(r => r.completedAt === null);
@@ -199,14 +248,8 @@ function StudentRow({ summary, onDeleteOrphanSessions, presence }: {
 
   // 고아 세션 전체 삭제
   const handleDeleteOrphans = async (): Promise<void> => {
-    console.log('[handleDeleteOrphans] 클릭됨, orphanRecords:', orphanRecords.length);
-    if (!hasOrphans) {
-      console.log('[handleDeleteOrphans] hasOrphans가 false');
-      return;
-    }
-    console.log('[handleDeleteOrphans] 삭제 시작:', orphanRecords.map(r => r.id));
+    if (!hasOrphans) return;
     await onDeleteOrphanSessions(orphanRecords.map(r => ({ id: r.id, learningType: r.learningType })));
-    console.log('[handleDeleteOrphans] 삭제 완료');
   };
 
   return (
@@ -219,11 +262,9 @@ function StudentRow({ summary, onDeleteOrphanSessions, presence }: {
             className={`w-3 h-3 ${isOnline ? 'fill-green-500 text-green-500' : 'fill-gray-300 text-gray-300'}`}
           />
           <h3 className="font-bold text-lg text-gray-900">{summary.studentName}</h3>
-          {/* 현재 접속 위치 (온라인인 경우) */}
-          {isOnline && presence && (
-            <span className="text-sm text-gray-500">
-              @ {presence.current_page_name}
-            </span>
+          {/* 체크인 상태: 등원 후 경과 시간 표시 */}
+          {isCheckedIn && (
+            <ElapsedTime onlineAt={checkInTime} />
           )}
           {isActive && (
             <Badge className="bg-blue-100 text-blue-700 border-blue-200 animate-pulse">
@@ -411,10 +452,9 @@ function StudentRow({ summary, onDeleteOrphanSessions, presence }: {
 // 메인 컴포넌트
 export function RealtimeKoreanV2() {
   const { academyId } = useAuthStore();
-  const { records, wordCounts, historicalAccuracy, reviewCounts, loading, connectionStatus, lastUpdate, deleteSession } = useRealtimeKorean(academyId);
-  // Presence 훅 (academyId를 숫자로 변환)
-  const numericAcademyId = academyId ? parseInt(academyId, 10) : null;
-  const { getPresence, connectionStatus: presenceStatus } = useStudentPresence(numericAcademyId);
+  const { records, wordCounts, historicalAccuracy, reviewCounts, checkInInfo, loading, connectionStatus, lastUpdate, deleteSession } = useRealtimeKorean(academyId);
+  // Presence 훅 (academyId 그대로 전달 - UUID 문자열)
+  const { getPresence, connectionStatus: presenceStatus } = useStudentPresence(academyId);
 
   // 숨긴 학생 목록
   const [hiddenStudents, setHiddenStudents] = useState<Set<number>>(new Set());
@@ -631,6 +671,7 @@ export function RealtimeKoreanV2() {
               summary={summary}
               onDeleteOrphanSessions={deleteOrphanSessions}
               presence={getPresence(summary.studentId)}
+              checkInTime={checkInInfo.get(summary.studentId)?.checkInTime}
             />
           ))}
         </div>

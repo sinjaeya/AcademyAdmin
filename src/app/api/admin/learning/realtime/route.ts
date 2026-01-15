@@ -585,7 +585,24 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({ data: records, wordCounts, historicalAccuracy, reviewCounts });
+    // 오늘 체크인 중인 학생 정보 조회 (등원 후 경과 시간 표시용)
+    const checkInInfo: Record<number, { checkInTime: string }> = {};
+    const { data: checkInData } = await supabase
+      .from('check_in_board')
+      .select('student_Id, check_in_time')
+      .eq('check_in_status', 'CheckIn')
+      .gte('check_in_time', startDate)
+      .lt('check_in_time', endDate);
+
+    if (checkInData) {
+      for (const row of checkInData) {
+        checkInInfo[row.student_Id] = {
+          checkInTime: row.check_in_time
+        };
+      }
+    }
+
+    return NextResponse.json({ data: records, wordCounts, historicalAccuracy, reviewCounts, checkInInfo });
   } catch (error) {
     console.error('Error in realtime learning API:', error);
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });

@@ -26,7 +26,7 @@ interface UseStudentPresenceReturn {
  * Admin App에서 학생들의 Presence 상태를 추적하는 훅
  * Student App의 student-presence 채널을 구독
  */
-export function useStudentPresence(academyId?: number | null): UseStudentPresenceReturn {
+export function useStudentPresence(academyId?: string | number | null): UseStudentPresenceReturn {
   const [onlineStudents, setOnlineStudents] = useState<Map<number, StudentPresenceState>>(new Map());
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
 

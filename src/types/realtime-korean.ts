@@ -109,10 +109,16 @@ export interface StudentSummary {
   historicalAccuracy?: StudentHistoricalAccuracy;
 }
 
+// 체크인 정보
+export interface StudentCheckInInfo {
+  checkInTime: string;
+}
+
 // API 응답
 export interface RealtimeKoreanApiResponse {
   data: LearningRecord[];
   wordCounts: Record<number, StudentWordCount>;
   historicalAccuracy: Record<number, StudentHistoricalAccuracy>;
   reviewCounts: Record<number, number>; // 학생별 문장클리닉 복습 대상 카운트
+  checkInInfo: Record<number, StudentCheckInInfo>; // 오늘 체크인 중인 학생 정보
 }

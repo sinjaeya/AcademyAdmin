@@ -6,6 +6,7 @@ import type {
   LearningRecord,
   StudentWordCount,
   StudentHistoricalAccuracy,
+  StudentCheckInInfo,
   SentenceClinicDetail,
   PassageQuizDetail,
   HandwritingDetail,
@@ -65,6 +66,7 @@ export function useRealtimeKorean(academyId: string | null) {
   const [wordCounts, setWordCounts] = useState<Map<number, StudentWordCount>>(new Map());
   const [historicalAccuracy, setHistoricalAccuracy] = useState<Map<number, StudentHistoricalAccuracy>>(new Map());
   const [reviewCounts, setReviewCounts] = useState<Map<number, number>>(new Map());
+  const [checkInInfo, setCheckInInfo] = useState<Map<number, StudentCheckInInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -126,6 +128,13 @@ export function useRealtimeKorean(academyId: string | null) {
           newReviewCounts.set(Number(studentId), count as number);
         }
         setReviewCounts(newReviewCounts);
+      }
+      if (result.checkInInfo) {
+        const newCheckInInfo = new Map<number, StudentCheckInInfo>();
+        for (const [studentId, info] of Object.entries(result.checkInInfo)) {
+          newCheckInInfo.set(Number(studentId), info);
+        }
+        setCheckInInfo(newCheckInInfo);
       }
       setLastUpdate(new Date());
     } catch (error) {
@@ -723,6 +732,7 @@ export function useRealtimeKorean(academyId: string | null) {
     wordCounts,
     historicalAccuracy,
     reviewCounts,
+    checkInInfo,
     loading,
     connectionStatus,
     lastUpdate,
