@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, type JSX } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -141,6 +141,9 @@ export function CheckInOutDetailDialog({
           <DialogTitle className="flex items-center gap-2">
             {studentName} - {checkInDate} 상세 정보
           </DialogTitle>
+          <DialogDescription>
+            카카오톡 발송 내역과 갤러리 링크를 확인합니다.
+          </DialogDescription>
         </DialogHeader>
 
         {loading ? (

@@ -11,6 +11,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 학원관리 시스템 - Next.js 15 기반 어드민 대시보드. 학원, 학생, 결제, 출결 관리. 대상 사용자: 10명 이하 (학원 관리자, 강사, 튜터).
 
+## 공유 문서 (Student-Admin)
+
+Student App과 공유하는 스펙 문서: `C:\Source\ShareDoc\Student_Admin\`
+
+| 문서 | 내용 |
+|------|------|
+| `REALTIME_SPEC.md` | Supabase Realtime 통신 스펙 (postgres_changes, 채널 구조) |
+| `DB_SCHEMA.md` | 공유 테이블 구조 (handwriting_progress, test_session 등) |
+| `HANDWRITING_FLOW.md` | 내손내줄 학습/모니터링 Phase별 흐름 |
+
+**작업 전 반드시 참조** - Student App과의 데이터 흐름 이해 필수
+
 ## 명령어
 
 ```bash
