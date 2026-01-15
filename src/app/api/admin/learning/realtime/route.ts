@@ -13,6 +13,8 @@ interface LearningRecord {
   accuracyRate: number;
   correctWords?: string[];
   wrongWords?: string[];
+  // 순서 유지된 단어 결과 (created_at 기준 정렬)
+  wordResults?: Array<{ word: string; isCorrect: boolean }>;
   // 문장클리닉 상세 정보
   sentenceClinicDetail?: {
     keyword: string;
@@ -239,20 +241,21 @@ export async function GET(request: Request) {
       }
     }
 
-    // 단어팡 세션별 단어 정보 조회
-    const sessionWordMap = new Map<number, { correctWords: string[]; wrongWords: string[] }>();
+    // 단어팡 세션별 단어 정보 조회 (순서 유지)
+    const sessionWordMap = new Map<number, { correctWords: string[]; wrongWords: string[]; wordResults: Array<{ word: string; isCorrect: boolean }> }>();
     if (testSessionData) {
       const wordPangSessionIds = testSessionData
         .filter(r => r.test_type === 'word_pang')
         .map(r => r.id);
 
       if (wordPangSessionIds.length > 0) {
-        // test_result에서 세션별 문제 결과 가져오기 (1000개 제한 우회)
+        // test_result에서 세션별 문제 결과 가져오기 (created_at 기준 정렬)
         const { data: wordResultData } = await supabase
           .from('test_result')
-          .select('session_id, item_id, is_correct')
+          .select('session_id, item_id, is_correct, created_at')
           .eq('test_type', 'word_pang')
           .in('session_id', wordPangSessionIds)
+          .order('created_at', { ascending: true })
           .range(0, 9999);
 
         if (wordResultData && wordResultData.length > 0) {
@@ -270,16 +273,19 @@ export async function GET(request: Request) {
           const wordMap = new Map<number, string>();
           wordData?.forEach(w => wordMap.set(Number(w.voca_id), w.word));
 
-          // 세션별 맞은/틀린 단어 분류
+          // 세션별 단어 결과 (순서 유지)
           for (const result of wordResultData) {
             const sessionId = Number(result.session_id);
             const word = wordMap.get(Number(result.item_id)) || '';
 
             if (!sessionWordMap.has(sessionId)) {
-              sessionWordMap.set(sessionId, { correctWords: [], wrongWords: [] });
+              sessionWordMap.set(sessionId, { correctWords: [], wrongWords: [], wordResults: [] });
             }
 
             const sessionData = sessionWordMap.get(sessionId)!;
+            // 순서 유지된 배열에 추가
+            sessionData.wordResults.push({ word, isCorrect: result.is_correct });
+            // 기존 호환성을 위해 분리 배열도 유지
             if (result.is_correct) {
               sessionData.correctWords.push(word);
             } else {
@@ -423,6 +429,7 @@ export async function GET(request: Request) {
           accuracyRate,
           correctWords: wordData?.correctWords,
           wrongWords: wordData?.wrongWords,
+          wordResults: wordData?.wordResults,
           passageQuizDetails,
           handwritingDetail
         });

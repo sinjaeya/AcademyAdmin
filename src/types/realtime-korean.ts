@@ -51,6 +51,7 @@ export interface LearningRecord {
   // 단어팡 전용
   correctWords?: string[];
   wrongWords?: string[];
+  wordResults?: Array<{ word: string; isCorrect: boolean }>; // 순서 유지된 결과
   // 문장클리닉 전용
   sentenceClinicDetail?: SentenceClinicDetail;
   // 보물찾기 전용

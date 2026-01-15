@@ -64,8 +64,29 @@ function ConnectionStatusIndicator({ status }: { status: ConnectionStatus }) {
   }
 }
 
-// 단어팡 결과 배지
+// 단어팡 결과 배지 (순서 유지)
 function WordPangBadges({ record }: { record: LearningRecord }) {
+  // wordResults가 있으면 순서대로 표시
+  if (record.wordResults?.length) {
+    return (
+      <div className="flex flex-wrap gap-1">
+        {record.wordResults.map((result, idx) => (
+          <Badge
+            key={idx}
+            className={`text-xs px-1.5 py-0 ${
+              result.isCorrect
+                ? 'bg-green-100 text-green-700 border-green-200'
+                : 'bg-red-100 text-red-700 border-red-200'
+            }`}
+          >
+            {result.word}
+          </Badge>
+        ))}
+      </div>
+    );
+  }
+
+  // 기존 방식 (하위 호환)
   if (!record.correctWords?.length && !record.wrongWords?.length) {
     return <span className="text-gray-400 text-sm">-</span>;
   }
