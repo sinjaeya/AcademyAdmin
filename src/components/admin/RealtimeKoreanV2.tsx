@@ -3,8 +3,9 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Radio, Wifi, WifiOff, AlertCircle, X } from 'lucide-react';
+import { Radio, Wifi, WifiOff, AlertCircle, X, Circle } from 'lucide-react';
 import { useRealtimeKorean, ConnectionStatus } from '@/hooks/useRealtimeKorean';
+import { useStudentPresence, type StudentPresenceState } from '@/hooks/useStudentPresence';
 import { useAuthStore } from '@/store/auth';
 import type { LearningRecord, StudentSummary } from '@/types/realtime-korean';
 
@@ -163,11 +164,13 @@ function HandwritingBadges({ record }: { record: LearningRecord }) {
 }
 
 // 학생 로우 컴포넌트
-function StudentRow({ summary, onDeleteOrphanSessions }: {
+function StudentRow({ summary, onDeleteOrphanSessions, presence }: {
   summary: StudentSummary;
   onDeleteOrphanSessions: (records: { id: string; learningType: string }[]) => Promise<void>;
+  presence?: StudentPresenceState;
 }) {
   const isActive = summary.currentActivity !== null;
+  const isOnline = !!presence;
 
   // 미완료(고아) 세션 목록
   const orphanRecords = summary.records.filter(r => r.completedAt === null);
@@ -190,7 +193,17 @@ function StudentRow({ summary, onDeleteOrphanSessions }: {
       {/* 헤더: 학생 이름 + 상태 */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
+          {/* 온라인 상태 표시 */}
+          <Circle
+            className={`w-3 h-3 ${isOnline ? 'fill-green-500 text-green-500' : 'fill-gray-300 text-gray-300'}`}
+          />
           <h3 className="font-bold text-lg text-gray-900">{summary.studentName}</h3>
+          {/* 현재 접속 위치 (온라인인 경우) */}
+          {isOnline && presence && (
+            <span className="text-sm text-gray-500">
+              @ {presence.current_page_name}
+            </span>
+          )}
           {isActive && (
             <Badge className="bg-blue-100 text-blue-700 border-blue-200 animate-pulse">
               {getLearningTypeLabel(summary.currentActivity!)} 진행중
@@ -378,6 +391,9 @@ function StudentRow({ summary, onDeleteOrphanSessions }: {
 export function RealtimeKoreanV2() {
   const { academyId } = useAuthStore();
   const { records, wordCounts, historicalAccuracy, reviewCounts, loading, connectionStatus, lastUpdate, deleteSession } = useRealtimeKorean(academyId);
+  // Presence 훅 (academyId를 숫자로 변환)
+  const numericAcademyId = academyId ? parseInt(academyId, 10) : null;
+  const { getPresence, connectionStatus: presenceStatus } = useStudentPresence(numericAcademyId);
 
   // 숨긴 학생 목록
   const [hiddenStudents, setHiddenStudents] = useState<Set<number>>(new Set());
@@ -461,16 +477,25 @@ export function RealtimeKoreanV2() {
       }
     }
 
-    // wordCounts에서 단어팡/보물찾기/내손내줄 개별 문제 수 가져오기
-    summaryMap.forEach((summary, studentId) => {
-      const wc = wordCounts.get(studentId);
-      if (wc) {
-        summary.wordPang.count = wc.wordPangCount;
-        summary.wordPang.correctCount = wc.wordPangCorrect;
-        summary.passageQuiz.count = wc.passageQuizCount;
-        summary.passageQuiz.correctCount = wc.passageQuizCorrect;
-        summary.handwriting.count = wc.handwritingCount;
-        summary.handwriting.correctCount = wc.handwritingCorrect;
+    // 레코드에서 직접 개수 계산 (세션별 단어/문제 배열 기반 - wordCounts와 동기화 문제 해결)
+    summaryMap.forEach((summary) => {
+      // 단어팡: 세션별 correctWords + wrongWords 합산
+      for (const record of summary.records) {
+        if (record.learningType === 'word_pang') {
+          const correctCount = record.correctWords?.length || 0;
+          const wrongCount = record.wrongWords?.length || 0;
+          summary.wordPang.count += correctCount + wrongCount;
+          summary.wordPang.correctCount += correctCount;
+        } else if (record.learningType === 'passage_quiz') {
+          // 보물찾기: passageQuizDetails 배열 기반
+          const details = record.passageQuizDetails || [];
+          summary.passageQuiz.count += details.length;
+          summary.passageQuiz.correctCount += details.filter(d => d.isCorrect).length;
+        } else if (record.learningType === 'handwriting') {
+          // 내손내줄: record의 totalItems, correctCount 사용
+          summary.handwriting.count += record.totalItems || 0;
+          summary.handwriting.correctCount += record.correctCount || 0;
+        }
       }
 
       // 정답률 계산
@@ -543,6 +568,13 @@ export function RealtimeKoreanV2() {
         </div>
         <div className="flex items-center gap-4">
           <ConnectionStatusIndicator status={connectionStatus} />
+          {/* Presence 연결 상태 */}
+          {presenceStatus === 'connected' && (
+            <div className="flex items-center gap-1 text-green-600">
+              <Circle className="w-2 h-2 fill-green-500" />
+              <span className="text-xs">접속현황</span>
+            </div>
+          )}
           <Badge variant="outline" className="text-gray-600">
             {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
           </Badge>
@@ -577,6 +609,7 @@ export function RealtimeKoreanV2() {
               key={summary.studentId}
               summary={summary}
               onDeleteOrphanSessions={deleteOrphanSessions}
+              presence={getPresence(summary.studentId)}
             />
           ))}
         </div>
