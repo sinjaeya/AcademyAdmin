@@ -112,6 +112,7 @@ export interface StudentSummary {
 // 체크인 정보
 export interface StudentCheckInInfo {
   checkInTime: string;
+  hasCheckOut: boolean; // 체크아웃 완료 여부 (하원 완료 = true)
 }
 
 // API 응답

@@ -460,9 +460,6 @@ export function RealtimeKoreanV2() {
   const [hiddenStudents, setHiddenStudents] = useState<Set<number>>(new Set());
   const prevRecordsRef = useRef<LearningRecord[]>([]);
 
-  // 학생 순서 고정 (초기 로드 시 결정, 이후 유지)
-  const studentOrderRef = useRef<number[]>([]);
-
   // 레코드 변경 감지 - 새 업데이트가 있는 학생은 다시 표시
   useEffect(() => {
     const prevRecords = prevRecordsRef.current;
@@ -579,40 +576,38 @@ export function RealtimeKoreanV2() {
 
     const summaries = Array.from(summaryMap.values());
 
-    // 초기 로드 시에만 정렬하고 순서 저장
-    if (studentOrderRef.current.length === 0 && summaries.length > 0) {
-      // 진행중 학생 먼저, 그 다음 이름순
-      summaries.sort((a, b) => {
-        if (a.currentActivity && !b.currentActivity) return -1;
-        if (!a.currentActivity && b.currentActivity) return 1;
-        return a.studentName.localeCompare(b.studentName);
-      });
-      studentOrderRef.current = summaries.map(s => s.studentId);
-      return summaries;
-    }
+    // 체크인/체크아웃 기준 정렬
+    // 1순위: 체크인만 있고 체크아웃 없음 (학원에서 공부 중) → 상단
+    // 2순위: 체크아웃 있음 (하원 완료) → 하단
+    // 각 그룹 내에서는 최근 활동 시간순 (진행중 > 최근 완료)
+    summaries.sort((a, b) => {
+      const aInfo = checkInInfo.get(a.studentId);
+      const bInfo = checkInInfo.get(b.studentId);
 
-    // 이후 업데이트에서는 기존 순서 유지, 새 학생은 맨 뒤에 추가
-    const orderedSummaries: StudentSummary[] = [];
-    const existingIds = new Set(studentOrderRef.current);
+      // 체크아웃 여부로 1차 정렬
+      const aCheckedOut = aInfo?.hasCheckOut ?? true; // 체크인 정보 없으면 하단으로
+      const bCheckedOut = bInfo?.hasCheckOut ?? true;
 
-    // 기존 순서대로 정렬
-    for (const studentId of studentOrderRef.current) {
-      const summary = summaries.find(s => s.studentId === studentId);
-      if (summary) {
-        orderedSummaries.push(summary);
+      if (!aCheckedOut && bCheckedOut) return -1; // a는 공부중, b는 하원 → a 상단
+      if (aCheckedOut && !bCheckedOut) return 1;  // a는 하원, b는 공부중 → b 상단
+
+      // 같은 그룹 내에서는 진행중 학생 먼저
+      if (a.currentActivity && !b.currentActivity) return -1;
+      if (!a.currentActivity && b.currentActivity) return 1;
+
+      // 그 다음 최근 활동 시간순 (가장 최근 레코드 기준)
+      const aLatest = a.records[0]?.startedAt || '';
+      const bLatest = b.records[0]?.startedAt || '';
+      if (aLatest && bLatest) {
+        return new Date(bLatest).getTime() - new Date(aLatest).getTime();
       }
-    }
 
-    // 새로 추가된 학생은 맨 뒤에
-    for (const summary of summaries) {
-      if (!existingIds.has(summary.studentId)) {
-        orderedSummaries.push(summary);
-        studentOrderRef.current.push(summary.studentId);
-      }
-    }
+      // 마지막으로 이름순
+      return a.studentName.localeCompare(b.studentName);
+    });
 
-    return orderedSummaries;
-  }, [records, wordCounts, historicalAccuracy, reviewCounts]);
+    return summaries;
+  }, [records, wordCounts, historicalAccuracy, reviewCounts, checkInInfo]);
 
   // 숨긴 학생 제외
   const visibleSummaries = useMemo(() => {

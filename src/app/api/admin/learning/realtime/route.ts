@@ -585,8 +585,10 @@ export async function GET(request: Request) {
       }
     }
 
-    // 오늘 체크인 중인 학생 정보 조회 (등원 후 경과 시간 표시용)
-    const checkInInfo: Record<number, { checkInTime: string }> = {};
+    // 오늘 체크인/체크아웃 정보 조회 (등원 후 경과 시간 및 정렬용)
+    const checkInInfo: Record<number, { checkInTime: string; hasCheckOut: boolean }> = {};
+
+    // 체크인 정보 조회
     const { data: checkInData } = await supabase
       .from('check_in_board')
       .select('student_Id, check_in_time')
@@ -597,8 +599,25 @@ export async function GET(request: Request) {
     if (checkInData) {
       for (const row of checkInData) {
         checkInInfo[row.student_Id] = {
-          checkInTime: row.check_in_time
+          checkInTime: row.check_in_time,
+          hasCheckOut: false
         };
+      }
+    }
+
+    // 체크아웃 정보 조회 (하원 완료 여부)
+    const { data: checkOutData } = await supabase
+      .from('check_in_board')
+      .select('student_Id')
+      .eq('check_in_status', 'CheckOut')
+      .gte('check_in_time', startDate)
+      .lt('check_in_time', endDate);
+
+    if (checkOutData) {
+      for (const row of checkOutData) {
+        if (checkInInfo[row.student_Id]) {
+          checkInInfo[row.student_Id].hasCheckOut = true;
+        }
       }
     }
 
