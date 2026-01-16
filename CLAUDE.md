@@ -23,6 +23,30 @@ Student App과 공유하는 스펙 문서: `C:\Source\ShareDoc\Student_Admin\`
 
 **작업 전 반드시 참조** - Student App과의 데이터 흐름 이해 필수
 
+## Supabase Realtime 패턴
+
+Student App과의 실시간 통신에 사용되는 패턴:
+
+```typescript
+// 채널 구독 예시
+const channel = supabase
+  .channel('realtime-learning')
+  .on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 'test_session',
+    filter: `academy_id=eq.${academyId}`
+  }, (payload) => {
+    // INSERT, UPDATE, DELETE 처리
+  })
+  .subscribe();
+
+// 컴포넌트 언마운트 시 정리
+return () => { supabase.removeChannel(channel); };
+```
+
+주요 실시간 테이블: `test_session`, `handwriting_progress`, `check_in_out`
+
 ## 명령어
 
 ```bash
@@ -49,11 +73,14 @@ npm run fresh        # clean + npm install
 ## 아키텍처
 
 ### 기술 스택
-- **프레임워크**: Next.js 15 (App Router), React 19, TypeScript 5
+- **프레임워크**: Next.js 16 (App Router), React 19, TypeScript 5
 - **데이터베이스**: Supabase (PostgreSQL) + Prisma ORM
+- **실시간**: Supabase Realtime (postgres_changes)
 - **상태관리**: Zustand (localStorage 키: `auth-storage`)
+- **데이터 페칭**: React Query (TanStack Query)
 - **UI**: shadcn/ui + Radix UI + Tailwind CSS 4 + Lucide icons
 - **폼**: React Hook Form + Zod 유효성 검증
+- **캔버스**: Fabric.js (내손내줄 필기 모니터링)
 
 ### 주요 디렉토리
 - `src/app/admin/` - 어드민 페이지
@@ -248,3 +275,20 @@ medium, advanced, highest, extreme, high_mock_1, high_mock_2, high_mock_3, csat
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
+
+## claude-mem 활용
+
+이 프로젝트는 claude-mem MCP를 통해 세션 간 컨텍스트를 유지합니다.
+
+### 작업 시작 시
+- `/remember AcademyAdmin` 또는 `/remember [키워드]`로 관련 기억 검색
+- 프로젝트명 `AcademyAdmin`을 쿼리에 포함하여 정확한 검색
+
+### 작업 종료 시
+- `/save`로 현재 세션의 주요 작업 내용 저장
+- 중요 결정사항, 구현 패턴, 해결한 이슈 등 기록
+
+### 검색 팁
+- 시맨틱 검색: `["AcademyAdmin 실시간 모니터링"]`
+- 날짜 포함: `["AcademyAdmin 2026-01-16 버그 수정"]`
+- Student App 연동 관련: `["AcademyAdmin Student Realtime"]`
