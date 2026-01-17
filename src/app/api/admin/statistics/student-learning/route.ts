@@ -24,10 +24,10 @@ export async function GET(): Promise<NextResponse> {
       return NextResponse.json({ error: studentsError.message }, { status: 500 });
     }
 
-    // 테스트 세션 통계 조회 (완료된 세션만) - 정답률 포함
+    // 테스트 세션 통계 조회 (완료된 세션만) - 정답률, 정답 수, 메타데이터 포함
     const { data: sessions, error: sessionsError } = await supabase
       .from('test_session')
-      .select('student_id, test_type, total_items, accuracy_rate')
+      .select('student_id, test_type, total_items, accuracy_rate, correct_count, metadata')
       .not('completed_at', 'is', null);
 
     if (sessionsError) {
@@ -35,64 +35,7 @@ export async function GET(): Promise<NextResponse> {
       return NextResponse.json({ error: sessionsError.message }, { status: 500 });
     }
 
-    // 문장클리닉 학습 기록 조회 (short_passage_learning_history 테이블) - 정답 여부 포함
-    const { data: sentenceLearningData, error: sentenceLearningError } = await supabase
-      .from('short_passage_learning_history')
-      .select('student_id, cloze_is_correct, keyword_is_correct');
-
-    if (sentenceLearningError) {
-      console.error('문장클리닉 조회 오류:', sentenceLearningError);
-      return NextResponse.json({ error: sentenceLearningError.message }, { status: 500 });
-    }
-
-    // 내손내줄 학습 기록 조회 (handwriting_canvas 테이블)
-    const { data: handwritingData, error: handwritingError } = await supabase
-      .from('handwriting_canvas')
-      .select('student_id, passage_id');
-
-    if (handwritingError) {
-      console.error('내손내줄 조회 오류:', handwritingError);
-      return NextResponse.json({ error: handwritingError.message }, { status: 500 });
-    }
-
-    // 학생별 문장클리닉 지문 수 및 정답률 집계
-    const sentenceLearningStats: Record<number, { count: number; correctCount: number; totalQuestions: number }> = {};
-    sentenceLearningData?.forEach((record) => {
-      const studentId = record.student_id;
-      if (!sentenceLearningStats[studentId]) {
-        sentenceLearningStats[studentId] = { count: 0, correctCount: 0, totalQuestions: 0 };
-      }
-      sentenceLearningStats[studentId].count += 1;
-      // 각 지문당 2개 문제 (cloze, keyword)
-      sentenceLearningStats[studentId].totalQuestions += 2;
-      if (record.cloze_is_correct) sentenceLearningStats[studentId].correctCount += 1;
-      if (record.keyword_is_correct) sentenceLearningStats[studentId].correctCount += 1;
-    });
-
-    // 학생별 내손내줄 지문 수 집계
-    const handwritingStats: Record<number, { count: number; passageCount: number }> = {};
-    handwritingData?.forEach((record) => {
-      const studentId = record.student_id;
-      if (!handwritingStats[studentId]) {
-        handwritingStats[studentId] = { count: 0, passageCount: 0 };
-      }
-      handwritingStats[studentId].count += 1;
-    });
-    // 지문 수 계산 (중복 제거)
-    const handwritingByStudent = new Map<number, Set<string>>();
-    handwritingData?.forEach((record) => {
-      if (!handwritingByStudent.has(record.student_id)) {
-        handwritingByStudent.set(record.student_id, new Set());
-      }
-      handwritingByStudent.get(record.student_id)!.add(record.passage_id);
-    });
-    handwritingByStudent.forEach((passages, studentId) => {
-      if (handwritingStats[studentId]) {
-        handwritingStats[studentId].passageCount = passages.size;
-      }
-    });
-
-    // 학생별 통계 집계 (정답률 포함)
+    // 학생별 통계 집계
     const studentStats: Record<number, {
       wordPangCount: number;
       wordPangAccuracySum: number;
@@ -100,6 +43,11 @@ export async function GET(): Promise<NextResponse> {
       passageQuizCount: number;
       passageQuizAccuracySum: number;
       passageQuizSessionCount: number;
+      sentenceLearningCount: number;
+      sentenceLearningCorrectCount: number;
+      sentenceLearningTotalQuestions: number;
+      handwritingCount: number;
+      handwritingPassages: Set<string>;
     }> = {};
 
     sessions?.forEach((session) => {
@@ -111,7 +59,12 @@ export async function GET(): Promise<NextResponse> {
           wordPangSessionCount: 0,
           passageQuizCount: 0,
           passageQuizAccuracySum: 0,
-          passageQuizSessionCount: 0
+          passageQuizSessionCount: 0,
+          sentenceLearningCount: 0,
+          sentenceLearningCorrectCount: 0,
+          sentenceLearningTotalQuestions: 0,
+          handwritingCount: 0,
+          handwritingPassages: new Set()
         };
       }
 
@@ -119,7 +72,6 @@ export async function GET(): Promise<NextResponse> {
 
       switch (session.test_type) {
         case 'word_pang':
-          // 세션 수가 아닌 학습한 총 단어 수로 변경
           studentStats[studentId].wordPangCount += session.total_items || 0;
           studentStats[studentId].wordPangAccuracySum += accuracy;
           studentStats[studentId].wordPangSessionCount += 1;
@@ -128,6 +80,17 @@ export async function GET(): Promise<NextResponse> {
           studentStats[studentId].passageQuizCount += 1;
           studentStats[studentId].passageQuizAccuracySum += accuracy;
           studentStats[studentId].passageQuizSessionCount += 1;
+          break;
+        case 'sentence_clinic':
+          studentStats[studentId].sentenceLearningCount += 1;
+          studentStats[studentId].sentenceLearningCorrectCount += (session.correct_count || 0);
+          studentStats[studentId].sentenceLearningTotalQuestions += (session.total_items || 0);
+          break;
+        case 'handwriting':
+          studentStats[studentId].handwritingCount += 1;
+          if (session.metadata && (session.metadata as any).passage_id) {
+            studentStats[studentId].handwritingPassages.add((session.metadata as any).passage_id);
+          }
           break;
       }
     });
@@ -140,21 +103,20 @@ export async function GET(): Promise<NextResponse> {
         wordPangSessionCount: 0,
         passageQuizCount: 0,
         passageQuizAccuracySum: 0,
-        passageQuizSessionCount: 0
+        passageQuizSessionCount: 0,
+        sentenceLearningCount: 0,
+        sentenceLearningCorrectCount: 0,
+        sentenceLearningTotalQuestions: 0,
+        handwritingCount: 0,
+        handwritingPassages: new Set()
       };
-
-      // 문장클리닉은 별도 테이블에서 조회한 데이터 사용
-      const sentenceStats = sentenceLearningStats[student.id] || { count: 0, correctCount: 0, totalQuestions: 0 };
-
-      // 내손내줄은 별도 테이블에서 조회한 데이터 사용
-      const hwStats = handwritingStats[student.id] || { count: 0, passageCount: 0 };
 
       // 평균 정답률 계산
       const wordPangAccuracy = stats.wordPangSessionCount > 0
         ? Math.round(stats.wordPangAccuracySum / stats.wordPangSessionCount)
         : null;
-      const sentenceLearningAccuracy = sentenceStats.totalQuestions > 0
-        ? Math.round((sentenceStats.correctCount / sentenceStats.totalQuestions) * 100)
+      const sentenceLearningAccuracy = stats.sentenceLearningTotalQuestions > 0
+        ? Math.round((stats.sentenceLearningCorrectCount / stats.sentenceLearningTotalQuestions) * 100)
         : null;
       const passageQuizAccuracy = stats.passageQuizSessionCount > 0
         ? Math.round(stats.passageQuizAccuracySum / stats.passageQuizSessionCount)
@@ -169,13 +131,13 @@ export async function GET(): Promise<NextResponse> {
         sentenceLevel: student.sentence_level,
         wordPangCount: stats.wordPangCount,
         wordPangAccuracy,
-        sentenceLearningCount: sentenceStats.count,
+        sentenceLearningCount: stats.sentenceLearningCount,
         sentenceLearningAccuracy,
         passageQuizCount: stats.passageQuizCount,
         passageQuizAccuracy,
-        handwritingCount: hwStats.count,
-        handwritingPassageCount: hwStats.passageCount,
-        totalCount: stats.wordPangCount + sentenceStats.count + stats.passageQuizCount + hwStats.count
+        handwritingCount: stats.handwritingCount,
+        handwritingPassageCount: stats.handwritingPassages.size,
+        totalCount: stats.wordPangCount + stats.sentenceLearningCount + stats.passageQuizCount + stats.handwritingCount
       };
     }) || [];
 

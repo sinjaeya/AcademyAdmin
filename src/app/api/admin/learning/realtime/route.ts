@@ -101,7 +101,7 @@ export async function GET(request: Request) {
         accuracy_rate,
         metadata
       `)
-      .in('test_type', ['word_pang', 'passage_quiz', 'handwriting'])
+      .in('test_type', ['word_pang', 'passage_quiz', 'handwriting', 'sentence_clinic'])
       .gte('started_at', startDate)
       .lte('started_at', endDate);
 
@@ -121,55 +121,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: '데이터를 가져오는데 실패했습니다.' }, { status: 500 });
     }
 
-    // short_passage_learning_history에서 오늘의 문장클리닉 데이터 가져오기 (short_passage 조인)
-    let sentenceClinicQuery = supabase
-      .from('short_passage_learning_history')
-      .select(`
-        id,
-        student_id,
-        started_at,
-        completed_at,
-        cloze_is_correct,
-        keyword_is_correct,
-        cloze_selected_answer,
-        keyword_selected_answer,
-        short_passage:short_passage_id (
-          keyword,
-          text,
-          cloze_summary,
-          cloze_option_1,
-          cloze_option_2,
-          cloze_option_3,
-          cloze_option_4,
-          cloze_answer,
-          cloze_explanation,
-          keyword_question,
-          keyword_option_1,
-          keyword_option_2,
-          keyword_option_3,
-          keyword_option_4,
-          keyword_answer,
-          keyword_explanation
-        )
-      `)
-      .gte('started_at', startDate)
-      .lte('started_at', endDate);
-
-    // academy_id가 있으면 해당 학원 학생만 필터링
-    if (academyStudentIds !== null && academyStudentIds.length > 0) {
-      sentenceClinicQuery = sentenceClinicQuery.in('student_id', academyStudentIds);
-    }
-
-    const { data: sentenceClinicData, error: sentenceClinicError } = await sentenceClinicQuery.order('started_at', { ascending: false }).range(0, 9999);
-
-    if (sentenceClinicError) {
-      console.error('Error fetching sentence clinic data:', sentenceClinicError);
-    }
+    // (Deleted) short_passage_learning_history query
 
     // 학생 ID 목록 수집 (오늘 학습한 학생들) - Number로 변환 필수
     const testSessionStudentIds = testSessionData?.map(r => Number(r.student_id)) || [];
-    const sentenceClinicStudentIds = sentenceClinicData?.map(r => Number(r.student_id)) || [];
-    const studentIds = [...new Set([...testSessionStudentIds, ...sentenceClinicStudentIds])];
+    // const sentenceClinicStudentIds = sentenceClinicData?.map(r => Number(r.student_id)) || []; // Removed
+    const studentIds = [...new Set([...testSessionStudentIds])];
 
     // 학생 정보 가져오기
     const studentInfoMap = new Map<number, string>();
@@ -381,6 +338,70 @@ export async function GET(request: Request) {
       }
     }
 
+    // 문장클리닉 세션별 상세 정보 및 결과 조회
+    const sessionSentenceClinicMap = new Map<number, any>();
+    if (testSessionData) {
+      const scSessionIds = testSessionData
+        .filter(r => r.test_type === 'sentence_clinic')
+        .map(r => r.id);
+
+      if (scSessionIds.length > 0) {
+        // 1. 상세 결과 (test_result)
+        const { data: scResults } = await supabase
+          .from('test_result')
+          .select('session_id, test_type, selected_answer, is_correct, item_uuid')
+          .in('session_id', scSessionIds);
+
+        // 2. 지문 정보 (short_passage) - metadata에서 passage_id 수집
+        const passageIds = new Set<number>();
+        testSessionData
+          .filter(r => r.test_type === 'sentence_clinic')
+          .forEach(r => {
+            const pid = (r.metadata as any)?.passage_id;
+            if (pid) passageIds.add(Number(pid));
+          });
+
+        let passageMap = new Map<number, any>();
+        if (passageIds.size > 0) {
+          const { data: passages } = await supabase
+            .from('short_passage')
+            .select('*')
+            .in('id', [...passageIds]);
+
+          passages?.forEach(p => passageMap.set(p.id, p));
+        }
+
+        // 3. 매핑
+        for (const sessionId of scSessionIds) {
+          const session = testSessionData.find(s => s.id === sessionId);
+          const pid = Number((session?.metadata as any)?.passage_id);
+          const passage = passageMap.get(pid);
+          const results = scResults?.filter(r => r.session_id === sessionId) || [];
+          const clozeResult = results.find(r => r.test_type === 'sc_cloze');
+          const keywordResult = results.find(r => r.test_type === 'sc_keyword');
+
+          if (passage) {
+            sessionSentenceClinicMap.set(sessionId, {
+              keyword: passage.keyword,
+              text: passage.text,
+              clozeSummary: passage.cloze_summary,
+              clozeOptions: [passage.cloze_option_1, passage.cloze_option_2, passage.cloze_option_3, passage.cloze_option_4],
+              clozeAnswer: passage.cloze_answer,
+              clozeSelectedAnswer: clozeResult?.selected_answer ?? null,
+              clozeIsCorrect: clozeResult?.is_correct ?? null,
+              clozeExplanation: passage.cloze_explanation,
+              keywordQuestion: passage.keyword_question,
+              keywordOptions: [passage.keyword_option_1, passage.keyword_option_2, passage.keyword_option_3, passage.keyword_option_4],
+              keywordAnswer: passage.keyword_answer,
+              keywordSelectedAnswer: keywordResult?.selected_answer ?? null,
+              keywordIsCorrect: keywordResult?.is_correct ?? null,
+              keywordExplanation: passage.keyword_explanation
+            });
+          }
+        }
+      }
+    }
+
     // 결과 데이터 생성
     const records: LearningRecord[] = [];
 
@@ -404,9 +425,9 @@ export async function GET(request: Request) {
         const metadata = record.metadata as { code_id?: string; passage_id?: string } | null;
         const handwritingDetail = record.test_type === 'handwriting'
           ? {
-              passageCode: metadata?.code_id || '-',
-              passageId: metadata?.passage_id
-            }
+            passageCode: metadata?.code_id || '-',
+            passageId: metadata?.passage_id
+          }
           : undefined;
 
         // 내손내줄인 경우 test_result 집계 값 사용 (test_session.correct_count 업데이트 안 되는 문제 해결)
@@ -417,11 +438,16 @@ export async function GET(request: Request) {
         const correctCount = hwResult ? hwResult.correctCount : (record.correct_count || 0);
         const accuracyRate = totalItems > 0 ? (correctCount / totalItems) * 100 : 0;
 
+        // 문장클리닉 상세 정보
+        const sentenceClinicDetail = record.test_type === 'sentence_clinic'
+          ? sessionSentenceClinicMap.get(Number(record.id))
+          : undefined;
+
         records.push({
           id: `ts_${record.id}`,
           studentId,
           studentName,
-          learningType: record.test_type as 'word_pang' | 'passage_quiz' | 'handwriting',
+          learningType: record.test_type as 'word_pang' | 'passage_quiz' | 'handwriting' | 'sentence_clinic',
           startedAt: record.started_at,
           completedAt: record.completed_at,
           totalItems,
@@ -431,81 +457,13 @@ export async function GET(request: Request) {
           wrongWords: wordData?.wrongWords,
           wordResults: wordData?.wordResults,
           passageQuizDetails,
-          handwritingDetail
+          handwritingDetail,
+          sentenceClinicDetail
         });
       }
     }
 
-    // sentence_clinic 데이터 변환
-    if (sentenceClinicData) {
-      for (const record of sentenceClinicData) {
-        const studentId = Number(record.student_id);
-        const studentName = studentInfoMap.get(studentId) || `학생 ${studentId}`;
-
-        const clozeCorrect = record.cloze_is_correct ? 1 : 0;
-        const keywordCorrect = record.keyword_is_correct ? 1 : 0;
-        const correctCount = clozeCorrect + keywordCorrect;
-        const accuracyRate = (correctCount / 2) * 100;
-
-        // short_passage에서 상세 정보 추출 (Supabase 조인 결과는 단일 객체)
-        const shortPassage = record.short_passage as unknown as {
-          keyword: string;
-          text: string;
-          cloze_summary: string;
-          cloze_option_1: string;
-          cloze_option_2: string;
-          cloze_option_3: string;
-          cloze_option_4: string;
-          cloze_answer: number;
-          cloze_explanation: string;
-          keyword_question: string;
-          keyword_option_1: string;
-          keyword_option_2: string;
-          keyword_option_3: string;
-          keyword_option_4: string;
-          keyword_answer: number;
-          keyword_explanation: string;
-        } | null;
-
-        records.push({
-          id: `sc_${record.id}`,
-          studentId,
-          studentName,
-          learningType: 'sentence_clinic',
-          startedAt: record.started_at,
-          completedAt: record.completed_at,
-          totalItems: 2,
-          correctCount,
-          accuracyRate,
-          sentenceClinicDetail: {
-            keyword: shortPassage?.keyword || '',
-            text: shortPassage?.text || '',
-            clozeSummary: shortPassage?.cloze_summary || '',
-            clozeOptions: [
-              shortPassage?.cloze_option_1 || '',
-              shortPassage?.cloze_option_2 || '',
-              shortPassage?.cloze_option_3 || '',
-              shortPassage?.cloze_option_4 || ''
-            ],
-            clozeAnswer: shortPassage?.cloze_answer ?? 0,
-            clozeSelectedAnswer: record.cloze_selected_answer ?? null,
-            clozeIsCorrect: record.cloze_is_correct,
-            clozeExplanation: shortPassage?.cloze_explanation || '',
-            keywordQuestion: shortPassage?.keyword_question || '',
-            keywordOptions: [
-              shortPassage?.keyword_option_1 || '',
-              shortPassage?.keyword_option_2 || '',
-              shortPassage?.keyword_option_3 || '',
-              shortPassage?.keyword_option_4 || ''
-            ],
-            keywordAnswer: shortPassage?.keyword_answer ?? 0,
-            keywordSelectedAnswer: record.keyword_selected_answer ?? null,
-            keywordIsCorrect: record.keyword_is_correct,
-            keywordExplanation: shortPassage?.keyword_explanation || ''
-          }
-        });
-      }
-    }
+    // sentence_clinic 데이터 변환 (Deleted legacy loop)
 
     // 시작 시간 기준 내림차순 정렬
     records.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
@@ -522,31 +480,34 @@ export async function GET(request: Request) {
 
       if (reviewError) {
         console.error('Error fetching review counts:', reviewError);
-        // RPC 실패 시 직접 쿼리로 대체
+        // RPC 실패 시 직접 쿼리로 대체 (test_session 사용)
         for (const studentId of studentIds) {
           const { data: fallbackData } = await supabase
-            .from('short_passage_learning_history')
-            .select('short_passage_id, cloze_is_correct, keyword_is_correct, completed_at')
+            .from('test_session')
+            .select('metadata, correct_count, total_items, completed_at')
             .eq('student_id', studentId)
+            .eq('test_type', 'sentence_clinic')
             .not('completed_at', 'is', null)
             .order('completed_at', { ascending: false });
 
           if (fallbackData) {
-            // 지문별 최신 결과만 추출
-            const latestByPassage = new Map<number, { cloze: boolean; keyword: boolean }>();
+            // 지문별 최신 결과만 추출 (passage_id 기준)
+            const latestByPassage = new Map<number, boolean>(); // passage_id -> isPassed
             for (const row of fallbackData) {
-              if (!latestByPassage.has(row.short_passage_id)) {
-                latestByPassage.set(row.short_passage_id, {
-                  cloze: row.cloze_is_correct,
-                  keyword: row.keyword_is_correct
-                });
+              const passageId = (row.metadata as any)?.passage_id;
+              if (!passageId) continue;
+
+              if (!latestByPassage.has(Number(passageId))) {
+                // 2문제(total_items=2) 모두 맞춰야 통과
+                const isPassed = (row.correct_count === row.total_items);
+                latestByPassage.set(Number(passageId), isPassed);
               }
             }
 
-            // 복습 대상 카운트 (둘 중 하나라도 틀린 경우)
+            // 복습 대상 카운트 (통과하지 못한 지문 수)
             let count = 0;
-            latestByPassage.forEach(({ cloze, keyword }) => {
-              if (!cloze || !keyword) count++;
+            latestByPassage.forEach((isPassed) => {
+              if (!isPassed) count++;
             });
             reviewCounts[studentId] = count;
           }

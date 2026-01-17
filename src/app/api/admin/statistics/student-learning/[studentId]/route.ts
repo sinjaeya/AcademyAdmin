@@ -30,10 +30,10 @@ export async function GET(
       return NextResponse.json({ error: '유효하지 않은 학생 ID입니다.' }, { status: 400 });
     }
 
-    // 단어팡 & 보물찾기 일별 데이터 조회 (test_session 테이블)
+    // 단어팡, 보물찾기, 문장클리닉 일별 데이터 조회 (test_session 테이블)
     const { data: sessions, error: sessionsError } = await supabase
       .from('test_session')
-      .select('test_type, total_items, accuracy_rate, completed_at')
+      .select('test_type, total_items, accuracy_rate, completed_at, correct_count')
       .eq('student_id', studentIdNum)
       .not('completed_at', 'is', null)
       .order('completed_at', { ascending: true });
@@ -43,22 +43,14 @@ export async function GET(
       return NextResponse.json({ error: sessionsError.message }, { status: 500 });
     }
 
-    // 문장클리닉 일별 데이터 조회 (short_passage_learning_history 테이블)
-    const { data: sentenceData, error: sentenceError } = await supabase
-      .from('short_passage_learning_history')
-      .select('cloze_is_correct, keyword_is_correct, created_at')
-      .eq('student_id', studentIdNum)
-      .order('created_at', { ascending: true });
-
-    if (sentenceError) {
-      console.error('문장클리닉 조회 오류:', sentenceError);
-      return NextResponse.json({ error: sentenceError.message }, { status: 500 });
-    }
+    // (Deleted) short_passage_learning_history query
 
     // 단어팡 일별 집계
     const wordPangByDate: Record<string, { count: number; accuracySum: number; sessionCount: number }> = {};
     // 보물찾기 일별 집계
     const passageQuizByDate: Record<string, { count: number; accuracySum: number; sessionCount: number }> = {};
+    // 문장클리닉 일별 집계
+    const sentenceClinicByDate: Record<string, { count: number; correctCount: number; totalQuestions: number }> = {};
 
     sessions?.forEach((session) => {
       const date = new Date(session.completed_at).toISOString().split('T')[0];
@@ -78,23 +70,17 @@ export async function GET(
         passageQuizByDate[date].count += 1;
         passageQuizByDate[date].accuracySum += accuracy;
         passageQuizByDate[date].sessionCount += 1;
+      } else if (session.test_type === 'sentence_clinic') {
+        if (!sentenceClinicByDate[date]) {
+          sentenceClinicByDate[date] = { count: 0, correctCount: 0, totalQuestions: 0 };
+        }
+        sentenceClinicByDate[date].count += 1;
+        sentenceClinicByDate[date].totalQuestions += (session.total_items || 0);
+        sentenceClinicByDate[date].correctCount += (session.correct_count || 0);
       }
     });
 
-    // 문장클리닉 일별 집계
-    const sentenceClinicByDate: Record<string, { count: number; correctCount: number; totalQuestions: number }> = {};
-
-    sentenceData?.forEach((record) => {
-      const date = new Date(record.created_at).toISOString().split('T')[0];
-
-      if (!sentenceClinicByDate[date]) {
-        sentenceClinicByDate[date] = { count: 0, correctCount: 0, totalQuestions: 0 };
-      }
-      sentenceClinicByDate[date].count += 1;
-      sentenceClinicByDate[date].totalQuestions += 2;
-      if (record.cloze_is_correct) sentenceClinicByDate[date].correctCount += 1;
-      if (record.keyword_is_correct) sentenceClinicByDate[date].correctCount += 1;
-    });
+    // (Deleted) sentenceData loop
 
     // 결과 데이터 포맷팅
     const wordPang: DailyData[] = Object.entries(wordPangByDate).map(([date, data]) => ({

@@ -13,16 +13,18 @@ export async function GET(request: NextRequest) {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
-    // test_session에서 데이터 가져오기 (word_pang, passage_quiz만)
+    // test_session에서 데이터 가져오기 (word_pang, passage_quiz, sentence_clinic)
     const { data: learningData, error } = await supabase
       .from('test_session')
       .select(`
         student_id,
         test_type,
         started_at,
-        accuracy_rate
+        accuracy_rate,
+        correct_count,
+        total_items
       `)
-      .in('test_type', ['word_pang', 'passage_quiz'])
+      .in('test_type', ['word_pang', 'passage_quiz', 'sentence_clinic'])
       .gte('started_at', `${startDate}T00:00:00.000Z`)
       .lte('started_at', `${endDate}T23:59:59.999Z`)
       .order('started_at', { ascending: true });
@@ -32,27 +34,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '데이터를 가져오는데 실패했습니다.' }, { status: 500 });
     }
 
-    // short_passage_learning_history에서 문장클리닉 데이터 가져오기
-    const { data: sentenceClinicData, error: sentenceClinicError } = await supabase
-      .from('short_passage_learning_history')
-      .select(`
-        student_id,
-        started_at,
-        cloze_is_correct,
-        keyword_is_correct
-      `)
-      .gte('started_at', `${startDate}T00:00:00.000Z`)
-      .lte('started_at', `${endDate}T23:59:59.999Z`)
-      .order('started_at', { ascending: true });
+    // (Deleted) short_passage_learning_history query
 
-    if (sentenceClinicError) {
-      console.error('Error fetching sentence clinic data:', sentenceClinicError);
-    }
-
-    // 학생 ID 목록 가져오기 (test_session + short_passage_learning_history)
+    // 학생 ID 목록 가져오기 (test_session)
     const testSessionStudentIds = learningData?.map(r => r.student_id) || [];
-    const sentenceClinicStudentIds = sentenceClinicData?.map(r => r.student_id) || [];
-    const studentIds = [...new Set([...testSessionStudentIds, ...sentenceClinicStudentIds])];
+    const studentIds = [...new Set(testSessionStudentIds)];
 
     if (studentIds.length === 0) {
       return NextResponse.json({ data: [] });
@@ -96,7 +82,7 @@ export async function GET(request: NextRequest) {
         const utcYear = testDate.getUTCFullYear();
         const utcMonth = testDate.getUTCMonth() + 1;
         const utcDay = testDate.getUTCDate();
-        
+
         // 선택된 월과 같은 월인지 확인
         if (utcYear === year && utcMonth === month) {
           const student = studentsMap.get(studentId);
@@ -118,51 +104,16 @@ export async function GET(request: NextRequest) {
           } else if (record.test_type === 'passage_quiz') {
             student.dailyActivities[utcDay].passageQuiz.count += 1;
             student.dailyActivities[utcDay].passageQuiz.accuracySum += accuracy;
+          } else if (record.test_type === 'sentence_clinic') {
+            student.dailyActivities[utcDay].sentenceClinic.count += 1;
+            student.dailyActivities[utcDay].sentenceClinic.correctCount += (record.correct_count || 0);
+            student.dailyActivities[utcDay].sentenceClinic.totalCount += (record.total_items || 2);
           }
         }
       }
     }
 
-    // 문장클리닉 데이터 처리
-    if (sentenceClinicData) {
-      for (const record of sentenceClinicData) {
-        const studentIdNum = Number(record.student_id);
-        const studentId = String(studentIdNum);
-        const studentName = studentInfoMap.get(studentIdNum) || `학생 ${studentId}`;
-
-        if (!studentsMap.has(studentId)) {
-          studentsMap.set(studentId, {
-            id: studentId,
-            name: studentName,
-            dailyActivities: {}
-          });
-        }
-
-        const testDate = new Date(record.started_at);
-        const utcYear = testDate.getUTCFullYear();
-        const utcMonth = testDate.getUTCMonth() + 1;
-        const utcDay = testDate.getUTCDate();
-
-        if (utcYear === year && utcMonth === month) {
-          const student = studentsMap.get(studentId);
-
-          if (!student.dailyActivities[utcDay]) {
-            student.dailyActivities[utcDay] = {
-              wordPang: { count: 0, accuracySum: 0 },
-              passageQuiz: { count: 0, accuracySum: 0 },
-              sentenceClinic: { count: 0, correctCount: 0, totalCount: 0 }
-            };
-          }
-
-          // 문장클리닉: cloze_is_correct + keyword_is_correct 로 정답률 계산
-          const clozeCorrect = record.cloze_is_correct ? 1 : 0;
-          const keywordCorrect = record.keyword_is_correct ? 1 : 0;
-          student.dailyActivities[utcDay].sentenceClinic.count += 1;
-          student.dailyActivities[utcDay].sentenceClinic.correctCount += clozeCorrect + keywordCorrect;
-          student.dailyActivities[utcDay].sentenceClinic.totalCount += 2; // 각 학습당 2문제
-        }
-      }
-    }
+    // (Deleted) sentence_clinic loop
 
     return NextResponse.json({ data: Array.from(studentsMap.values()) });
   } catch (error) {
