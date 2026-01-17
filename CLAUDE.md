@@ -137,10 +137,11 @@ npm run fresh        # clean + npm install
 
 ## 데이터베이스 작업
 
-### MCP 직접 접근 우선 원칙
-데이터베이스 조회/수정 요청 시 **Supabase MCP를 통해 직접 실행** - SQL 스크립트 생성 금지.
-- 조회: `mcp_supabase_execute_sql`로 즉시 실행
-- DDL/마이그레이션: `mcp_supabase_apply_migration`으로 적용
+### 🔴 supabase-db 에이전트 위임 원칙
+DB 관련 작업은 **supabase-db 에이전트에게 위임**할 것.
+- 직접 `mcp__supabase__execute_sql` 사용 금지
+- 에이전트가 스키마 캐시(`.claude/agents/db-schema-cache.md`)를 활용하여 컬럼명 오류 방지
+- 에이전트 설정: `.claude/agents/supabase-db.md`
 - 프로젝트 ID: `mhorwnwhcyxynfxmlhit`
 
 ### 테이블 생성 절차

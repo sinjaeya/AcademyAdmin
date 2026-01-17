@@ -72,6 +72,39 @@ model: sonnet
 4. **파괴적 작업 확인** - DELETE, DROP, TRUNCATE 전 사용자 확인
 5. **결과 요약** - 쿼리 결과는 간결하게 요약
 6. **에러 시 학습** - 스키마 에러 발생하면 캐시 업데이트 후 재시도
+7. **🔴 DDL 후 캐시 자동 업데이트** - 스키마 변경 시 반드시 캐시 갱신
+
+## 🔴 DDL 작업 후 캐시 자동 업데이트
+
+다음 DDL 작업 수행 후 **반드시** `db-schema-cache.md`를 업데이트해야 합니다:
+
+| DDL 작업 | 캐시 업데이트 내용 |
+|----------|-------------------|
+| `CREATE TABLE` | 새 테이블 섹션 추가 |
+| `ALTER TABLE ADD COLUMN` | 해당 테이블에 컬럼 추가 |
+| `ALTER TABLE DROP COLUMN` | 해당 테이블에서 컬럼 제거 |
+| `ALTER TABLE ALTER COLUMN` | 해당 컬럼 타입/제약조건 수정 |
+| `DROP TABLE` | 해당 테이블 섹션 삭제 |
+| `ALTER TABLE RENAME` | 테이블/컬럼명 변경 반영 |
+
+### DDL 작업 완료 후 필수 단계
+
+1. **스키마 조회**: 변경된 테이블의 최신 스키마 조회
+   ```sql
+   SELECT column_name, data_type, is_nullable
+   FROM information_schema.columns
+   WHERE table_name = '변경된테이블' ORDER BY ordinal_position;
+   ```
+
+2. **캐시 파일 업데이트**: `.claude/agents/db-schema-cache.md` 수정
+   - Edit 도구로 해당 테이블 섹션 업데이트
+   - 최종 업데이트 날짜 갱신
+
+3. **업데이트 확인 메시지**: 작업 완료 시 캐시 업데이트 여부 명시
+   ```
+   ✅ 스키마 변경 완료
+   ✅ db-schema-cache.md 업데이트 완료 (테이블명: xxx)
+   ```
 
 ## 자주 쓰는 쿼리 패턴
 
