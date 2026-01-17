@@ -588,13 +588,14 @@ export async function GET(request: Request) {
     // 오늘 체크인/체크아웃 정보 조회 (등원 후 경과 시간 및 정렬용)
     const checkInInfo: Record<number, { checkInTime: string; hasCheckOut: boolean }> = {};
 
-    // 체크인 정보 조회
+    // 체크인 정보 조회 (check_in_time은 KST가 UTC+00으로 저장되어 날짜 문자열로 비교)
+    const todayDateStr = `${kstYear}-${String(kstMonth + 1).padStart(2, '0')}-${String(kstDate).padStart(2, '0')}`;
     const { data: checkInData } = await supabase
       .from('check_in_board')
       .select('student_Id, check_in_time')
       .eq('check_in_status', 'CheckIn')
-      .gte('check_in_time', startDate)
-      .lt('check_in_time', endDate);
+      .gte('check_in_time', todayDateStr)
+      .lt('check_in_time', `${todayDateStr}T23:59:59`);
 
     if (checkInData) {
       for (const row of checkInData) {
@@ -610,8 +611,8 @@ export async function GET(request: Request) {
       .from('check_in_board')
       .select('student_Id')
       .eq('check_in_status', 'CheckOut')
-      .gte('check_in_time', startDate)
-      .lt('check_in_time', endDate);
+      .gte('check_in_time', todayDateStr)
+      .lt('check_in_time', `${todayDateStr}T23:59:59`);
 
     if (checkOutData) {
       for (const row of checkOutData) {

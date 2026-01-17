@@ -30,6 +30,38 @@ const formatTime = (dateString: string): string => {
   });
 };
 
+// 소요 시간 계산 (startedAt, completedAt)
+const formatDuration = (startedAt: string, completedAt: string | null): string => {
+  if (!completedAt) {
+    // 진행 중: 현재 시간과 비교
+    const start = new Date(startedAt).getTime();
+    const now = Date.now();
+    const diffMs = now - start;
+    if (diffMs < 0) return '0초';
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 60) return `${diffSec}초`;
+    const diffMin = Math.floor(diffSec / 60);
+    return `${diffMin}분`;
+  }
+
+  // 완료됨: 시작-종료 시간 차이
+  const start = new Date(startedAt).getTime();
+  const end = new Date(completedAt).getTime();
+  const diffMs = end - start;
+  if (diffMs < 0) return '0초';
+
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return `${diffSec}초`;
+  const diffMin = Math.floor(diffSec / 60);
+  const remainSec = diffSec % 60;
+  if (diffMin < 60) {
+    return remainSec > 0 ? `${diffMin}분 ${remainSec}초` : `${diffMin}분`;
+  }
+  const hours = Math.floor(diffMin / 60);
+  const mins = diffMin % 60;
+  return `${hours}시간 ${mins}분`;
+};
+
 // 연결 상태 아이콘
 function ConnectionStatusIndicator({ status }: { status: ConnectionStatus }) {
   switch (status) {
@@ -319,7 +351,9 @@ function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime }: 
                   .filter(r => r.learningType === 'word_pang')
                   .map(record => (
                     <div key={record.id} className="flex items-center gap-2 text-xs">
-                      <span className="text-gray-400 w-12">{formatTime(record.startedAt)}</span>
+                      <span className={`w-16 ${record.completedAt ? 'text-gray-400' : 'text-blue-500 animate-pulse'}`}>
+                        {formatDuration(record.startedAt, record.completedAt)}
+                      </span>
                       <WordPangBadges record={record} />
                     </div>
                   ))}
@@ -352,7 +386,9 @@ function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime }: 
                   .filter(r => r.learningType === 'passage_quiz')
                   .map(record => (
                     <div key={record.id} className="flex items-center gap-2 text-xs">
-                      <span className="text-gray-400 w-12">{formatTime(record.startedAt)}</span>
+                      <span className={`w-16 ${record.completedAt ? 'text-gray-400' : 'text-blue-500 animate-pulse'}`}>
+                        {formatDuration(record.startedAt, record.completedAt)}
+                      </span>
                       <PassageQuizBadges record={record} />
                     </div>
                   ))}
@@ -395,7 +431,9 @@ function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime }: 
                     .filter(r => r.learningType === 'sentence_clinic')
                     .map(record => (
                       <div key={record.id} className="flex items-center gap-2 text-xs">
-                        <span className="text-gray-400 w-12">{formatTime(record.startedAt)}</span>
+                        <span className={`w-16 ${record.completedAt ? 'text-gray-400' : 'text-blue-500 animate-pulse'}`}>
+                          {formatDuration(record.startedAt, record.completedAt)}
+                        </span>
                         <SentenceClinicBadges record={record} />
                       </div>
                     ))}
@@ -429,7 +467,9 @@ function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime }: 
                   .filter(r => r.learningType === 'handwriting')
                   .map(record => (
                     <div key={record.id} className="flex items-center gap-2 text-xs">
-                      <span className="text-gray-400 w-12">{formatTime(record.startedAt)}</span>
+                      <span className={`w-16 ${record.completedAt ? 'text-gray-400' : 'text-blue-500 animate-pulse'}`}>
+                        {formatDuration(record.startedAt, record.completedAt)}
+                      </span>
                       <HandwritingBadges record={record} />
                     </div>
                   ))}
