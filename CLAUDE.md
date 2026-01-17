@@ -32,7 +32,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 공유 문서 (Student-Admin)
 
-Student App과 공유하는 스펙 문서: `C:\Source\ShareDoc\Student_Admin\`
+Student App과 공유하는 스펙 문서: `C:\Source\.ai_context\specs\Student_Admin\`
 
 | 문서 | 내용 |
 |------|------|
