@@ -42,6 +42,22 @@ export const STRUCTURE_TYPE_LABELS: Record<string, string> = {
   argument: '주장·근거',
 };
 
+// 수능형 도메인 라벨
+export const DOMAIN_LABELS: Record<string, string> = {
+  humanities: '인문',
+  science: '과학',
+  social: '사회',
+  arts: '예술',
+  technology: '기술',
+};
+
+// 어휘 난이도 라벨
+export const VOCAB_DIFFICULTY_LABELS: Record<string, string> = {
+  '1': '기초 (중1)',
+  '2': '중급 (중2)',
+  '3': '심화 (중3)',
+};
+
 // 난이도 진행 상태
 export interface DifficultyProgress {
   vocab: DifficultyLevel;
@@ -83,6 +99,8 @@ export interface DetailedAnalysis {
   };
   sentenceByStructure: Record<string, { correct: number; total: number }>;
   suneungByDomain: Record<string, { correct: number; total: number }>;
+  vocabByDifficulty: Record<string, { correct: number; total: number }>;
+  avgTimeByArea: Record<string, { avgMs: number; count: number }>;
 }
 
 // 세션 DB 타입 (목록용)
@@ -124,6 +142,11 @@ export interface LevelTestResultItem {
 
 // 세션 상세 (결과 포함)
 export interface LevelTestSessionDetail extends LevelTestSession {
+  student_school?: string | null;
+  academy_name?: string | null;
+  academy_logo_url?: string | null;
+  academy_phone?: string | null;
+  academy_email?: string | null;
   results_items: LevelTestResultItem[];
   analysis?: DetailedAnalysis;
 }

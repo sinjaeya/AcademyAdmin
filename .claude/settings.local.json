@@ -18,7 +18,12 @@
       "Bash(taskkill:*)",
       "Bash(git commit:*)",
       "Bash(curl:*)",
-      "Bash(git show:*)"
+      "Bash(git show:*)",
+      "mcp__plugin_claude-mem_mcp-search__search",
+      "mcp__plugin_claude-mem_mcp-search__get_observations",
+      "Bash(npx tsc:*)",
+      "Bash(wmic cpu get loadpercentage:*)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []

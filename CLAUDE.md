@@ -7,6 +7,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **모든 응답은 한글로 작성**
 - **코드 주석도 한글로 작성**
 
+## 윈도우 환경 쉘 명령어 실행 규칙 (필수)
+
+**환경**: Windows 11 한글, PowerShell
+
+### 경로 처리
+- 한글 경로 포함 시 반드시 **큰따옴표**로 감싸기: `"C:\Source\AI지문 생성기"`
+- 백슬래시(`\`) 사용, 슬래시(`/`) 금지
+- 공백/특수문자 포함 경로도 큰따옴표 필수
+
+### 명령어 형식
+- Python 실행: `python "스크립트경로.py"` (가상환경 활성화된 상태)
+- 긴 Python 코드: 파일로 저장 후 실행 (인라인 `-c` 옵션 피하기)
+- 경로에 한글 있으면 `-c` 옵션 사용 금지 → 임시 .py 파일 생성 후 실행
+
+### 금지 사항
+- Unix 명령어 직접 사용 금지 (`ls`, `cat`, `grep` 등)
+- bash 문법 금지 (`source`, `&&` 체이닝 등)
+- 경로를 따옴표 없이 사용 금지
+
 ## 프로젝트 개요
 
 학원관리 시스템 - Next.js 15 기반 어드민 대시보드. 학원, 학생, 결제, 출결 관리. 대상 사용자: 10명 이하 (학원 관리자, 강사, 튜터).
@@ -293,3 +312,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 - 시맨틱 검색: `["AcademyAdmin 실시간 모니터링"]`
 - 날짜 포함: `["AcademyAdmin 2026-01-16 버그 수정"]`
 - Student App 연동 관련: `["AcademyAdmin Student Realtime"]`
+
+
+## AI Agent Context
+- AI는 작업 시 c:/Source/.ai_context/GLOBAL_RULES.md와 c:/Source/.ai_context/SUPABASE_GUIDELINES.md를 반드시 먼저 읽고 준수해야 합니다.

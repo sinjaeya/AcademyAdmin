@@ -20,8 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useAuthStore } from '@/store/auth';
-import { ClipboardCheck, Search, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { ClipboardCheck, Search, ChevronLeft, ChevronRight, Loader2, ExternalLink } from 'lucide-react';
 import {
   type LevelTestSession,
   LEVEL_LABELS,
@@ -31,10 +30,8 @@ import {
   getStatusLabel,
   getStatusColor,
 } from '@/types/level-test';
-import { LevelTestDetailDialog } from '@/components/admin/LevelTestDetailDialog';
 
 export function LevelTestContent() {
-  const { academyId } = useAuthStore();
   const [sessions, setSessions] = useState<LevelTestSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -45,9 +42,6 @@ export function LevelTestContent() {
   const [searchName, setSearchName] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  // 상세 다이얼로그
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   // 데이터 로드
   const loadData = useCallback(async () => {
@@ -86,10 +80,9 @@ export function LevelTestContent() {
     return true;
   });
 
-  // 행 클릭 핸들러
+  // 행 클릭 핸들러 - 새 창으로 리포트 열기
   const handleRowClick = (sessionId: string): void => {
-    setSelectedSessionId(sessionId);
-    setDialogOpen(true);
+    window.open(`/admin/level-test/report/${sessionId}`, '_blank', 'width=900,height=800');
   };
 
   // 페이지네이션
@@ -161,18 +154,19 @@ export function LevelTestContent() {
               <TableHead className="w-[80px]">등급</TableHead>
               <TableHead className="w-[80px]">소요시간</TableHead>
               <TableHead className="w-[80px]">상태</TableHead>
+              <TableHead className="w-[60px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-10">
+                <TableCell colSpan={8} className="text-center py-10">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
                 </TableCell>
               </TableRow>
             ) : filteredSessions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-10 text-gray-500">
+                <TableCell colSpan={8} className="text-center py-10 text-gray-500">
                   레벨테스트 이력이 없습니다
                 </TableCell>
               </TableRow>
@@ -235,6 +229,9 @@ export function LevelTestContent() {
                         {getStatusLabel(session.status)}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      <ExternalLink className="w-4 h-4 text-gray-400" />
+                    </TableCell>
                   </TableRow>
                 );
               })
@@ -273,12 +270,6 @@ export function LevelTestContent() {
         )}
       </Card>
 
-      {/* 상세 다이얼로그 */}
-      <LevelTestDetailDialog
-        sessionId={selectedSessionId}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-      />
     </div>
   );
 }
