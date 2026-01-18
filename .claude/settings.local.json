@@ -23,7 +23,9 @@
       "mcp__plugin_claude-mem_mcp-search__get_observations",
       "Bash(npx tsc:*)",
       "Bash(wmic cpu get loadpercentage:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "WebSearch",
+      "WebFetch"
     ],
     "deny": [],
     "ask": []

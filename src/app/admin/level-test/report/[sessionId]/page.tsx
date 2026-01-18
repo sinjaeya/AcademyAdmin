@@ -636,11 +636,9 @@ export default function LevelTestReportPage({ params }: PageProps) {
           <p>본 리포트는 학생의 현재 국어 학습 수준을 진단한 결과입니다.</p>
           <p className="mt-1">정확한 학습 방향 설정을 위해 담당 선생님과 상담을 권장합니다.</p>
           {session.academy_name && (
-            <p className="mt-4 font-medium text-gray-700">{session.academy_name}</p>
+            <p className="mt-4 font-bold text-xl text-gray-700">{session.academy_name}</p>
           )}
-          {session.academy_phone && (
-            <p className="text-gray-500">연락처: {session.academy_phone}</p>
-          )}
+          <p className="text-xl text-gray-600">연락처: 010-3745-9631</p>
         </footer>
       </div>
 
