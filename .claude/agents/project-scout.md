@@ -1,8 +1,9 @@
 ---
 name: project-scout
-description: 프로젝트 구조/코드 탐색 전담. "~는 어디에 있어?", "~관련 파일 찾아줘", "~구조 파악해줘" 요청 시 사용.
+description: "프로젝트 구조/코드 탐색 전담. \"~는 어디에 있어?\", \"~관련 파일 찾아줘\", \"~구조 파악해줘\" 요청 시 사용."
 tools: Read, Glob, Grep
 model: haiku
+color: purple
 ---
 
 # Project Scout - 프로젝트 탐색 에이전트

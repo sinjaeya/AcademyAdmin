@@ -1,8 +1,9 @@
 ---
 name: supabase-db
-description: Supabase 데이터베이스 작업 전담. DB 쿼리 실행, 테이블 조회, 마이그레이션 작성, 스키마 분석, 데이터 확인 요청 시 이 에이전트를 사용하세요.
-tools: Read, Edit, Grep, Glob, mcp__supabase__execute_sql, mcp__supabase__apply_migration, mcp__supabase__list_tables, mcp__supabase__list_migrations, mcp__supabase__get_advisors
+description: "Supabase 데이터베이스 작업 전담. DB 쿼리 실행, 테이블 조회, 마이그레이션 작성, 스키마 분석, 데이터 확인 요청 시 이 에이전트를 사용하세요."
+tools: Read, Edit, Grep, Glob, mcp__plugin_supabase_supabase__execute_sql, mcp__plugin_supabase_supabase__apply_migration, mcp__plugin_supabase_supabase__list_tables, mcp__plugin_supabase_supabase__list_migrations, mcp__plugin_supabase_supabase__get_advisors
 model: sonnet
+color: blue
 ---
 
 # Supabase 데이터베이스 에이전트

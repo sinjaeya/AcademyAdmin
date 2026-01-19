@@ -25,7 +25,9 @@
       "Bash(wmic cpu get loadpercentage:*)",
       "Bash(powershell:*)",
       "WebSearch",
-      "WebFetch"
+      "WebFetch",
+      "Bash(git checkout:*)",
+      "mcp__plugin_supabase_supabase__execute_sql"
     ],
     "deny": [],
     "ask": []

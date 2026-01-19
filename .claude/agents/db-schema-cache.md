@@ -2,7 +2,7 @@
 
 > 이 파일은 supabase-db 에이전트가 자동으로 관리합니다.
 > 스키마 에러 발생 시 에이전트가 DB에서 최신 정보를 조회하여 업데이트합니다.
-> 마지막 업데이트: 2026-01-17
+> 마지막 업데이트: 2026-01-18
 
 ---
 
@@ -88,16 +88,34 @@
 |------|------|----------|------|
 | `id` | bigint | NO | **PK** |
 | `student_id` | integer | NO | FK → student.id |
-| `test_type` | varchar(20) | NO | 학습 유형 (단어팡, 보물찾기, 문장클리닉 등) |
+| `test_type` | varchar(20) | NO | 학습 유형 (word_pang, sentence_clinic, passage_quiz, handwriting) |
 | `total_items` | integer | NO | 총 문항 수 |
-| `started_at` | timestamptz | NO | 시작 시각 |
+| `started_at` | timestamptz | NO | 시작 시각 (기본: now()) |
 | `completed_at` | timestamptz | YES | 완료 시각 |
-| `correct_count` | integer | YES | 정답 수 |
+| `correct_count` | integer | YES | 정답 수 (기본: 0) |
 | `accuracy_rate` | numeric | YES | 정답률 |
-| `metadata` | jsonb | YES | 메타데이터 |
-| `created_at` | timestamptz | NO | |
-| `updated_at` | timestamptz | NO | |
+| `metadata` | jsonb | YES | 메타데이터 (keyword, passage_id, is_review 등) |
+| `created_at` | timestamptz | NO | 기본: now() |
+| `updated_at` | timestamptz | NO | 기본: now() |
 | `duration_seconds` | integer | YES | 소요 시간 (초) |
+
+---
+
+## test_result (학습 결과 상세)
+
+| 컬럼 | 타입 | Nullable | 비고 |
+|------|------|----------|------|
+| `id` | bigint | NO | **PK** |
+| `session_id` | bigint | NO | FK → test_session.id |
+| `student_id` | integer | NO | FK → student.id |
+| `test_type` | varchar | NO | 학습 유형 (word_pang, passage_quiz, handwriting, sc_cloze, sc_keyword) |
+| `item_id` | integer | YES | 문항 ID (레거시) |
+| `item_uuid` | uuid | YES | 문항 UUID (passage_id 등) |
+| `is_correct` | boolean | NO | 정답 여부 |
+| `selected_answer` | integer | YES | 선택한 답 |
+| `correct_answer` | integer | NO | 정답 |
+| `answered_at` | timestamptz | NO | 답변 시각 (기본: now()) |
+| `created_at` | timestamptz | NO | 기본: now() |
 
 ---
 

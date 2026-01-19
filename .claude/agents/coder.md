@@ -1,8 +1,9 @@
 ---
 name: coder
-description: 코딩 작업 전담. 새 기능 구현, 버그 수정, 컴포넌트 생성, 리팩토링 등 코드 작성/수정 작업.
+description: "코딩 작업 전담. 새 기능 구현, 버그 수정, 컴포넌트 생성, 리팩토링 등 코드 작성/수정 작업."
 tools: Read, Edit, Write, Glob, Grep, Bash, Task
 model: sonnet
+color: green
 ---
 
 # Coder - 코딩 전담 에이전트
