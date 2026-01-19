@@ -9,10 +9,13 @@ export async function GET() {
     const academyId = await getServerAcademyId();
     const isAdmin = await isServerUserAdmin();
 
-    // 쿼리 빌더 시작
+    // 쿼리 빌더 시작 - LEFT JOIN으로 학생 정보 포함
     let query = supabase
       .from('payment')
-      .select('*');
+      .select(`
+        *,
+        student:student_id (id, name)
+      `);
 
     // 관리자가 아닌 경우 현재 학원의 데이터만 조회
     if (!isAdmin && academyId) {
@@ -40,33 +43,11 @@ export async function GET() {
       return NextResponse.json([]);
     }
 
-    // 학생 ID 목록 수집 (BIGINT를 문자열로 변환)
-    const studentIds = [...new Set(data.map((payment: any) => payment.student_id).filter(Boolean))];
-
-    // 학생 정보 별도 조회
-    const studentMap = new Map<string | number, { id: number; name: string }>();
-    if (studentIds.length > 0) {
-      const { data: studentsData, error: studentsError } = await supabase
-        .from('student')
-        .select('id, name')
-        .in('id', studentIds);
-
-      if (!studentsError && studentsData) {
-        studentsData.forEach((student: { id: number; name: string }) => {
-          // 숫자 ID를 키로 사용 (student_id와 타입 일치)
-          studentMap.set(student.id, student);
-        });
-      }
-    }
-
     // 학생 이름을 payment 객체에 포함
     const formattedData = (data || []).map((payment: any) => {
-      // student_id가 숫자이므로 숫자로 매칭
-      const student = studentMap.get(payment.student_id);
-      
       return {
         ...payment,
-        student_name: student?.name || null
+        student_name: payment.student?.name || null
       };
     });
 
@@ -162,7 +143,10 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('payment')
       .insert(paymentToInsert)
-      .select()
+      .select(`
+        *,
+        student:student_id (id, name)
+      `)
       .single();
 
     if (error) {
@@ -173,23 +157,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 추가된 payment에 학생 이름 포함
-    if (data && data.student_id) {
-      const { data: studentData, error: studentError } = await supabase
-        .from('student')
-        .select('id, name')
-        .eq('id', data.student_id)
-        .single();
-
-      if (!studentError && studentData) {
-        return NextResponse.json({
-          ...data,
-          student_name: studentData.name
-        }, { status: 201 });
-      }
-    }
-
-    return NextResponse.json(data, { status: 201 });
+    // 학생 이름을 payment 객체에 포함
+    return NextResponse.json({
+      ...data,
+      student_name: data.student?.name || null
+    }, { status: 201 });
   } catch (error) {
     console.error('API error:', error);
     return NextResponse.json(

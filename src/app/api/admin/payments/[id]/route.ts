@@ -58,7 +58,10 @@ export async function PUT(
       .from('payment')
       .update(updateData)
       .eq('id', id)
-      .select()
+      .select(`
+        *,
+        student:student_id (id, name)
+      `)
       .single();
 
     if (error) {
@@ -76,7 +79,11 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json(data, { status: 200 });
+    // 학생 이름을 payment 객체에 포함
+    return NextResponse.json({
+      ...data,
+      student_name: data.student?.name || null
+    }, { status: 200 });
   } catch (error) {
     console.error('API error:', error);
     return NextResponse.json(
