@@ -143,6 +143,7 @@ export interface LevelTestResultItem {
 // 세션 상세 (결과 포함)
 export interface LevelTestSessionDetail extends LevelTestSession {
   student_school?: string | null;
+  student_grade?: string | null;
   academy_name?: string | null;
   academy_logo_url?: string | null;
   academy_phone?: string | null;

@@ -384,6 +384,7 @@ export function useRealtimeKorean(academyId: string | null) {
                 const shortPassage = await fetchShortPassage(Number(passageId));
 
                 // 상세 결과 조회 (test_result)
+                if (!supabase) return;
                 const { data: results } = await supabase
                   .from('test_result')
                   .select('test_type, selected_answer, is_correct')
@@ -562,8 +563,50 @@ export function useRealtimeKorean(academyId: string | null) {
       )
       .subscribe();
 
-    channelsRef.current = [testSessionChannel, testResultChannel];
-  }, [fetchStudentName, fetchSessionWords, fetchSessionPassageQuiz, fetchShortPassage, fetchPassageQuizDetail, refreshReviewCount, unsubscribeAll]);
+    // check_in_board 채널 (등원/하원 실시간 반영)
+    const checkInChannel = supabase
+      .channel('realtime_korean_check_in')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'check_in_board',
+          ...(academyId ? { filter: `academy_id=eq.${academyId}` } : {})
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const record = payload.new as { student_Id: number; check_in_time: string; check_in_status: string };
+            const today = getKSTDateString(new Date());
+            const recordDate = getKSTDateString(new Date(record.check_in_time));
+            if (recordDate !== today) return;
+
+            if (record.check_in_status === 'CheckIn') {
+              setCheckInInfo(prev => {
+                const newMap = new Map(prev);
+                newMap.set(record.student_Id, {
+                  checkInTime: record.check_in_time,
+                  hasCheckOut: false
+                });
+                return newMap;
+              });
+            } else if (record.check_in_status === 'CheckOut') {
+              setCheckInInfo(prev => {
+                const newMap = new Map(prev);
+                const existing = newMap.get(record.student_Id);
+                if (existing) {
+                  newMap.set(record.student_Id, { ...existing, hasCheckOut: true });
+                }
+                return newMap;
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    channelsRef.current = [testSessionChannel, testResultChannel, checkInChannel];
+  }, [academyId, fetchStudentName, fetchSessionWords, fetchSessionPassageQuiz, fetchShortPassage, fetchPassageQuizDetail, refreshReviewCount, unsubscribeAll]);
 
   // 세션 삭제 (고아 세션 정리용)
   const deleteSession = useCallback(async (recordId: string, learningType: string): Promise<boolean> => {

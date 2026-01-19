@@ -27,7 +27,8 @@
       "WebSearch",
       "WebFetch",
       "Bash(git checkout:*)",
-      "mcp__plugin_supabase_supabase__execute_sql"
+      "mcp__plugin_supabase_supabase__execute_sql",
+      "Bash(tee:*)"
     ],
     "deny": [],
     "ask": []

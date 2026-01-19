@@ -409,7 +409,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
                       {areaData.map((entry, index) => (
                         <Cell key={index} fill={getBarColor(entry.rate)} />
                       ))}
-                      <LabelList dataKey="rate" position="right" formatter={(value: number) => `${value}%`} style={{ fontSize: 13, fontWeight: 600, fill: '#374151' }} />
+                      <LabelList dataKey="rate" position="right" formatter={(value: number) => `${value}%` as string} style={{ fontSize: 13, fontWeight: 600, fill: '#374151' }} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
