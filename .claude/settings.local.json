@@ -28,7 +28,8 @@
       "WebFetch",
       "Bash(git checkout:*)",
       "mcp__plugin_supabase_supabase__execute_sql",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(claude mcp list:*)"
     ],
     "deny": [],
     "ask": []
