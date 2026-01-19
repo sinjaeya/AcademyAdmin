@@ -13,6 +13,11 @@ export async function GET(request: NextRequest) {
     // academy_id 파라미터로 학원별 필터링
     const academyId = searchParams.get('academy_id');
 
+    // 당월 납부 여부 확인 (study_month 기준)
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // 1-12
+    const currentMonthStr = `${currentMonth}월`; // '1월', '2월', ..., '12월'
+
     let query = supabase
       .from('student')
       .select(`
@@ -20,7 +25,8 @@ export async function GET(request: NextRequest) {
         academy:academy_id (
           id,
           name
-        )
+        ),
+        current_month_payment:payment!left (student_id, study_month)
       `);
 
     // academy_id가 있으면 해당 학원 학생만 조회
@@ -43,45 +49,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 당월 납부 여부 확인 (study_month 기준)
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1; // 1-12
-    const currentMonthStr = `${currentMonth}월`; // '1월', '2월', ..., '12월'
-
-    // 학생 ID 목록 수집 (BIGINT - 숫자 타입)
-    const studentIds = (students || []).map((s: any) => {
-      const id = typeof s.id === 'string' ? parseInt(s.id) : s.id;
-      return isNaN(id) ? null : id;
-    }).filter((id): id is number => id !== null);
-    
-    // 해당월 납부 내역 조회 (study_month 컬럼 기준)
-    const paidStudentIds = new Set<number>();
-    if (studentIds.length > 0) {
-      const { data: payments, error: paymentError } = await supabase
-        .from('payment')
-        .select('student_id')
-        .in('student_id', studentIds)
-        .eq('study_month', currentMonthStr);
-
-      if (!paymentError && payments) {
-        payments.forEach((p: any) => {
-          paidStudentIds.add(p.student_id);
-        });
-      }
-    }
-
-    // 학생 목록에 당월 납부 여부 추가 및 academy 정보 정리 (ID를 숫자로 변환하여 매칭)
+    // 학생 목록에 당월 납부 여부 추가 및 academy 정보 정리
     const studentsWithPaymentStatus = (students || []).map((student: any) => {
-      const studentId = typeof student.id === 'string' ? parseInt(student.id) : student.id;
       const academy = student.academy && typeof student.academy === 'object' && !Array.isArray(student.academy)
         ? student.academy
         : null;
-      
+
+      // current_month_payment에서 당월(currentMonthStr)에 해당하는 결제 내역이 있는지 확인
+      const hasPaid = Array.isArray(student.current_month_payment)
+        && student.current_month_payment.some((p: any) => p.study_month === currentMonthStr);
+
+      // current_month_payment 필드는 응답에서 제외
+      const { current_month_payment, ...studentData } = student;
+
       return {
-        ...student,
+        ...studentData,
         academy_id: student.academy_id || null,
         academy_name: academy?.name || null,
-        hasPaidThisMonth: !isNaN(studentId) && paidStudentIds.has(studentId)
+        hasPaidThisMonth: hasPaid
       };
     });
 
