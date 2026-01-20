@@ -22,6 +22,7 @@ interface AuthState {
   isAuthenticated: boolean;
   academyId: string | null;
   academyName: string | null;
+  hasHydrated: boolean;
 }
 
 interface AuthStore extends AuthState {
@@ -30,6 +31,7 @@ interface AuthStore extends AuthState {
   logout: () => Promise<void>;
   setLoading: (loading: boolean) => void;
   setUser: (user: User | null) => void;
+  setHasHydrated: (hydrated: boolean) => void;
   initializeAuth: () => void;
 }
 
@@ -41,15 +43,18 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: false,
       academyId: null,
       academyName: null,
+      hasHydrated: false,
 
       setLoading: (loading: boolean) => set({ isLoading: loading }),
 
-      setUser: (user: User | null) => set({ 
-        user, 
+      setUser: (user: User | null) => set({
+        user,
         isAuthenticated: !!user,
         academyId: user?.academy_id || null,
         academyName: user?.academy_name || null
       }),
+
+      setHasHydrated: (hydrated: boolean) => set({ hasHydrated: hydrated }),
 
       login: async (email: string, password: string) => {
         try {
@@ -120,12 +125,16 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
         academyId: state.academyId,
         academyName: state.academyName
       }),
+      onRehydrateStorage: () => (state) => {
+        // 하이드레이션 완료 시 hasHydrated를 true로 설정
+        state?.setHasHydrated(true);
+      },
     }
   )
 );
