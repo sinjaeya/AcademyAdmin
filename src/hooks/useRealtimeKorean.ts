@@ -163,7 +163,8 @@ export function useRealtimeKorean(academyId: string | null) {
       .from('test_result')
       .select('item_id, is_correct')
       .eq('test_type', 'word_pang')
-      .eq('session_id', sessionId);
+      .eq('session_id', sessionId)
+      .order('answered_at', { ascending: true }); // 순서 보장
 
     if (!wordResultData || wordResultData.length === 0) return null;
 
@@ -423,6 +424,10 @@ export function useRealtimeKorean(academyId: string | null) {
               accuracyRate: newRecord.accuracy_rate || 0,
               correctWords: wordData?.correctWords,
               wrongWords: wordData?.wrongWords,
+              wordResults: wordData ? [
+                ...(wordData.correctWords?.map(word => ({ word, isCorrect: true })) || []),
+                ...(wordData.wrongWords?.map(word => ({ word, isCorrect: false })) || [])
+              ] : undefined,
               passageQuizDetails: passageQuizData || undefined,
               handwritingDetail: handwritingData || undefined
             };
@@ -513,8 +518,14 @@ export function useRealtimeKorean(academyId: string | null) {
                   : [passageQuizDetail];
               }
 
-              // 단어팡 단어 추가
+              // 단어팡 단어 추가 (wordResults 포함)
               if (testType === 'word_pang' && wordText) {
+                // wordResults 배열에 순서대로 추가
+                record.wordResults = record.wordResults
+                  ? [...record.wordResults, { word: wordText, isCorrect }]
+                  : [{ word: wordText, isCorrect }];
+
+                // 기존 호환성을 위해 분리 배열도 유지
                 if (isCorrect) {
                   record.correctWords = record.correctWords
                     ? [...record.correctWords, wordText]
