@@ -2,7 +2,7 @@
 
 > 이 파일은 supabase-db 에이전트가 자동으로 관리합니다.
 > 스키마 에러 발생 시 에이전트가 DB에서 최신 정보를 조회하여 업데이트합니다.
-> 마지막 업데이트: 2026-01-18
+> 마지막 업데이트: 2026-01-20
 
 ---
 
@@ -345,3 +345,33 @@
 | `updated_at` | timestamptz | YES | |
 | `first_consonant` | text | YES | 초성 |
 | `middle_grade` | smallint | YES | 중학 학년 |
+
+---
+
+## short_passage (문장클리닉 지문)
+
+| 컬럼 | 타입 | Nullable | 비고 |
+|------|------|----------|------|
+| `id` | uuid | NO | **PK** |
+| `grade_level` | USER-DEFINED | NO | 학년 레벨 enum |
+| `structure_type` | USER-DEFINED | NO | 구조 유형 enum |
+| `keyword_id` | bigint | YES | 키워드 ID |
+| `keyword` | text | NO | 키워드 |
+| `text` | text | NO | 지문 본문 |
+| `cloze_summary` | text | NO | 빈칸 요약 |
+| `cloze_option_1` | text | NO | 빈칸 선택지 1 |
+| `cloze_option_2` | text | NO | 빈칸 선택지 2 |
+| `cloze_option_3` | text | NO | 빈칸 선택지 3 |
+| `cloze_option_4` | text | NO | 빈칸 선택지 4 |
+| `cloze_answer` | integer | NO | 빈칸 정답 |
+| `cloze_explanation` | text | NO | 빈칸 해설 |
+| `keyword_question` | text | NO | 키워드 문제 |
+| `keyword_option_1` | text | NO | 키워드 선택지 1 |
+| `keyword_option_2` | text | NO | 키워드 선택지 2 |
+| `keyword_option_3` | text | NO | 키워드 선택지 3 |
+| `keyword_option_4` | text | NO | 키워드 선택지 4 |
+| `keyword_answer` | integer | NO | 키워드 정답 |
+| `keyword_explanation` | text | NO | 키워드 해설 |
+| `created_at` | timestamptz | YES | 생성 시각 |
+| `review_status` | text | YES | 검토 상태 |
+| `keyword_option_5` | text | YES | 키워드 선택지 5 |

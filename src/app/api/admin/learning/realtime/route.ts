@@ -353,15 +353,15 @@ export async function GET(request: Request) {
           .in('session_id', scSessionIds);
 
         // 2. 지문 정보 (short_passage) - metadata에서 passage_id 수집
-        const passageIds = new Set<number>();
+        const passageIds = new Set<string>();
         testSessionData
           .filter(r => r.test_type === 'sentence_clinic')
           .forEach(r => {
             const pid = (r.metadata as any)?.passage_id;
-            if (pid) passageIds.add(Number(pid));
+            if (pid) passageIds.add(String(pid));
           });
 
-        let passageMap = new Map<number, any>();
+        let passageMap = new Map<string, any>();
         if (passageIds.size > 0) {
           const { data: passages } = await supabase
             .from('short_passage')
@@ -374,7 +374,7 @@ export async function GET(request: Request) {
         // 3. 매핑
         for (const sessionId of scSessionIds) {
           const session = testSessionData.find(s => s.id === sessionId);
-          const pid = Number((session?.metadata as any)?.passage_id);
+          const pid = String((session?.metadata as any)?.passage_id || '');
           const passage = passageMap.get(pid);
           const results = scResults?.filter(r => r.session_id === sessionId) || [];
           const clozeResult = results.find(r => r.test_type === 'sc_cloze');

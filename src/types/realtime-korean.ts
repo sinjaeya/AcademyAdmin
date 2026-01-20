@@ -5,8 +5,9 @@ export type LearningType = 'word_pang' | 'passage_quiz' | 'sentence_clinic' | 'h
 
 // 문장클리닉 상세 정보
 export interface SentenceClinicDetail {
+  passageId: string; // short_passage.id는 UUID
   keyword: string;
-  text: string;
+  text?: string;
   // 빈칸 문제
   clozeSummary: string;
   clozeOptions: string[];

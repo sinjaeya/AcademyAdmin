@@ -38,6 +38,7 @@ interface TestResultPayload {
   answered_at: string;
   item_id: number | null;
   item_uuid: string | null;
+  selected_answer: number | null;
 }
 
 interface SentenceClinicPayload {
@@ -235,7 +236,7 @@ export function useRealtimeKorean(academyId: string | null) {
   }, []);
 
   // 문장클리닉 지문 정보 조회
-  const fetchShortPassage = useCallback(async (shortPassageId: number): Promise<SentenceClinicDetail | null> => {
+  const fetchShortPassage = useCallback(async (shortPassageId: string): Promise<SentenceClinicDetail | null> => {
     if (!supabase) return null;
 
     const { data } = await supabase
@@ -247,6 +248,7 @@ export function useRealtimeKorean(academyId: string | null) {
     if (!data) return null;
 
     return {
+      passageId: shortPassageId,
       keyword: data.keyword || '',
       text: data.text || '',
       clozeSummary: data.cloze_summary || '',
@@ -368,6 +370,7 @@ export function useRealtimeKorean(academyId: string | null) {
             let wordData: { correctWords: string[]; wrongWords: string[] } | null = null;
             let passageQuizData: PassageQuizDetail[] | null = null;
             let handwritingData: HandwritingDetail | null = null;
+            let sentenceClinicDetail: SentenceClinicDetail | null = null;
 
             if (newRecord.test_type === 'word_pang') {
               wordData = await fetchSessionWords(newRecord.id);
@@ -382,33 +385,33 @@ export function useRealtimeKorean(academyId: string | null) {
             } else if (newRecord.test_type === 'sentence_clinic') {
               const passageId = newRecord.metadata?.passage_id;
               if (passageId) {
-                const shortPassage = await fetchShortPassage(Number(passageId));
+                const shortPassage = await fetchShortPassage(passageId);
 
-                // 상세 결과 조회 (test_result)
-                if (!supabase) return;
-                const { data: results } = await supabase
-                  .from('test_result')
-                  .select('test_type, selected_answer, is_correct')
-                  .eq('session_id', newRecord.id);
-
-                const clozeResult = results?.find(r => r.test_type === 'sc_cloze');
-                const keywordResult = results?.find(r => r.test_type === 'sc_keyword');
-
-                if (shortPassage) {
-                  // 결과 매핑
-                  if (clozeResult) {
-                    shortPassage.clozeSelectedAnswer = clozeResult.selected_answer;
-                    shortPassage.clozeIsCorrect = clozeResult.is_correct;
-                  }
-                  if (keywordResult) {
-                    shortPassage.keywordSelectedAnswer = keywordResult.selected_answer;
-                    shortPassage.keywordIsCorrect = keywordResult.is_correct;
-                  }
-                  // Note: record type doesn't have sentenceClinicDetail fully matched yet, 
-                  // but we adapt it to LearningRecord structure.
+                if (!shortPassage) {
+                  console.warn(`[test_session] fetchShortPassage 실패: passage_id=${passageId}`);
                 }
 
-                // LearningRecord constructs below
+                // 상세 결과 조회 (test_result)
+                if (supabase && shortPassage) {
+                  const { data: results } = await supabase
+                    .from('test_result')
+                    .select('test_type, selected_answer, is_correct')
+                    .eq('session_id', newRecord.id);
+
+                  const clozeResult = results?.find(r => r.test_type === 'sc_cloze');
+                  const keywordResult = results?.find(r => r.test_type === 'sc_keyword');
+
+                  // sentenceClinicDetail 생성
+                  sentenceClinicDetail = {
+                    ...shortPassage,
+                    clozeSelectedAnswer: clozeResult?.selected_answer ?? null,
+                    clozeIsCorrect: clozeResult?.is_correct ?? null,
+                    keywordSelectedAnswer: keywordResult?.selected_answer ?? null,
+                    keywordIsCorrect: keywordResult?.is_correct ?? null,
+                  };
+                }
+              } else {
+                console.warn(`[test_session] metadata.passage_id 누락: session_id=${newRecord.id}`);
               }
             }
 
@@ -429,7 +432,8 @@ export function useRealtimeKorean(academyId: string | null) {
                 ...(wordData.wrongWords?.map(word => ({ word, isCorrect: false })) || [])
               ] : undefined,
               passageQuizDetails: passageQuizData || undefined,
-              handwritingDetail: handwritingData || undefined
+              handwritingDetail: handwritingData || undefined,
+              sentenceClinicDetail: sentenceClinicDetail || undefined
             };
 
             setRecords(prev => {
@@ -535,6 +539,43 @@ export function useRealtimeKorean(academyId: string | null) {
                     ? [...record.wrongWords, wordText]
                     : [wordText];
                 }
+              }
+
+              // 문장클리닉 결과 업데이트
+              if (testType === 'sc_cloze' || testType === 'sc_keyword') {
+                // sentenceClinicDetail이 없으면 기본값으로 생성 (타이밍 이슈 대응)
+                if (!record.sentenceClinicDetail) {
+                  console.warn(`[test_result] sentenceClinicDetail 없음 (타이밍 이슈): session_id=${sessionId}, student_id=${studentId}`);
+                  record.sentenceClinicDetail = {
+                    passageId: '',
+                    keyword: '',
+                    text: '',
+                    clozeSummary: '',
+                    clozeOptions: ['', '', '', ''],
+                    clozeAnswer: 0,
+                    clozeSelectedAnswer: null,
+                    clozeIsCorrect: null,
+                    clozeExplanation: '',
+                    keywordQuestion: '',
+                    keywordOptions: ['', '', '', ''],
+                    keywordAnswer: 0,
+                    keywordSelectedAnswer: null,
+                    keywordIsCorrect: null,
+                    keywordExplanation: ''
+                  };
+                }
+
+                record.sentenceClinicDetail = {
+                  ...record.sentenceClinicDetail,
+                  ...(testType === 'sc_cloze' ? {
+                    clozeSelectedAnswer: newResult.selected_answer ?? null,
+                    clozeIsCorrect: isCorrect,
+                  } : {}),
+                  ...(testType === 'sc_keyword' ? {
+                    keywordSelectedAnswer: newResult.selected_answer ?? null,
+                    keywordIsCorrect: isCorrect,
+                  } : {})
+                };
               }
 
               updated[recordIndex] = record;
