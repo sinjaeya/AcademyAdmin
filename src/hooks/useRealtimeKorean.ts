@@ -33,7 +33,7 @@ interface TestResultPayload {
   id: number;
   session_id: number;
   student_id: number;
-  test_type: 'word_pang' | 'passage_quiz' | 'handwriting';
+  test_type: 'word_pang' | 'passage_quiz' | 'handwriting' | 'sc_cloze' | 'sc_keyword';
   is_correct: boolean;
   answered_at: string;
   item_id: number | null;
