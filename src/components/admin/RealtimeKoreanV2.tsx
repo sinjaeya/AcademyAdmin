@@ -650,11 +650,11 @@ export function RealtimeKoreanV2() {
       if (a.currentActivity && !b.currentActivity) return -1;
       if (!a.currentActivity && b.currentActivity) return 1;
 
-      // 그 다음 최근 활동 시간순 (가장 최근 레코드 기준)
-      const aLatest = a.records[0]?.startedAt || '';
-      const bLatest = b.records[0]?.startedAt || '';
-      if (aLatest && bLatest) {
-        return new Date(bLatest).getTime() - new Date(aLatest).getTime();
+      // 그 다음 등원 시간순 (최근 등원 = 위, 오래된 등원 = 아래)
+      const aCheckIn = aInfo?.checkInTime || '';
+      const bCheckIn = bInfo?.checkInTime || '';
+      if (aCheckIn && bCheckIn) {
+        return new Date(bCheckIn).getTime() - new Date(aCheckIn).getTime();
       }
 
       // 마지막으로 이름순
