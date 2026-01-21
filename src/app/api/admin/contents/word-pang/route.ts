@@ -79,9 +79,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           hanjaMap.set(h.voca_id, [...existing, h]);
         });
 
-        enrichedData = data.map((quiz: { voca_id: number }) => ({
+        enrichedData = data.map((quiz) => ({
           ...quiz,
-          korean_voca_hanja: hanjaMap.get(quiz.voca_id) || []
+          korean_voca_hanja: hanjaMap.get((quiz as { voca_id: number }).voca_id) || []
         }));
       }
     }
