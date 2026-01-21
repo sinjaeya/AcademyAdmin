@@ -209,7 +209,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
         </header>
 
         {/* 학생 정보 + 테스트 정보 */}
-        <section className="bg-gray-50 rounded-xl p-5 mb-6">
+        <section className="bg-gray-50 rounded-xl p-5 mb-6 page-break-inside-avoid">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
@@ -246,7 +246,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
         </section>
 
         {/* 핵심 결과 - 추천 레벨 + 등급 */}
-        <section className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 mb-6 border border-blue-200">
+        <section className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 mb-6 border border-blue-200 page-break-inside-avoid">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -283,7 +283,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
         </section>
 
         {/* 영역별 성취도 */}
-        <section className="mb-6">
+        <section className="mb-6 page-break-inside-avoid">
           <div className="flex items-center gap-2 mb-4">
             <Target className="w-5 h-5 text-blue-600" />
             <h3 className="text-lg font-bold text-gray-900">영역별 성취도</h3>
@@ -337,9 +337,9 @@ export default function LevelTestReportPage({ params }: PageProps) {
           </div>
         </section>
 
-        {/* 역량 분석 차트 (화면용) */}
+        {/* 역량 분석 차트 */}
         {radarData.length > 0 && (
-          <section className="mb-6 print:hidden">
+          <section className="mb-6 page-break-inside-avoid">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="w-5 h-5 text-purple-600" />
               <h3 className="text-lg font-bold text-gray-900">역량 분석 차트</h3>
@@ -359,42 +359,9 @@ export default function LevelTestReportPage({ params }: PageProps) {
           </section>
         )}
 
-        {/* 역량 분석 (인쇄용) */}
-        {radarData.length > 0 && (
-          <section className="hidden print:block mb-6 page-break-inside-avoid">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-5 h-5 text-purple-600" />
-              <h3 className="text-lg font-bold text-gray-900">역량 분석</h3>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              {radarData.map((item) => {
-                const grade = getGrade(item.score);
-                return (
-                  <div
-                    key={item.area}
-                    className="text-center p-4 rounded-xl border-2"
-                    style={{
-                      backgroundColor: item.score >= 60 ? '#DCFCE7' : '#FEE2E2',
-                      borderColor: item.score >= 60 ? '#22C55E' : '#EF4444',
-                    }}
-                  >
-                    <p className="text-sm text-gray-600 font-medium mb-1">{item.area}</p>
-                    <p
-                      className="text-2xl font-bold"
-                      style={{ color: grade.color }}
-                    >
-                      {item.score}%
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* 막대 그래프 (화면용) */}
+        {/* 막대 그래프 */}
         {areaData.length > 0 && (
-          <section className="mb-6 print:hidden">
+          <section className="mb-6 page-break-inside-avoid">
             <div className="flex items-center gap-2 mb-4">
               <Trophy className="w-5 h-5 text-amber-500" />
               <h3 className="text-lg font-bold text-gray-900">영역별 성취도 비교</h3>
@@ -437,7 +404,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
         <div className="page-break-inside-avoid">
           {/* 어휘 난이도별 분석 */}
           {session.analysis && Object.keys(session.analysis.vocabByDifficulty || {}).length > 0 && (
-            <section className="mb-6">
+            <section className="mb-6 page-break-inside-avoid">
               <div className="flex items-center gap-2 mb-4">
                 <BookOpen className="w-5 h-5 text-blue-600" />
                 <h3 className="text-lg font-bold text-gray-900">어휘력 난이도별 분석</h3>
@@ -470,7 +437,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
 
           {/* 글 구조 파악 분석 */}
           {session.analysis && Object.keys(session.analysis.sentenceByStructure || {}).length > 0 && (
-            <section className="mb-6">
+            <section className="mb-6 page-break-inside-avoid">
               <div className="flex items-center gap-2 mb-4">
                 <FileText className="w-5 h-5 text-green-600" />
                 <h3 className="text-lg font-bold text-gray-900">글 구조 파악 분석</h3>
@@ -507,7 +474,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
 
           {/* 독해 유형 분석 */}
           {session.analysis && (session.analysis.readingByType.factual.total > 0 || session.analysis.readingByType.inferential.total > 0) && (
-            <section className="mb-6">
+            <section className="mb-6 page-break-inside-avoid">
               <div className="flex items-center gap-2 mb-4">
                 <Scroll className="w-5 h-5 text-purple-600" />
                 <h3 className="text-lg font-bold text-gray-900">독해 유형 분석</h3>
@@ -548,7 +515,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
 
           {/* 수능형 도메인별 분석 */}
           {session.analysis && Object.keys(session.analysis.suneungByDomain || {}).length > 0 && (
-            <section className="mb-6">
+            <section className="mb-6 page-break-inside-avoid">
               <div className="flex items-center gap-2 mb-4">
                 <GraduationCap className="w-5 h-5 text-amber-600" />
                 <h3 className="text-lg font-bold text-gray-900">수능형 영역별 분석</h3>
@@ -577,7 +544,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
 
           {/* 영역별 평균 풀이 시간 */}
           {session.analysis && Object.keys(session.analysis.avgTimeByArea || {}).length > 0 && (
-            <section className="mb-6">
+            <section className="mb-6 page-break-inside-avoid">
               <div className="flex items-center gap-2 mb-4">
                 <Timer className="w-5 h-5 text-gray-600" />
                 <h3 className="text-lg font-bold text-gray-900">영역별 평균 풀이 시간</h3>
@@ -613,7 +580,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
 
         {/* 종합 분석 코멘트 */}
         {session.analysis && session.analysis.overallComments.length > 0 && (
-          <section className="mb-6">
+          <section className="mb-6 page-break-inside-avoid">
             <div className="bg-blue-50 rounded-xl p-5 border border-blue-200">
               <h3 className="text-base font-bold text-blue-800 mb-4 flex items-center gap-2">
                 <Trophy className="w-5 h-5" />
@@ -638,7 +605,9 @@ export default function LevelTestReportPage({ params }: PageProps) {
           {session.academy_name && (
             <p className="mt-4 font-bold text-xl text-gray-700">{session.academy_name}</p>
           )}
-          <p className="text-xl text-gray-600">연락처: 010-3745-9631</p>
+          {session.academy_phone && (
+            <p className="text-xl text-gray-600">연락처: {session.academy_phone}</p>
+          )}
         </footer>
       </div>
 
@@ -649,7 +618,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
             size: A4;
             margin: 15mm;
           }
-          body {
+          * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }

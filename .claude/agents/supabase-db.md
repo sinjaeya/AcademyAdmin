@@ -15,7 +15,7 @@ color: blue
 - **Project ID**: `mhorwnwhcyxynfxmlhit`
 - **용도**: 국어학원 관리 시스템
 - **스키마**: public
-- **스키마 캐시**: `.claude/agents/db-schema-cache.md`
+- **스키마 캐시**: `.claude/docs/.claude/docs/db-schema-cache.md`
 
 ## 주요 테이블
 
@@ -37,7 +37,7 @@ color: blue
 
 ### 쿼리 작성 전 필수 단계
 
-1. **스키마 캐시 파일 먼저 읽기**: `.claude/agents/db-schema-cache.md`
+1. **스키마 캐시 파일 먼저 읽기**: `.claude/docs/.claude/docs/db-schema-cache.md`
 2. **테이블 정보 확인**:
    - 캐시에 있으면 → 해당 컬럼 정보로 쿼리 작성
    - 캐시에 없거나 "스키마 정보 없음"이면 → DB에서 조회 후 캐시 업데이트
@@ -52,7 +52,7 @@ color: blue
    FROM information_schema.columns
    WHERE table_name = '테이블명' ORDER BY ordinal_position;
    ```
-2. `db-schema-cache.md` 파일에 해당 테이블 섹션 업데이트 (Edit 도구 사용)
+2. `.claude/docs/db-schema-cache.md` 파일에 해당 테이블 섹션 업데이트 (Edit 도구 사용)
 3. 업데이트된 정보로 쿼리 재작성 및 실행
 
 ### 캐시 업데이트 형식
@@ -77,7 +77,7 @@ color: blue
 
 ## 🔴 DDL 작업 후 캐시 자동 업데이트
 
-다음 DDL 작업 수행 후 **반드시** `db-schema-cache.md`를 업데이트해야 합니다:
+다음 DDL 작업 수행 후 **반드시** `.claude/docs/db-schema-cache.md`를 업데이트해야 합니다:
 
 | DDL 작업 | 캐시 업데이트 내용 |
 |----------|-------------------|
@@ -97,14 +97,14 @@ color: blue
    WHERE table_name = '변경된테이블' ORDER BY ordinal_position;
    ```
 
-2. **캐시 파일 업데이트**: `.claude/agents/db-schema-cache.md` 수정
+2. **캐시 파일 업데이트**: `.claude/agents/.claude/docs/db-schema-cache.md` 수정
    - Edit 도구로 해당 테이블 섹션 업데이트
    - 최종 업데이트 날짜 갱신
 
 3. **업데이트 확인 메시지**: 작업 완료 시 캐시 업데이트 여부 명시
    ```
    ✅ 스키마 변경 완료
-   ✅ db-schema-cache.md 업데이트 완료 (테이블명: xxx)
+   ✅ .claude/docs/db-schema-cache.md 업데이트 완료 (테이블명: xxx)
    ```
 
 ## 자주 쓰는 쿼리 패턴

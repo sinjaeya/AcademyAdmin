@@ -337,14 +337,40 @@
 | `word` | varchar(100) | NO | 단어 |
 | `standard_homograph_number` | bigint | NO | 표준 동음이의어 번호 |
 | `part_of_speech` | varchar(50) | NO | 품사 |
-| `word_origin_type` | varchar(50) | NO | 어원 유형 |
-| `original_word` | varchar(100) | YES | 원어 |
+| `word_origin_type` | varchar(50) | NO | 어원 유형 (고유어, 한자어, 외래어 등) |
+| `original_word` | varchar(100) | YES | 원어 (한자 또는 외국어) |
 | `meaning` | text | NO | 뜻 |
 | `field` | varchar(100) | NO | 분야 |
 | `created_at` | timestamptz | YES | |
 | `updated_at` | timestamptz | YES | |
 | `first_consonant` | text | YES | 초성 |
 | `middle_grade` | smallint | YES | 중학 학년 |
+| `gemini_3_pro_difficulty` | text | YES | Gemini 난이도 분석 |
+| `gemini_3_pro_tags` | ARRAY | YES | Gemini 태그 배열 |
+| `gemini_3_pro_analysis_reason` | text | YES | Gemini 분석 사유 |
+
+---
+
+## word_pang_shuffle_order (단어팡 섞기 순서)
+
+| 컬럼 | 타입 | Nullable | 비고 |
+|------|------|----------|------|
+| `voca_id` | integer | NO | FK → korean_voca.id |
+| `shuffle_seed` | integer | NO | 섞기 시드값 |
+| `shuffle_order` | integer | NO | 섞인 순서 |
+
+---
+
+## word_pang_valid_words (단어팡 유효 단어)
+
+| 컬럼 | 타입 | Nullable | 비고 |
+|------|------|----------|------|
+| `voca_id` | bigint | YES | FK → korean_voca.id |
+| `word` | text | YES | 단어 |
+| `first_consonant` | text | YES | 초성 |
+| `meaning` | text | YES | 뜻 |
+| `grade` | text | YES | 학년 |
+| `part_of_speech` | text | YES | 품사 |
 
 ---
 
