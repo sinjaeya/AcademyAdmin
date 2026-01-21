@@ -546,6 +546,14 @@ export function RealtimeKoreanV2() {
     setDialogOpen(true);
   }, []);
 
+  // checkInInfo Map의 내용을 문자열 시그니처로 변환 (Map 참조 변경 감지용)
+  const checkInInfoSignature = useMemo(
+    () => Array.from(checkInInfo.entries())
+      .map(([id, info]) => `${id}:${info.hasCheckOut}:${info.checkInTime}`)
+      .join('|'),
+    [checkInInfo]
+  );
+
   // 학생별 요약 데이터 생성
   const studentSummaries = useMemo((): StudentSummary[] => {
     const summaryMap = new Map<number, StudentSummary>();
@@ -662,7 +670,7 @@ export function RealtimeKoreanV2() {
     });
 
     return summaries;
-  }, [records, wordCounts, historicalAccuracy, reviewCounts, checkInInfo]);
+  }, [records, wordCounts, historicalAccuracy, reviewCounts, checkInInfo, checkInInfoSignature]);
 
   // 숨긴 학생 제외
   const visibleSummaries = useMemo(() => {
