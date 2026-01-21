@@ -72,8 +72,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
       // 각 퀴즈에 한자 정보 매핑
       if (hanjaData) {
-        const hanjaMap = new Map<number, typeof hanjaData>();
-        hanjaData.forEach((h: { voca_id: number }) => {
+        type HanjaItem = typeof hanjaData[number];
+        const hanjaMap = new Map<number, HanjaItem[]>();
+        hanjaData.forEach((h) => {
           const existing = hanjaMap.get(h.voca_id) || [];
           hanjaMap.set(h.voca_id, [...existing, h]);
         });
