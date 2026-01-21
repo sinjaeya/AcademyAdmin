@@ -401,7 +401,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
         )}
 
         {/* 세분화 분석 */}
-        <div className="page-break-inside-avoid">
+        <div>
           {/* 어휘 난이도별 분석 */}
           {session.analysis && Object.keys(session.analysis.vocabByDifficulty || {}).length > 0 && (
             <section className="mb-6 page-break-inside-avoid">
@@ -603,7 +603,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
           <p>본 리포트는 학생의 현재 국어 학습 수준을 진단한 결과입니다.</p>
           <p className="mt-1">정확한 학습 방향 설정을 위해 담당 선생님과 상담을 권장합니다.</p>
           {session.academy_name && (
-            <p className="mt-4 font-bold text-xl text-gray-700">{session.academy_name}</p>
+            <p className="mt-10 font-bold text-xl text-gray-700">{session.academy_name}</p>
           )}
           {session.academy_phone && (
             <p className="text-xl text-gray-600">연락처: {session.academy_phone}</p>
@@ -616,7 +616,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
         @media print {
           @page {
             size: A4;
-            margin: 15mm;
+            margin: 10mm;
           }
           * {
             -webkit-print-color-adjust: exact !important;
@@ -624,6 +624,125 @@ export default function LevelTestReportPage({ params }: PageProps) {
           }
           .page-break-inside-avoid {
             page-break-inside: avoid;
+          }
+
+          /* 전체 폰트 크기 축소 */
+          .max-w-\[800px\] {
+            max-width: 100% !important;
+            font-size: 11px !important;
+          }
+
+          /* 헤더 축소 */
+          header {
+            padding-bottom: 0.5rem !important;
+            margin-bottom: 1rem !important;
+          }
+          header h1 {
+            font-size: 1.25rem !important;
+            margin-bottom: 0 !important;
+          }
+          header p {
+            font-size: 0.875rem !important;
+          }
+          header img {
+            height: 3rem !important;
+            margin-bottom: 0.5rem !important;
+          }
+
+          /* 섹션 간격 축소 */
+          section {
+            margin-bottom: 0.75rem !important;
+            padding: 0.75rem !important;
+          }
+
+          /* 학생 정보 축소 */
+          .bg-gray-50.rounded-xl.p-5 {
+            padding: 0.75rem !important;
+          }
+
+          /* 핵심 결과 축소 */
+          .bg-gradient-to-br {
+            padding: 0.75rem !important;
+          }
+
+          /* 레이더 차트 높이 축소 */
+          .h-72 {
+            height: 280px !important;
+          }
+
+          /* 막대 그래프 높이 축소 */
+          .h-52 {
+            height: 180px !important;
+          }
+
+          /* 테이블 셀 패딩 축소 */
+          table th, table td {
+            padding: 0.5rem 0.75rem !important;
+          }
+
+          /* 아이콘 크기 축소 */
+          .w-10.h-10 {
+            width: 2rem !important;
+            height: 2rem !important;
+          }
+          .w-16.h-16 {
+            width: 3rem !important;
+            height: 3rem !important;
+          }
+          .w-20.h-20 {
+            width: 3.5rem !important;
+            height: 3.5rem !important;
+          }
+
+          /* 제목 크기 축소 */
+          h2 {
+            font-size: 1.25rem !important;
+          }
+          h3 {
+            font-size: 1rem !important;
+          }
+
+          /* 폰트 크기 축소 */
+          .text-4xl {
+            font-size: 2rem !important;
+          }
+          .text-3xl {
+            font-size: 1.5rem !important;
+          }
+          .text-2xl {
+            font-size: 1.25rem !important;
+          }
+          .text-xl {
+            font-size: 1rem !important;
+          }
+          .text-lg {
+            font-size: 0.95rem !important;
+          }
+
+          /* 여백 축소 */
+          .mb-8 {
+            margin-bottom: 1rem !important;
+          }
+          .mb-6 {
+            margin-bottom: 0.75rem !important;
+          }
+          .mb-4 {
+            margin-bottom: 0.5rem !important;
+          }
+          .mt-10 {
+            margin-top: 1.5rem !important;
+          }
+          .pt-6 {
+            padding-top: 1rem !important;
+          }
+
+          /* 푸터 간소화 */
+          footer {
+            margin-top: 3rem !important;
+            padding-top: 1.5rem !important;
+          }
+          footer p {
+            margin-top: 0.25rem !important;
           }
         }
       `}</style>

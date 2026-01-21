@@ -30,7 +30,8 @@
       "mcp__plugin_supabase_supabase__execute_sql",
       "Bash(tee:*)",
       "Bash(claude mcp list:*)",
-      "Bash(claude-code agent coder \"레벨테스트 리포트 페이지 인쇄 출력 개선 작업\n\n대상 파일: src/app/admin/level-test/report/[sessionId]/page.tsx\n\n수정 사항:\n1. 641줄 푸터 연락처 동적 처리\n   - ''연락처: 010-3745-9631''을 session.academy_phone 조건부 렌더링으로 변경\n2. 341-342줄 레이더 차트 섹션: print:hidden 제거\n3. 396-397줄 막대 그래프 섹션: print:hidden 제거  \n4. 363-393줄 인쇄용 역량 분석 그리드 섹션 완전 제거 \\(hidden print:block\\)\n5. 다음 섹션들에 page-break-inside-avoid 클래스 추가:\n   - 286줄 영역별 성취도 섹션\n   - 레이더/막대 차트 섹션들\n   - 437줄 세분화 분석 div\n   - 438-469줄 어휘 난이도별 분석\n   - 472-506줄 글 구조 파악 분석\n   - 509-546줄 독해 유형 분석\n   - 550-576줄 수능형 도메인별 분석\n   - 579-611줄 영역별 평균 풀이 시간\n   - 615-632줄 종합 분석 코멘트\n6. 646-659줄 인쇄 스타일: body를 *로 변경\")"
+      "Bash(claude-code agent coder \"레벨테스트 리포트 페이지 인쇄 출력 개선 작업\n\n대상 파일: src/app/admin/level-test/report/[sessionId]/page.tsx\n\n수정 사항:\n1. 641줄 푸터 연락처 동적 처리\n   - ''연락처: 010-3745-9631''을 session.academy_phone 조건부 렌더링으로 변경\n2. 341-342줄 레이더 차트 섹션: print:hidden 제거\n3. 396-397줄 막대 그래프 섹션: print:hidden 제거  \n4. 363-393줄 인쇄용 역량 분석 그리드 섹션 완전 제거 \\(hidden print:block\\)\n5. 다음 섹션들에 page-break-inside-avoid 클래스 추가:\n   - 286줄 영역별 성취도 섹션\n   - 레이더/막대 차트 섹션들\n   - 437줄 세분화 분석 div\n   - 438-469줄 어휘 난이도별 분석\n   - 472-506줄 글 구조 파악 분석\n   - 509-546줄 독해 유형 분석\n   - 550-576줄 수능형 도메인별 분석\n   - 579-611줄 영역별 평균 풀이 시간\n   - 615-632줄 종합 분석 코멘트\n6. 646-659줄 인쇄 스타일: body를 *로 변경\")",
+      "Bash(git -C \"C:\\\\Source\\\\AcademyAdmin\" diff)"
     ],
     "deny": [],
     "ask": []
