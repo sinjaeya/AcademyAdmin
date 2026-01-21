@@ -88,6 +88,10 @@ export function WordPangDetailDialog({
   // 퀴즈 데이터 로드
   useEffect(() => {
     if (open && vocaId) {
+      // 로드 전 이전 상태 초기화
+      setQuiz(null);
+      setIsEditMode(false);
+      setDeleteConfirmOpen(false);
       loadQuizData();
     }
   }, [open, vocaId]);
