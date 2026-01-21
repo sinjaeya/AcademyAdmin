@@ -639,10 +639,10 @@ export function RealtimeKoreanV2() {
 
     const summaries = Array.from(summaryMap.values());
 
-    // 체크인/체크아웃 기준 정렬 (안정화 버전)
+    // 체크인/체크아웃 기준 정렬 (안정화 버전 - currentActivity 제거)
     // 1순위: 체크인만 있고 체크아웃 없음 (학원에서 공부 중) → 상단
     // 2순위: 체크아웃 있음 (하원 완료) → 하단
-    // 각 그룹 내에서는 최근 활동 시간순 (진행중 > 최근 완료)
+    // 각 그룹 내에서는 등원 시간순으로 고정하여 순서 깜빡임 방지
     summaries.sort((a, b) => {
       const aInfo = checkInInfo.get(a.studentId);
       const bInfo = checkInInfo.get(b.studentId);
@@ -654,11 +654,7 @@ export function RealtimeKoreanV2() {
       if (!aCheckedOut && bCheckedOut) return -1;
       if (aCheckedOut && !bCheckedOut) return 1;
 
-      // 2차: 진행중 학생 먼저
-      if (a.currentActivity && !b.currentActivity) return -1;
-      if (!a.currentActivity && b.currentActivity) return 1;
-
-      // 3차: 등원 시간순 (최근 등원 = 위, 오래된 등원 = 아래)
+      // 2차: 등원 시간순 (최근 등원 = 위, 오래된 등원 = 아래)
       const aCheckIn = aInfo?.checkInTime || '';
       const bCheckIn = bInfo?.checkInTime || '';
       if (aCheckIn && bCheckIn) {
@@ -670,11 +666,11 @@ export function RealtimeKoreanV2() {
         return 1;
       }
 
-      // 4차: 이름순
+      // 3차: 이름순
       const nameCompare = a.studentName.localeCompare(b.studentName);
       if (nameCompare !== 0) return nameCompare;
 
-      // 5차: studentId로 최종 안정화 (절대 같을 수 없음)
+      // 4차: studentId로 최종 안정화 (절대 같을 수 없음)
       return a.studentId - b.studentId;
     });
 

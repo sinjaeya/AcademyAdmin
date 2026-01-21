@@ -24,6 +24,12 @@
 .DS_Store
 *.pem
 
+# Windows 예약 파일명
+nul
+aux
+con
+prn
+
 # debug
 npm-debug.log*
 yarn-debug.log*
