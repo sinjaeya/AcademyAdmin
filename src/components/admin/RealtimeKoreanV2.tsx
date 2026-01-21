@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Radio, Wifi, WifiOff, AlertCircle, X, Circle } from 'lucide-react';
@@ -103,9 +103,9 @@ function WordPangBadges({ record, onWordClick }: { record: LearningRecord; onWor
   if (record.wordResults?.length) {
     return (
       <div className="flex flex-wrap gap-1">
-        {record.wordResults.map((result, idx) => (
+        {record.wordResults.map((result) => (
           <Badge
-            key={idx}
+            key={`${result.vocaId}-${result.word}`}
             onClick={() => onWordClick?.(result.vocaId, result.word)}
             className={`text-xs px-1.5 py-0 cursor-pointer hover:opacity-80 ${
               result.isCorrect
@@ -219,7 +219,7 @@ function HandwritingBadges({ record }: { record: LearningRecord }) {
 }
 
 // 경과 시간 표시 컴포넌트 (1분마다 업데이트)
-function ElapsedTime({ onlineAt }: { onlineAt: string }) {
+const ElapsedTime = React.memo(function ElapsedTime({ onlineAt }: { onlineAt: string }) {
   const [elapsed, setElapsed] = useState('');
 
   useEffect(() => {
@@ -263,10 +263,38 @@ function ElapsedTime({ onlineAt }: { onlineAt: string }) {
   }, [onlineAt]);
 
   return <span className="text-xs text-green-600 font-medium">{elapsed}</span>;
-}
+});
+
+// 소요 시간 표시 컴포넌트 (1초마다 업데이트)
+const DurationDisplay = React.memo(function DurationDisplay({
+  startedAt,
+  completedAt
+}: {
+  startedAt: string;
+  completedAt: string | null;
+}) {
+  const [duration, setDuration] = useState(() => formatDuration(startedAt, completedAt));
+
+  useEffect(() => {
+    if (completedAt) return; // 완료된 세션은 업데이트 불필요
+
+    const interval = setInterval(() => {
+      setDuration(formatDuration(startedAt, completedAt));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [startedAt, completedAt]);
+
+  const isInProgress = !completedAt;
+  return (
+    <span className={isInProgress ? 'text-blue-600 font-medium' : 'text-gray-600'}>
+      {duration}
+    </span>
+  );
+});
 
 // 학생 로우 컴포넌트
-function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, onWordClick }: {
+const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, onWordClick }: {
   summary: StudentSummary;
   onDeleteOrphanSessions: (records: { id: string; learningType: string }[]) => Promise<void>;
   presence?: StudentPresenceState;
@@ -354,8 +382,8 @@ function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, on
                   .filter(r => r.learningType === 'word_pang')
                   .map(record => (
                     <div key={record.id} className="flex items-center gap-2 text-xs">
-                      <span className={`w-16 ${record.completedAt ? 'text-gray-400' : 'text-blue-500 animate-pulse'}`}>
-                        {formatDuration(record.startedAt, record.completedAt)}
+                      <span className="w-16">
+                        <DurationDisplay startedAt={record.startedAt} completedAt={record.completedAt} />
                       </span>
                       <WordPangBadges record={record} onWordClick={onWordClick} />
                     </div>
@@ -389,8 +417,8 @@ function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, on
                   .filter(r => r.learningType === 'passage_quiz')
                   .map(record => (
                     <div key={record.id} className="flex items-center gap-2 text-xs">
-                      <span className={`w-16 ${record.completedAt ? 'text-gray-400' : 'text-blue-500 animate-pulse'}`}>
-                        {formatDuration(record.startedAt, record.completedAt)}
+                      <span className="w-16">
+                        <DurationDisplay startedAt={record.startedAt} completedAt={record.completedAt} />
                       </span>
                       <PassageQuizBadges record={record} />
                     </div>
@@ -470,8 +498,8 @@ function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, on
                   .filter(r => r.learningType === 'handwriting')
                   .map(record => (
                     <div key={record.id} className="flex items-center gap-2 text-xs">
-                      <span className={`w-16 ${record.completedAt ? 'text-gray-400' : 'text-blue-500 animate-pulse'}`}>
-                        {formatDuration(record.startedAt, record.completedAt)}
+                      <span className="w-16">
+                        <DurationDisplay startedAt={record.startedAt} completedAt={record.completedAt} />
                       </span>
                       <HandwritingBadges record={record} />
                     </div>
@@ -490,7 +518,7 @@ function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, on
       </div>
     </div>
   );
-}
+});
 
 // 메인 컴포넌트
 export function RealtimeKoreanV2() {
@@ -501,7 +529,7 @@ export function RealtimeKoreanV2() {
 
   // 숨긴 학생 목록
   const [hiddenStudents, setHiddenStudents] = useState<Set<number>>(new Set());
-  const prevRecordsRef = useRef<LearningRecord[]>([]);
+  const prevRecordsMapRef = useRef<Map<string, LearningRecord>>(new Map());
 
   // 단어팡 상세 Dialog 상태
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -510,18 +538,21 @@ export function RealtimeKoreanV2() {
 
   // 레코드 변경 감지 - 새 업데이트가 있는 학생은 다시 표시
   useEffect(() => {
-    const prevRecords = prevRecordsRef.current;
+    const prevMap = prevRecordsMapRef.current;
     const updatedStudentIds = new Set<number>();
 
     for (const record of records) {
-      const prevRecord = prevRecords.find(r => r.id === record.id);
-      // 새 레코드이거나 업데이트된 레코드
-      if (!prevRecord || JSON.stringify(prevRecord) !== JSON.stringify(record)) {
+      const prevRecord = prevMap.get(record.id);
+      // 주요 필드만 비교 (JSON.stringify 대신)
+      if (!prevRecord ||
+          prevRecord.completedAt !== record.completedAt ||
+          prevRecord.correctCount !== record.correctCount ||
+          prevRecord.totalItems !== record.totalItems) {
         updatedStudentIds.add(record.studentId);
       }
     }
 
-    if (updatedStudentIds.size > 0 && prevRecords.length > 0) {
+    if (updatedStudentIds.size > 0 && prevMap.size > 0) {
       setHiddenStudents(prev => {
         const newSet = new Set(prev);
         updatedStudentIds.forEach(id => newSet.delete(id));
@@ -529,7 +560,10 @@ export function RealtimeKoreanV2() {
       });
     }
 
-    prevRecordsRef.current = records;
+    // Map 업데이트
+    const newMap = new Map<string, LearningRecord>();
+    records.forEach(r => newMap.set(r.id, r));
+    prevRecordsMapRef.current = newMap;
   }, [records]);
 
   // 학생의 고아 세션 전체 삭제
@@ -675,7 +709,7 @@ export function RealtimeKoreanV2() {
     });
 
     return summaries;
-  }, [records, wordCounts, historicalAccuracy, reviewCounts, checkInInfo, checkInInfoSignature]);
+  }, [records, wordCounts, historicalAccuracy, reviewCounts, checkInInfoSignature]);
 
   // 숨긴 학생 제외
   const visibleSummaries = useMemo(() => {

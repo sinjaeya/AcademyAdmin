@@ -76,6 +76,8 @@ export function useRealtimeKorean(academyId: string | null) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const channelsRef = useRef<any[]>([]);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectCountRef = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 5;
 
   // 학원 학생 ID 목록 (실시간 필터링용)
   const academyStudentIdsRef = useRef<Set<number>>(new Set());
@@ -718,14 +720,24 @@ export function useRealtimeKorean(academyId: string | null) {
 
   // 재연결 시도
   const reconnect = useCallback(() => {
+    if (reconnectCountRef.current >= MAX_RECONNECT_ATTEMPTS) {
+      console.warn('Realtime: 최대 재연결 횟수 초과');
+      setConnectionStatus('error');
+      return;
+    }
+
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
     }
 
+    reconnectCountRef.current += 1;
+    const delay = Math.min(1000 * Math.pow(2, reconnectCountRef.current - 1), 30000);
+
+    console.log(`Realtime: 재연결 시도 (${reconnectCountRef.current}/${MAX_RECONNECT_ATTEMPTS}), 대기 시간: ${delay}ms`);
+
     reconnectTimeoutRef.current = setTimeout(() => {
-      console.log('실시간 연결 재시도...');
       setupSubscriptions();
-    }, 3000);
+    }, delay);
   }, [setupSubscriptions]);
 
   // 초기 로드 및 구독 설정 (순서 보장: 데이터 로드 완료 후 구독 설정)
@@ -751,6 +763,14 @@ export function useRealtimeKorean(academyId: string | null) {
       reconnect();
     }
   }, [connectionStatus, reconnect]);
+
+  // 연결 성공 시 재연결 카운터 리셋
+  useEffect(() => {
+    if (connectionStatus === 'connected') {
+      reconnectCountRef.current = 0;
+      console.log('Realtime: 연결 성공, 재연결 카운터 리셋');
+    }
+  }, [connectionStatus]);
 
   return {
     records,
