@@ -44,5 +44,10 @@ next-env.d.ts
 tmpclaude-*-cwd/
 tool-results/
 
+# Claude Code 에이전트 로그
+*.log
+build-output.txt
+tsc-output.txt
+
 # Playwright MCP
 .playwright-mcp/
