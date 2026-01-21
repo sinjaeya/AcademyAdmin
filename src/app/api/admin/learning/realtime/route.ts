@@ -557,14 +557,19 @@ export async function GET(request: Request) {
       .select('student_Id, check_in_time')
       .eq('check_in_status', 'CheckIn')
       .gte('check_in_time', todayDateStr)
-      .lt('check_in_time', `${todayDateStr}T23:59:59`);
+      .lt('check_in_time', `${todayDateStr}T23:59:59`)
+      .order('check_in_time', { ascending: false }); // 최신순 정렬
 
     if (checkInData) {
+      const processedStudents = new Set<number>(); // 중복 방지용
       for (const row of checkInData) {
-        checkInInfo[row.student_Id] = {
-          checkInTime: row.check_in_time,
-          hasCheckOut: false
-        };
+        if (!processedStudents.has(row.student_Id)) {
+          checkInInfo[row.student_Id] = {
+            checkInTime: row.check_in_time,
+            hasCheckOut: false
+          };
+          processedStudents.add(row.student_Id);
+        }
       }
     }
 
