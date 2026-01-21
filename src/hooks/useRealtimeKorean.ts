@@ -370,7 +370,7 @@ export function useRealtimeKorean(academyId: string | null) {
             }
 
             const studentName = await fetchStudentName(newRecord.student_id);
-            let wordData: { correctWords: string[]; wrongWords: string[] } | null = null;
+            let wordData: { correctWords: string[]; wrongWords: string[]; wordResults: Array<{ word: string; isCorrect: boolean; vocaId: number }> } | null = null;
             let passageQuizData: PassageQuizDetail[] | null = null;
             let handwritingData: HandwritingDetail | null = null;
             let sentenceClinicDetail: SentenceClinicDetail | null = null;
