@@ -8,6 +8,7 @@ import { useRealtimeKorean, ConnectionStatus } from '@/hooks/useRealtimeKorean';
 import { useStudentPresence, type StudentPresenceState } from '@/hooks/useStudentPresence';
 import { useAuthStore } from '@/store/auth';
 import type { LearningRecord, StudentSummary } from '@/types/realtime-korean';
+import { WordPangDetailDialog } from '@/components/admin/WordPangDetailDialog';
 
 // 학습 유형 한글 변환
 const getLearningTypeLabel = (type: string): string => {
@@ -97,7 +98,7 @@ function ConnectionStatusIndicator({ status }: { status: ConnectionStatus }) {
 }
 
 // 단어팡 결과 배지 (순서 유지)
-function WordPangBadges({ record }: { record: LearningRecord }) {
+function WordPangBadges({ record, onWordClick }: { record: LearningRecord; onWordClick?: (vocaId: number, word: string) => void }) {
   // wordResults가 있으면 순서대로 표시
   if (record.wordResults?.length) {
     return (
@@ -105,7 +106,8 @@ function WordPangBadges({ record }: { record: LearningRecord }) {
         {record.wordResults.map((result, idx) => (
           <Badge
             key={idx}
-            className={`text-xs px-1.5 py-0 ${
+            onClick={() => onWordClick?.(result.vocaId, result.word)}
+            className={`text-xs px-1.5 py-0 cursor-pointer hover:opacity-80 ${
               result.isCorrect
                 ? 'bg-green-100 text-green-700 border-green-200'
                 : 'bg-red-100 text-red-700 border-red-200'
@@ -264,11 +266,12 @@ function ElapsedTime({ onlineAt }: { onlineAt: string }) {
 }
 
 // 학생 로우 컴포넌트
-function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime }: {
+function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, onWordClick }: {
   summary: StudentSummary;
   onDeleteOrphanSessions: (records: { id: string; learningType: string }[]) => Promise<void>;
   presence?: StudentPresenceState;
   checkInTime?: string; // 체크인 시간 (등원 후 경과 시간 표시용)
+  onWordClick?: (vocaId: number, word: string) => void;
 }) {
   const isActive = summary.currentActivity !== null;
   const isOnline = !!presence;
@@ -354,7 +357,7 @@ function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime }: 
                       <span className={`w-16 ${record.completedAt ? 'text-gray-400' : 'text-blue-500 animate-pulse'}`}>
                         {formatDuration(record.startedAt, record.completedAt)}
                       </span>
-                      <WordPangBadges record={record} />
+                      <WordPangBadges record={record} onWordClick={onWordClick} />
                     </div>
                   ))}
               </div>
@@ -500,6 +503,11 @@ export function RealtimeKoreanV2() {
   const [hiddenStudents, setHiddenStudents] = useState<Set<number>>(new Set());
   const prevRecordsRef = useRef<LearningRecord[]>([]);
 
+  // 단어팡 상세 Dialog 상태
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedVocaId, setSelectedVocaId] = useState(0);
+  const [selectedWord, setSelectedWord] = useState('');
+
   // 레코드 변경 감지 - 새 업데이트가 있는 학생은 다시 표시
   useEffect(() => {
     const prevRecords = prevRecordsRef.current;
@@ -530,6 +538,13 @@ export function RealtimeKoreanV2() {
       await deleteSession(record.id, record.learningType);
     }
   }, [deleteSession]);
+
+  // 단어 클릭 핸들러
+  const handleWordClick = useCallback((vocaId: number, word: string): void => {
+    setSelectedVocaId(vocaId);
+    setSelectedWord(word);
+    setDialogOpen(true);
+  }, []);
 
   // 학생별 요약 데이터 생성
   const studentSummaries = useMemo((): StudentSummary[] => {
@@ -707,10 +722,19 @@ export function RealtimeKoreanV2() {
               onDeleteOrphanSessions={deleteOrphanSessions}
               presence={getPresence(summary.studentId)}
               checkInTime={checkInInfo.get(summary.studentId)?.checkInTime}
+              onWordClick={handleWordClick}
             />
           ))}
         </div>
       )}
+
+      {/* 단어팡 상세 Dialog */}
+      <WordPangDetailDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        vocaId={selectedVocaId}
+        word={selectedWord}
+      />
     </div>
   );
 }

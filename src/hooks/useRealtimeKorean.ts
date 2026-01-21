@@ -157,7 +157,7 @@ export function useRealtimeKorean(academyId: string | null) {
   }, []);
 
   // 단어팡 세션 단어 조회
-  const fetchSessionWords = useCallback(async (sessionId: number): Promise<{ correctWords: string[]; wrongWords: string[] } | null> => {
+  const fetchSessionWords = useCallback(async (sessionId: number): Promise<{ correctWords: string[]; wrongWords: string[]; wordResults: Array<{ word: string; isCorrect: boolean; vocaId: number }> } | null> => {
     if (!supabase) return null;
 
     const { data: wordResultData } = await supabase
@@ -180,17 +180,20 @@ export function useRealtimeKorean(academyId: string | null) {
 
     const correctWords: string[] = [];
     const wrongWords: string[] = [];
+    const wordResults: Array<{ word: string; isCorrect: boolean; vocaId: number }> = [];
 
     for (const result of wordResultData) {
       const word = wordMap.get(Number(result.item_id)) || '';
+      const vocaId = Number(result.item_id);
       if (result.is_correct) {
         correctWords.push(word);
       } else {
         wrongWords.push(word);
       }
+      wordResults.push({ word, isCorrect: result.is_correct, vocaId });
     }
 
-    return { correctWords, wrongWords };
+    return { correctWords, wrongWords, wordResults };
   }, []);
 
   // 보물찾기 세션의 기존 문제 결과 조회
@@ -427,10 +430,7 @@ export function useRealtimeKorean(academyId: string | null) {
               accuracyRate: newRecord.accuracy_rate || 0,
               correctWords: wordData?.correctWords,
               wrongWords: wordData?.wrongWords,
-              wordResults: wordData ? [
-                ...(wordData.correctWords?.map(word => ({ word, isCorrect: true })) || []),
-                ...(wordData.wrongWords?.map(word => ({ word, isCorrect: false })) || [])
-              ] : undefined,
+              wordResults: wordData?.wordResults,
               passageQuizDetails: passageQuizData || undefined,
               handwritingDetail: handwritingData || undefined,
               sentenceClinicDetail: sentenceClinicDetail || undefined
@@ -524,10 +524,11 @@ export function useRealtimeKorean(academyId: string | null) {
 
               // 단어팡 단어 추가 (wordResults 포함)
               if (testType === 'word_pang' && wordText) {
+                const vocaId = newResult.item_id || 0;
                 // wordResults 배열에 순서대로 추가
                 record.wordResults = record.wordResults
-                  ? [...record.wordResults, { word: wordText, isCorrect }]
-                  : [{ word: wordText, isCorrect }];
+                  ? [...record.wordResults, { word: wordText, isCorrect, vocaId }]
+                  : [{ word: wordText, isCorrect, vocaId }];
 
                 // 기존 호환성을 위해 분리 배열도 유지
                 if (isCorrect) {

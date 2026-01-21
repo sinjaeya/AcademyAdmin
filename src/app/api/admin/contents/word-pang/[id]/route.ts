@@ -49,7 +49,17 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
       return NextResponse.json({ error: '퀴즈를 찾을 수 없습니다.' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data });
+    // 한자 정보 조회
+    const { data: hanjaData } = await supabase
+      .from('korean_voca_hanja')
+      .select('id, hanja_sequence, hanja_char, hanja_pronunciation, contextual_meaning')
+      .eq('voca_id', data.voca_id)
+      .order('hanja_sequence', { ascending: true });
+
+    return NextResponse.json({
+      success: true,
+      data: { ...data, korean_voca_hanja: hanjaData || [] }
+    });
   } catch (error) {
     console.error('단어팡 퀴즈 조회 오류:', error);
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
@@ -61,7 +71,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams): Promis
   try {
     const { id } = await params;
     const body = await request.json();
-    const { option_1, option_2, option_3, option_4, correct_answer, explanation, qa_score, word, voca_id } = body;
+    const { option_1, option_2, option_3, option_4, correct_answer, explanation, qa_score, word, voca_id, hanjaDetails } = body;
 
     // 필수 필드 검증
     if (!option_1 || !option_2 || !option_3 || !option_4 || !correct_answer) {
@@ -83,6 +93,23 @@ export async function PUT(request: NextRequest, { params }: RouteParams): Promis
       if (vocaError) {
         console.error('단어 수정 오류:', vocaError);
         return NextResponse.json({ error: '단어 수정 실패: ' + vocaError.message }, { status: 500 });
+      }
+    }
+
+    // 한자 정보 업데이트
+    if (hanjaDetails && Array.isArray(hanjaDetails)) {
+      for (const hanja of hanjaDetails) {
+        const { error: hanjaError } = await supabase
+          .from('korean_voca_hanja')
+          .update({
+            hanja_pronunciation: hanja.hanja_pronunciation,
+            contextual_meaning: hanja.contextual_meaning
+          })
+          .eq('id', hanja.id);
+
+        if (hanjaError) {
+          console.error('한자 정보 수정 오류:', hanjaError);
+        }
       }
     }
 

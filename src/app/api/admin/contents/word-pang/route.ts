@@ -60,9 +60,34 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // 한자 정보 추가 조회 (voca_id 검색인 경우)
+    let enrichedData = data;
+    if (data && data.length > 0) {
+      const vocaIds = data.map((d: { voca_id: number }) => d.voca_id);
+      const { data: hanjaData } = await supabase
+        .from('korean_voca_hanja')
+        .select('id, voca_id, hanja_sequence, hanja_char, hanja_pronunciation, contextual_meaning')
+        .in('voca_id', vocaIds)
+        .order('hanja_sequence', { ascending: true });
+
+      // 각 퀴즈에 한자 정보 매핑
+      if (hanjaData) {
+        const hanjaMap = new Map<number, typeof hanjaData>();
+        hanjaData.forEach((h: { voca_id: number }) => {
+          const existing = hanjaMap.get(h.voca_id) || [];
+          hanjaMap.set(h.voca_id, [...existing, h]);
+        });
+
+        enrichedData = data.map((quiz: { voca_id: number }) => ({
+          ...quiz,
+          korean_voca_hanja: hanjaMap.get(quiz.voca_id) || []
+        }));
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      data,
+      data: enrichedData,
       pagination: {
         page,
         limit,

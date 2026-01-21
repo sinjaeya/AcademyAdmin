@@ -14,7 +14,7 @@ interface LearningRecord {
   correctWords?: string[];
   wrongWords?: string[];
   // 순서 유지된 단어 결과 (created_at 기준 정렬)
-  wordResults?: Array<{ word: string; isCorrect: boolean }>;
+  wordResults?: Array<{ word: string; isCorrect: boolean; vocaId: number }>;
   // 문장클리닉 상세 정보
   sentenceClinicDetail?: {
     keyword: string;
@@ -199,7 +199,7 @@ export async function GET(request: Request) {
     }
 
     // 단어팡 세션별 단어 정보 조회 (순서 유지)
-    const sessionWordMap = new Map<number, { correctWords: string[]; wrongWords: string[]; wordResults: Array<{ word: string; isCorrect: boolean }> }>();
+    const sessionWordMap = new Map<number, { correctWords: string[]; wrongWords: string[]; wordResults: Array<{ word: string; isCorrect: boolean; vocaId: number }> }>();
     if (testSessionData) {
       const wordPangSessionIds = testSessionData
         .filter(r => r.test_type === 'word_pang')
@@ -233,15 +233,16 @@ export async function GET(request: Request) {
           // 세션별 단어 결과 (순서 유지)
           for (const result of wordResultData) {
             const sessionId = Number(result.session_id);
-            const word = wordMap.get(Number(result.item_id)) || '';
+            const vocaId = Number(result.item_id);
+            const word = wordMap.get(vocaId) || '';
 
             if (!sessionWordMap.has(sessionId)) {
               sessionWordMap.set(sessionId, { correctWords: [], wrongWords: [], wordResults: [] });
             }
 
             const sessionData = sessionWordMap.get(sessionId)!;
-            // 순서 유지된 배열에 추가
-            sessionData.wordResults.push({ word, isCorrect: result.is_correct });
+            // 순서 유지된 배열에 추가 (vocaId 포함)
+            sessionData.wordResults.push({ word, isCorrect: result.is_correct, vocaId });
             // 기존 호환성을 위해 분리 배열도 유지
             if (result.is_correct) {
               sessionData.correctWords.push(word);
