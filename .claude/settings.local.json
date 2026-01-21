@@ -35,5 +35,8 @@
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "disabledMcpjsonServers": [
+    "playwright-test"
+  ]
 }

@@ -639,7 +639,7 @@ export function RealtimeKoreanV2() {
 
     const summaries = Array.from(summaryMap.values());
 
-    // 체크인/체크아웃 기준 정렬
+    // 체크인/체크아웃 기준 정렬 (안정화 버전)
     // 1순위: 체크인만 있고 체크아웃 없음 (학원에서 공부 중) → 상단
     // 2순위: 체크아웃 있음 (하원 완료) → 하단
     // 각 그룹 내에서는 최근 활동 시간순 (진행중 > 최근 완료)
@@ -647,26 +647,35 @@ export function RealtimeKoreanV2() {
       const aInfo = checkInInfo.get(a.studentId);
       const bInfo = checkInInfo.get(b.studentId);
 
-      // 체크아웃 여부로 1차 정렬
-      const aCheckedOut = aInfo?.hasCheckOut ?? true; // 체크인 정보 없으면 하단으로
+      // 1차: 체크아웃 여부 (체크인중 = 상단)
+      const aCheckedOut = aInfo?.hasCheckOut ?? true;
       const bCheckedOut = bInfo?.hasCheckOut ?? true;
 
-      if (!aCheckedOut && bCheckedOut) return -1; // a는 공부중, b는 하원 → a 상단
-      if (aCheckedOut && !bCheckedOut) return 1;  // a는 하원, b는 공부중 → b 상단
+      if (!aCheckedOut && bCheckedOut) return -1;
+      if (aCheckedOut && !bCheckedOut) return 1;
 
-      // 같은 그룹 내에서는 진행중 학생 먼저
+      // 2차: 진행중 학생 먼저
       if (a.currentActivity && !b.currentActivity) return -1;
       if (!a.currentActivity && b.currentActivity) return 1;
 
-      // 그 다음 등원 시간순 (최근 등원 = 위, 오래된 등원 = 아래)
+      // 3차: 등원 시간순 (최근 등원 = 위, 오래된 등원 = 아래)
       const aCheckIn = aInfo?.checkInTime || '';
       const bCheckIn = bInfo?.checkInTime || '';
       if (aCheckIn && bCheckIn) {
-        return new Date(bCheckIn).getTime() - new Date(aCheckIn).getTime();
+        const timeDiff = new Date(bCheckIn).getTime() - new Date(aCheckIn).getTime();
+        if (timeDiff !== 0) return timeDiff;
+      } else if (aCheckIn && !bCheckIn) {
+        return -1;
+      } else if (!aCheckIn && bCheckIn) {
+        return 1;
       }
 
-      // 마지막으로 이름순
-      return a.studentName.localeCompare(b.studentName);
+      // 4차: 이름순
+      const nameCompare = a.studentName.localeCompare(b.studentName);
+      if (nameCompare !== 0) return nameCompare;
+
+      // 5차: studentId로 최종 안정화 (절대 같을 수 없음)
+      return a.studentId - b.studentId;
     });
 
     return summaries;
