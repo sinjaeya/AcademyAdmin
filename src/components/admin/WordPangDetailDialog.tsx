@@ -57,6 +57,7 @@ interface WordPangDetailDialogProps {
   vocaId: number;
   word: string;
   onUpdate?: () => void;
+  onDelete?: (vocaId: number) => void; // 삭제 시 vocaId 전달
 }
 
 export function WordPangDetailDialog({
@@ -64,7 +65,8 @@ export function WordPangDetailDialog({
   onOpenChange,
   vocaId,
   word,
-  onUpdate
+  onUpdate,
+  onDelete
 }: WordPangDetailDialogProps): React.ReactElement {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -174,6 +176,7 @@ export function WordPangDetailDialog({
         toast({ type: 'success', description: '퀴즈가 삭제되었습니다.' });
         setDeleteConfirmOpen(false);
         onOpenChange(false);
+        onDelete?.(quiz.voca_id); // 삭제된 vocaId 전달
         onUpdate?.();
       } else {
         toast({ type: 'error', description: result.error || '삭제 실패' });

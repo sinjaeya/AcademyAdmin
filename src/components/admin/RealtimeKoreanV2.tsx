@@ -98,24 +98,35 @@ function ConnectionStatusIndicator({ status }: { status: ConnectionStatus }) {
 }
 
 // 단어팡 결과 배지 (순서 유지)
-function WordPangBadges({ record, onWordClick }: { record: LearningRecord; onWordClick?: (vocaId: number, word: string) => void }) {
+function WordPangBadges({ record, onWordClick, deletedVocaIds }: {
+  record: LearningRecord;
+  onWordClick?: (vocaId: number, word: string) => void;
+  deletedVocaIds?: Set<number>; // 삭제된 단어 목록
+}) {
   // wordResults가 있으면 순서대로 표시
   if (record.wordResults?.length) {
     return (
       <div className="flex flex-wrap gap-1">
-        {record.wordResults.map((result) => (
-          <Badge
-            key={`${result.vocaId}-${result.word}`}
-            onClick={() => onWordClick?.(result.vocaId, result.word)}
-            className={`text-xs px-1.5 py-0 cursor-pointer hover:opacity-80 ${
-              result.isCorrect
-                ? 'bg-green-100 text-green-700 border-green-200'
-                : 'bg-red-100 text-red-700 border-red-200'
-            }`}
-          >
-            {result.word}
-          </Badge>
-        ))}
+        {record.wordResults.map((result) => {
+          const isDeleted = deletedVocaIds?.has(result.vocaId);
+          return (
+            <Badge
+              key={`${result.vocaId}-${result.word}`}
+              onClick={() => !isDeleted && onWordClick?.(result.vocaId, result.word)}
+              className={`text-xs px-1.5 py-0 ${
+                isDeleted
+                  ? 'bg-gray-200 text-gray-400 line-through cursor-not-allowed' // 삭제된 단어 스타일
+                  : `cursor-pointer hover:opacity-80 ${
+                      result.isCorrect
+                        ? 'bg-green-100 text-green-700 border-green-200'
+                        : 'bg-red-100 text-red-700 border-red-200'
+                    }`
+              }`}
+            >
+              {result.word}
+            </Badge>
+          );
+        })}
       </div>
     );
   }
@@ -294,12 +305,13 @@ const DurationDisplay = React.memo(function DurationDisplay({
 });
 
 // 학생 로우 컴포넌트
-const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, onWordClick }: {
+const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, onWordClick, deletedVocaIds }: {
   summary: StudentSummary;
   onDeleteOrphanSessions: (records: { id: string; learningType: string }[]) => Promise<void>;
   presence?: StudentPresenceState;
   checkInTime?: string; // 체크인 시간 (등원 후 경과 시간 표시용)
   onWordClick?: (vocaId: number, word: string) => void;
+  deletedVocaIds?: Set<number>; // 삭제된 단어 목록
 }) {
   const isActive = summary.currentActivity !== null;
   const isOnline = !!presence;
@@ -385,7 +397,7 @@ const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessi
                       <span className="w-16">
                         <DurationDisplay startedAt={record.startedAt} completedAt={record.completedAt} />
                       </span>
-                      <WordPangBadges record={record} onWordClick={onWordClick} />
+                      <WordPangBadges record={record} onWordClick={onWordClick} deletedVocaIds={deletedVocaIds} />
                     </div>
                   ))}
               </div>
@@ -531,6 +543,9 @@ export function RealtimeKoreanV2() {
   const [hiddenStudents, setHiddenStudents] = useState<Set<number>>(new Set());
   const prevRecordsMapRef = useRef<Map<string, LearningRecord>>(new Map());
 
+  // 삭제된 단어 목록 (vocaId 기반)
+  const [deletedVocaIds, setDeletedVocaIds] = useState<Set<number>>(new Set());
+
   // 단어팡 상세 Dialog 상태
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedVocaId, setSelectedVocaId] = useState(0);
@@ -578,6 +593,11 @@ export function RealtimeKoreanV2() {
     setSelectedVocaId(vocaId);
     setSelectedWord(word);
     setDialogOpen(true);
+  }, []);
+
+  // 단어 삭제 핸들러
+  const handleWordDelete = useCallback((vocaId: number): void => {
+    setDeletedVocaIds(prev => new Set([...prev, vocaId]));
   }, []);
 
   // checkInInfo Map의 내용을 문자열 시그니처로 변환 (Map 참조 변경 감지용)
@@ -770,6 +790,7 @@ export function RealtimeKoreanV2() {
               presence={getPresence(summary.studentId)}
               checkInTime={checkInInfo.get(summary.studentId)?.checkInTime}
               onWordClick={handleWordClick}
+              deletedVocaIds={deletedVocaIds}
             />
           ))}
         </div>
@@ -781,6 +802,7 @@ export function RealtimeKoreanV2() {
         onOpenChange={setDialogOpen}
         vocaId={selectedVocaId}
         word={selectedWord}
+        onDelete={handleWordDelete}
       />
     </div>
   );
