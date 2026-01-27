@@ -1,9 +1,9 @@
 // 풀스택-국어 실시간뷰 공통 타입 정의
 
 // 학습 유형
-export type LearningType = 'word_pang' | 'passage_quiz' | 'sentence_clinic' | 'handwriting';
+export type LearningType = 'word_pang' | 'passage_quiz' | 'sentence_clinic_v2' | 'handwriting';
 
-// 문장클리닉 상세 정보
+// 문장클리닉 v1 상세 정보 (deprecated - 하위 호환용)
 export interface SentenceClinicDetail {
   passageId: string; // short_passage.id는 UUID
   keyword: string;
@@ -22,6 +22,22 @@ export interface SentenceClinicDetail {
   keywordSelectedAnswer: number | null;
   keywordIsCorrect: boolean | null;
   keywordExplanation: string;
+}
+
+// 문장클리닉 v2 상세 정보
+export interface SentenceClinicV2Detail {
+  passageId: string;
+  keyword: string;
+  text?: string;
+  quizzes: Array<{
+    quizOrder: number;
+    quizType: 'cloze' | 'comprehension' | 'inference' | 'relation';
+    question: string;
+    options: string[];
+    correctAnswer: number;
+    selectedAnswer: number | null;
+    isCorrect: boolean | null;
+  }>;
 }
 
 // 보물찾기 O/X 문제 상세
@@ -53,8 +69,10 @@ export interface LearningRecord {
   correctWords?: string[];
   wrongWords?: string[];
   wordResults?: Array<{ word: string; isCorrect: boolean; vocaId: number }>; // 순서 유지된 결과
-  // 문장클리닉 전용
+  // 문장클리닉 v1 전용 (deprecated)
   sentenceClinicDetail?: SentenceClinicDetail;
+  // 문장클리닉 v2 전용
+  sentenceClinicV2Detail?: SentenceClinicV2Detail;
   // 보물찾기 전용
   passageQuizDetails?: PassageQuizDetail[];
   // 내손내줄 전용
@@ -98,7 +116,7 @@ export interface StudentSummary {
     count: number;
     correctCount: number;
     accuracyRate: number;
-    reviewCount: number; // 복습 대상 지문 수
+    // v2에서는 복습 기능 제거
   };
   handwriting: {
     sessionCount: number;
@@ -121,6 +139,5 @@ export interface RealtimeKoreanApiResponse {
   data: LearningRecord[];
   wordCounts: Record<number, StudentWordCount>;
   historicalAccuracy: Record<number, StudentHistoricalAccuracy>;
-  reviewCounts: Record<number, number>; // 학생별 문장클리닉 복습 대상 카운트
   checkInInfo: Record<number, StudentCheckInInfo>; // 오늘 체크인 중인 학생 정보
 }

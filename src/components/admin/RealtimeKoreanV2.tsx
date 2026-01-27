@@ -15,7 +15,7 @@ const getLearningTypeLabel = (type: string): string => {
   switch (type) {
     case 'word_pang': return '단어팡';
     case 'passage_quiz': return '보물찾기';
-    case 'sentence_clinic': return '문장클리닉';
+    case 'sentence_clinic_v2': return '문장클리닉';
     case 'handwriting': return '내손내줄';
     default: return type;
   }
@@ -177,9 +177,9 @@ function PassageQuizBadges({ record }: { record: LearningRecord }) {
   );
 }
 
-// 문장클리닉 결과 배지
-function SentenceClinicBadges({ record }: { record: LearningRecord }) {
-  const detail = record.sentenceClinicDetail;
+// 문장클리닉 v2 결과 배지
+function SentenceClinicV2Badges({ record }: { record: LearningRecord }) {
+  const detail = record.sentenceClinicV2Detail;
   if (!detail) {
     return <span className="text-gray-400 text-sm">-</span>;
   }
@@ -191,15 +191,26 @@ function SentenceClinicBadges({ record }: { record: LearningRecord }) {
     return <span className="text-red-600">✗</span>;
   };
 
+  // 퀴즈 타입 라벨
+  const quizTypeLabels: Record<string, string> = {
+    'cloze': '빈칸',
+    'comprehension': '이해',
+    'inference': '추론',
+    'relation': '관계'
+  };
+
   return (
     <div className="flex items-center gap-2">
       <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">
         {detail.keyword || '키워드'}
       </Badge>
       <span className="text-xs text-gray-500">
-        빈칸: {renderResult(detail.clozeIsCorrect)}
-        {' / '}
-        키워드: {renderResult(detail.keywordIsCorrect)}
+        {detail.quizzes.map((quiz, idx) => (
+          <React.Fragment key={idx}>
+            {idx > 0 && ' / '}
+            {quizTypeLabels[quiz.quizType] || quiz.quizType}: {renderResult(quiz.isCorrect)}
+          </React.Fragment>
+        ))}
       </span>
     </div>
   );
@@ -309,9 +320,9 @@ const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessi
   summary: StudentSummary;
   onDeleteOrphanSessions: (records: { id: string; learningType: string }[]) => Promise<void>;
   presence?: StudentPresenceState;
-  checkInTime?: string; // 체크인 시간 (등원 후 경과 시간 표시용)
+  checkInTime?: string;
   onWordClick?: (vocaId: number, word: string) => void;
-  deletedVocaIds?: Set<number>; // 삭제된 단어 목록
+  deletedVocaIds?: Set<number>;
 }) {
   const isActive = summary.currentActivity !== null;
   const isOnline = !!presence;
@@ -440,48 +451,37 @@ const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessi
           </div>
         )}
 
-        {/* 문장클리닉 */}
-        {(summary.sentenceClinic.count > 0 || summary.sentenceClinic.reviewCount > 0) && (
+        {/* 문장클리닉 v2 */}
+        {summary.sentenceClinic.count > 0 && (
           <div className="flex items-start gap-3 py-2 border-b border-gray-100">
             <Badge className="bg-purple-100 text-purple-800 border-purple-200 shrink-0 w-20 justify-center">
               문장클리닉
             </Badge>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                {summary.sentenceClinic.count > 0 && (
-                  <>
-                    <span className="text-sm font-medium text-gray-700">
-                      {summary.sentenceClinic.count}개
-                    </span>
-                    <span className={`text-sm font-medium ${
-                      summary.sentenceClinic.accuracyRate >= 80 ? 'text-green-600' :
-                      summary.sentenceClinic.accuracyRate >= 60 ? 'text-yellow-600' : 'text-red-600'
-                    }`}>
-                      ({summary.sentenceClinic.accuracyRate.toFixed(0)}%)
-                    </span>
-                  </>
-                )}
-                {summary.sentenceClinic.reviewCount > 0 && (
-                  <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs">
-                    복습대기 {summary.sentenceClinic.reviewCount}개
-                  </Badge>
-                )}
+                <span className="text-sm font-medium text-gray-700">
+                  {summary.sentenceClinic.count}개
+                </span>
+                <span className={`text-sm font-medium ${
+                  summary.sentenceClinic.accuracyRate >= 80 ? 'text-green-600' :
+                  summary.sentenceClinic.accuracyRate >= 60 ? 'text-yellow-600' : 'text-red-600'
+                }`}>
+                  ({summary.sentenceClinic.accuracyRate.toFixed(0)}%)
+                </span>
               </div>
               {/* 개별 세션 기록 */}
-              {summary.sentenceClinic.count > 0 && (
-                <div className="space-y-1">
-                  {summary.records
-                    .filter(r => r.learningType === 'sentence_clinic')
-                    .map(record => (
-                      <div key={record.id} className="flex items-center gap-2 text-xs">
-                        <span className={`w-16 ${record.completedAt ? 'text-gray-400' : 'text-blue-500 animate-pulse'}`}>
-                          {formatDuration(record.startedAt, record.completedAt)}
-                        </span>
-                        <SentenceClinicBadges record={record} />
-                      </div>
-                    ))}
-                </div>
-              )}
+              <div className="space-y-1">
+                {summary.records
+                  .filter(r => r.learningType === 'sentence_clinic_v2')
+                  .map(record => (
+                    <div key={record.id} className="flex items-center gap-2 text-xs">
+                      <span className="w-16">
+                        <DurationDisplay startedAt={record.startedAt} completedAt={record.completedAt} />
+                      </span>
+                      <SentenceClinicV2Badges record={record} />
+                    </div>
+                  ))}
+              </div>
             </div>
           </div>
         )}
@@ -535,7 +535,7 @@ const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessi
 // 메인 컴포넌트
 export function RealtimeKoreanV2() {
   const { academyId } = useAuthStore();
-  const { records, wordCounts, historicalAccuracy, reviewCounts, checkInInfo, loading, connectionStatus, lastUpdate, deleteSession } = useRealtimeKorean(academyId);
+  const { records, wordCounts, historicalAccuracy, checkInInfo, loading, connectionStatus, lastUpdate, deleteSession } = useRealtimeKorean(academyId);
   // Presence 훅 (academyId 그대로 전달 - UUID 문자열)
   const { getPresence, connectionStatus: presenceStatus } = useStudentPresence(academyId);
 
@@ -620,7 +620,7 @@ export function RealtimeKoreanV2() {
           currentActivity: null,
           wordPang: { count: 0, correctCount: 0, accuracyRate: 0 },
           passageQuiz: { sessionCount: 0, count: 0, correctCount: 0, accuracyRate: 0 },
-          sentenceClinic: { count: 0, correctCount: 0, accuracyRate: 0, reviewCount: reviewCounts.get(record.studentId) || 0 },
+          sentenceClinic: { count: 0, correctCount: 0, accuracyRate: 0 },
           handwriting: { sessionCount: 0, count: 0, correctCount: 0, accuracyRate: 0 },
           records: [],
           historicalAccuracy: historicalAccuracy.get(record.studentId)
@@ -645,8 +645,8 @@ export function RealtimeKoreanV2() {
         summary.handwriting.sessionCount += 1;
       }
 
-      // 문장클리닉 통계
-      if (record.completedAt && record.learningType === 'sentence_clinic') {
+      // 문장클리닉 v2 통계
+      if (record.completedAt && record.learningType === 'sentence_clinic_v2') {
         summary.sentenceClinic.count += 1;
         summary.sentenceClinic.correctCount += record.correctCount;
       }
@@ -681,7 +681,8 @@ export function RealtimeKoreanV2() {
         summary.passageQuiz.accuracyRate = (summary.passageQuiz.correctCount / summary.passageQuiz.count) * 100;
       }
       if (summary.sentenceClinic.count > 0) {
-        summary.sentenceClinic.accuracyRate = (summary.sentenceClinic.correctCount / (summary.sentenceClinic.count * 2)) * 100;
+        // v2에서는 4문제 기준
+        summary.sentenceClinic.accuracyRate = (summary.sentenceClinic.correctCount / (summary.sentenceClinic.count * 4)) * 100;
       }
       if (summary.handwriting.count > 0) {
         summary.handwriting.accuracyRate = (summary.handwriting.correctCount / summary.handwriting.count) * 100;
@@ -729,7 +730,7 @@ export function RealtimeKoreanV2() {
     });
 
     return summaries;
-  }, [records, wordCounts, historicalAccuracy, reviewCounts, checkInInfoSignature]);
+  }, [records, wordCounts, historicalAccuracy, checkInInfoSignature]);
 
   // 숨긴 학생 제외
   const visibleSummaries = useMemo(() => {

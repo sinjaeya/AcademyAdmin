@@ -25,27 +25,33 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/toast';
 import { Search, Edit, Trash2, ChevronLeft, ChevronRight, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 
-// 문장클리닉 타입
+// 퀴즈 타입
+interface Quiz {
+  id?: string;
+  quiz_order: number;
+  quiz_type: 'cloze' | 'comprehension' | 'inference' | 'relation';
+  question: string;
+  option_1: string;
+  option_2: string;
+  option_3: string;
+  option_4: string;
+  correct_answer: number;
+  explanation: string | null;
+  sentence_a?: string | null;
+  sentence_b?: string | null;
+}
+
+// 문장클리닉 v2 타입
 interface SentenceClinic {
-  id: number;
-  grade_level: string | null;
-  structure_type: string | null;
+  id: string;
   keyword: string;
+  grade_level: string | null;
   text: string;
-  cloze_summary: string | null;
-  cloze_option_1: string | null;
-  cloze_option_2: string | null;
-  cloze_option_3: string | null;
-  cloze_option_4: string | null;
-  cloze_answer: number | null;
-  cloze_explanation: string | null;
-  keyword_question: string | null;
-  keyword_option_1: string | null;
-  keyword_option_2: string | null;
-  keyword_option_3: string | null;
-  keyword_option_4: string | null;
-  keyword_answer: number | null;
-  keyword_explanation: string | null;
+  char_count: number;
+  qa_status: string | null;
+  created_at: string;
+  updated_at: string;
+  quizzes: Quiz[];
 }
 
 // 페이지네이션 타입
@@ -55,6 +61,14 @@ interface Pagination {
   total: number;
   totalPages: number;
 }
+
+// 퀴즈 타입 라벨
+const QUIZ_TYPE_LABELS: Record<string, string> = {
+  cloze: '빈칸',
+  comprehension: '이해',
+  inference: '추론',
+  relation: '관계'
+};
 
 export default function SentenceClinicManagementPage(): React.ReactElement {
   const { toast } = useToast();
@@ -73,7 +87,7 @@ export default function SentenceClinicManagementPage(): React.ReactElement {
   const [searchKeyword, setSearchKeyword] = useState('');
 
   // 텍스트 펼치기/접기 상태
-  const [expandedTexts, setExpandedTexts] = useState<Set<number>>(new Set());
+  const [expandedTexts, setExpandedTexts] = useState<Set<string>>(new Set());
 
   // 모달 상태
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -82,28 +96,14 @@ export default function SentenceClinicManagementPage(): React.ReactElement {
 
   // 수정 폼 상태
   const [editForm, setEditForm] = useState({
-    grade_level: '',
-    structure_type: '',
     keyword: '',
+    grade_level: '',
     text: '',
-    cloze_summary: '',
-    cloze_option_1: '',
-    cloze_option_2: '',
-    cloze_option_3: '',
-    cloze_option_4: '',
-    cloze_answer: 1,
-    cloze_explanation: '',
-    keyword_question: '',
-    keyword_option_1: '',
-    keyword_option_2: '',
-    keyword_option_3: '',
-    keyword_option_4: '',
-    keyword_answer: 1,
-    keyword_explanation: ''
+    quizzes: [] as Quiz[]
   });
 
   // 텍스트 펼치기/접기 토글
-  const toggleTextExpand = (id: number): void => {
+  const toggleTextExpand = (id: string): void => {
     setExpandedTexts(prev => {
       const newSet = new Set(prev);
       if (newSet.has(id)) {
@@ -160,31 +160,44 @@ export default function SentenceClinicManagementPage(): React.ReactElement {
   const openEditDialog = (clinic: SentenceClinic): void => {
     setSelectedClinic(clinic);
     setEditForm({
-      grade_level: clinic.grade_level || '',
-      structure_type: clinic.structure_type || '',
       keyword: clinic.keyword || '',
+      grade_level: clinic.grade_level || '',
       text: clinic.text || '',
-      cloze_summary: clinic.cloze_summary || '',
-      cloze_option_1: clinic.cloze_option_1 || '',
-      cloze_option_2: clinic.cloze_option_2 || '',
-      cloze_option_3: clinic.cloze_option_3 || '',
-      cloze_option_4: clinic.cloze_option_4 || '',
-      cloze_answer: clinic.cloze_answer || 1,
-      cloze_explanation: clinic.cloze_explanation || '',
-      keyword_question: clinic.keyword_question || '',
-      keyword_option_1: clinic.keyword_option_1 || '',
-      keyword_option_2: clinic.keyword_option_2 || '',
-      keyword_option_3: clinic.keyword_option_3 || '',
-      keyword_option_4: clinic.keyword_option_4 || '',
-      keyword_answer: clinic.keyword_answer || 1,
-      keyword_explanation: clinic.keyword_explanation || ''
+      quizzes: clinic.quizzes?.map(q => ({
+        id: q.id,
+        quiz_order: q.quiz_order,
+        quiz_type: q.quiz_type,
+        question: q.question,
+        option_1: q.option_1,
+        option_2: q.option_2,
+        option_3: q.option_3,
+        option_4: q.option_4,
+        correct_answer: q.correct_answer,
+        explanation: q.explanation || '',
+        sentence_a: q.sentence_a || '',
+        sentence_b: q.sentence_b || ''
+      })) || []
     });
     setEditDialogOpen(true);
+  };
+
+  // 퀴즈 필드 업데이트
+  const updateQuizField = (index: number, field: keyof Quiz, value: any): void => {
+    setEditForm(prev => ({
+      ...prev,
+      quizzes: prev.quizzes.map((q, i) => i === index ? { ...q, [field]: value } : q)
+    }));
   };
 
   // 수정 저장
   const handleSaveEdit = async (): Promise<void> => {
     if (!selectedClinic) return;
+
+    // 필수 필드 검증
+    if (!editForm.keyword.trim() || !editForm.text.trim()) {
+      toast({ type: 'warning', description: '키워드와 지문은 필수입니다.' });
+      return;
+    }
 
     try {
       const response = await fetch(`/api/admin/contents/sentence-clinic/${selectedClinic.id}`, {
@@ -242,7 +255,7 @@ export default function SentenceClinicManagementPage(): React.ReactElement {
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">문장클리닉 관리</h1>
+          <h1 className="text-2xl font-bold">문장클리닉 관리 (v2)</h1>
         </div>
 
         {/* 검색 영역 */}
@@ -284,16 +297,16 @@ export default function SentenceClinicManagementPage(): React.ReactElement {
                       <div>
                         <div className="flex items-center gap-3 mb-1">
                           <span className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-0.5 rounded">
-                            ID: {clinic.id}
+                            {clinic.id.substring(0, 8)}
                           </span>
                           {clinic.grade_level && (
                             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
                               {clinic.grade_level}
                             </span>
                           )}
-                          {clinic.structure_type && (
-                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
-                              {clinic.structure_type}
+                          {clinic.qa_status && (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                              {clinic.qa_status}
                             </span>
                           )}
                         </div>
@@ -330,7 +343,7 @@ export default function SentenceClinicManagementPage(): React.ReactElement {
                         onClick={() => toggleTextExpand(clinic.id)}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-semibold text-gray-500">지문</span>
+                          <span className="text-xs font-semibold text-gray-500">지문 ({clinic.char_count}자)</span>
                           {expandedTexts.has(clinic.id) ? (
                             <ChevronUp className="w-4 h-4 text-gray-400" />
                           ) : (
@@ -343,81 +356,53 @@ export default function SentenceClinicManagementPage(): React.ReactElement {
                       </div>
                     </div>
 
-                    {/* 빈칸 문제 */}
-                    {clinic.cloze_option_1 && (
-                      <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
-                        <p className="text-xs font-semibold text-blue-700 mb-2">빈칸 문제</p>
-                        {clinic.cloze_summary && (
-                          <p className="text-sm text-blue-800 mb-2">{clinic.cloze_summary}</p>
-                        )}
-                        <div className="grid grid-cols-2 gap-2">
-                          {[clinic.cloze_option_1, clinic.cloze_option_2, clinic.cloze_option_3, clinic.cloze_option_4].map((option, idx) => (
-                            option && (
+                    {/* 퀴즈 4개 미리보기 */}
+                    {clinic.quizzes && clinic.quizzes.length > 0 && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {clinic.quizzes
+                          .sort((a, b) => a.quiz_order - b.quiz_order)
+                          .map((quiz, idx) => {
+                            // Tailwind CSS 정적 클래스명 매핑
+                            const bgColor = quiz.quiz_type === 'cloze' ? 'bg-blue-50' :
+                                          quiz.quiz_type === 'comprehension' ? 'bg-purple-50' :
+                                          quiz.quiz_type === 'inference' ? 'bg-green-50' :
+                                          quiz.quiz_type === 'relation' ? 'bg-orange-50' : 'bg-gray-50';
+                            const borderColor = quiz.quiz_type === 'cloze' ? 'border-blue-200' :
+                                              quiz.quiz_type === 'comprehension' ? 'border-purple-200' :
+                                              quiz.quiz_type === 'inference' ? 'border-green-200' :
+                                              quiz.quiz_type === 'relation' ? 'border-orange-200' : 'border-gray-200';
+                            const textColor = quiz.quiz_type === 'cloze' ? 'text-blue-700' :
+                                            quiz.quiz_type === 'comprehension' ? 'text-purple-700' :
+                                            quiz.quiz_type === 'inference' ? 'text-green-700' :
+                                            quiz.quiz_type === 'relation' ? 'text-orange-700' : 'text-gray-700';
+                            return (
                               <div
                                 key={idx}
-                                className={`p-2 rounded border text-sm ${
-                                  clinic.cloze_answer === idx + 1
-                                    ? 'bg-green-50 border-green-300 text-green-800'
-                                    : 'bg-white border-gray-200 text-gray-700'
-                                }`}
+                                className={`p-3 ${bgColor} rounded border ${borderColor}`}
                               >
-                                <span className={`font-semibold mr-2 ${
-                                  clinic.cloze_answer === idx + 1 ? 'text-green-600' : 'text-gray-500'
-                                }`}>
-                                  {idx + 1}.
-                                </span>
-                                {option}
-                                {clinic.cloze_answer === idx + 1 && (
-                                  <span className="ml-2 text-green-600 font-semibold">(정답)</span>
-                                )}
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className={`text-xs font-semibold ${textColor}`}>
+                                    {quiz.quiz_order}. {QUIZ_TYPE_LABELS[quiz.quiz_type] || quiz.quiz_type}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-800 mb-2 line-clamp-2">{quiz.question}</p>
+                                <div className="grid grid-cols-2 gap-1">
+                                  {[quiz.option_1, quiz.option_2, quiz.option_3, quiz.option_4].map((option, optIdx) => (
+                                    <div
+                                      key={optIdx}
+                                      className={`p-1 rounded text-xs ${
+                                        quiz.correct_answer === optIdx + 1
+                                          ? 'bg-green-100 border border-green-300 text-green-800 font-semibold'
+                                          : 'bg-white border border-gray-200 text-gray-600'
+                                      }`}
+                                    >
+                                      {optIdx + 1}. {option.substring(0, 20)}{option.length > 20 ? '...' : ''}
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            )
-                          ))}
-                        </div>
-                        {clinic.cloze_explanation && (
-                          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                            <span className="font-semibold">해설:</span> {clinic.cloze_explanation}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* 핵심어 문제 */}
-                    {clinic.keyword_option_1 && (
-                      <div className="p-3 bg-purple-50 rounded border border-purple-200">
-                        <p className="text-xs font-semibold text-purple-700 mb-2">핵심어 문제</p>
-                        {clinic.keyword_question && (
-                          <p className="text-sm text-purple-800 mb-2">{clinic.keyword_question}</p>
-                        )}
-                        <div className="grid grid-cols-2 gap-2">
-                          {[clinic.keyword_option_1, clinic.keyword_option_2, clinic.keyword_option_3, clinic.keyword_option_4].map((option, idx) => (
-                            option && (
-                              <div
-                                key={idx}
-                                className={`p-2 rounded border text-sm ${
-                                  clinic.keyword_answer === idx + 1
-                                    ? 'bg-green-50 border-green-300 text-green-800'
-                                    : 'bg-white border-gray-200 text-gray-700'
-                                }`}
-                              >
-                                <span className={`font-semibold mr-2 ${
-                                  clinic.keyword_answer === idx + 1 ? 'text-green-600' : 'text-gray-500'
-                                }`}>
-                                  {idx + 1}.
-                                </span>
-                                {option}
-                                {clinic.keyword_answer === idx + 1 && (
-                                  <span className="ml-2 text-green-600 font-semibold">(정답)</span>
-                                )}
-                              </div>
-                            )
-                          ))}
-                        </div>
-                        {clinic.keyword_explanation && (
-                          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                            <span className="font-semibold">해설:</span> {clinic.keyword_explanation}
-                          </div>
-                        )}
+                            );
+                          })}
                       </div>
                     )}
                   </CardContent>
@@ -458,13 +443,13 @@ export default function SentenceClinicManagementPage(): React.ReactElement {
 
         {/* 수정 다이얼로그 */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>문장클리닉 수정</DialogTitle>
+              <DialogTitle>문장클리닉 수정 (v2)</DialogTitle>
               <DialogDescription>
                 {selectedClinic && (
                   <span className="font-semibold text-blue-600">
-                    [{selectedClinic.id}] {selectedClinic.keyword}
+                    {selectedClinic.keyword}
                   </span>
                 )}
               </DialogDescription>
@@ -472,9 +457,9 @@ export default function SentenceClinicManagementPage(): React.ReactElement {
 
             <div className="grid gap-4 py-4">
               {/* 기본 정보 */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="keyword">키워드</Label>
+                  <Label htmlFor="keyword">키워드 *</Label>
                   <Input
                     id="keyword"
                     value={editForm.keyword}
@@ -489,180 +474,162 @@ export default function SentenceClinicManagementPage(): React.ReactElement {
                     onChange={(e) => setEditForm({ ...editForm, grade_level: e.target.value })}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="structure_type">구조 유형</Label>
-                  <Input
-                    id="structure_type"
-                    value={editForm.structure_type}
-                    onChange={(e) => setEditForm({ ...editForm, structure_type: e.target.value })}
-                  />
-                </div>
               </div>
 
               <div>
-                <Label htmlFor="text">지문</Label>
+                <Label htmlFor="text">지문 *</Label>
                 <Textarea
                   id="text"
                   value={editForm.text}
                   onChange={(e) => setEditForm({ ...editForm, text: e.target.value })}
-                  rows={4}
+                  rows={5}
                 />
               </div>
 
-              {/* 빈칸 문제 */}
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <h3 className="font-semibold text-blue-700 mb-3">빈칸 문제</h3>
-                <div className="space-y-3">
-                  <div>
-                    <Label htmlFor="cloze_summary">빈칸 문제 요약</Label>
-                    <Textarea
-                      id="cloze_summary"
-                      value={editForm.cloze_summary}
-                      onChange={(e) => setEditForm({ ...editForm, cloze_summary: e.target.value })}
-                      rows={2}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="cloze_option_1">선택지 1</Label>
-                      <Input
-                        id="cloze_option_1"
-                        value={editForm.cloze_option_1}
-                        onChange={(e) => setEditForm({ ...editForm, cloze_option_1: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="cloze_option_2">선택지 2</Label>
-                      <Input
-                        id="cloze_option_2"
-                        value={editForm.cloze_option_2}
-                        onChange={(e) => setEditForm({ ...editForm, cloze_option_2: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="cloze_option_3">선택지 3</Label>
-                      <Input
-                        id="cloze_option_3"
-                        value={editForm.cloze_option_3}
-                        onChange={(e) => setEditForm({ ...editForm, cloze_option_3: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="cloze_option_4">선택지 4</Label>
-                      <Input
-                        id="cloze_option_4"
-                        value={editForm.cloze_option_4}
-                        onChange={(e) => setEditForm({ ...editForm, cloze_option_4: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="cloze_answer">정답 (1-4)</Label>
-                      <Select
-                        value={editForm.cloze_answer.toString()}
-                        onValueChange={(v) => setEditForm({ ...editForm, cloze_answer: parseInt(v) })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1번</SelectItem>
-                          <SelectItem value="2">2번</SelectItem>
-                          <SelectItem value="3">3번</SelectItem>
-                          <SelectItem value="4">4번</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="cloze_explanation">해설</Label>
-                    <Textarea
-                      id="cloze_explanation"
-                      value={editForm.cloze_explanation}
-                      onChange={(e) => setEditForm({ ...editForm, cloze_explanation: e.target.value })}
-                      rows={2}
-                    />
-                  </div>
-                </div>
-              </div>
+              {/* 퀴즈 4개 편집 */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-gray-900">퀴즈 ({editForm.quizzes.length}개)</h3>
+                {editForm.quizzes
+                  .sort((a, b) => a.quiz_order - b.quiz_order)
+                  .map((quiz, idx) => {
+                    // Tailwind CSS 정적 클래스명 매핑
+                    const bgColor = quiz.quiz_type === 'cloze' ? 'bg-blue-50' :
+                                  quiz.quiz_type === 'comprehension' ? 'bg-purple-50' :
+                                  quiz.quiz_type === 'inference' ? 'bg-green-50' :
+                                  quiz.quiz_type === 'relation' ? 'bg-orange-50' : 'bg-gray-50';
+                    const borderColor = quiz.quiz_type === 'cloze' ? 'border-blue-200' :
+                                      quiz.quiz_type === 'comprehension' ? 'border-purple-200' :
+                                      quiz.quiz_type === 'inference' ? 'border-green-200' :
+                                      quiz.quiz_type === 'relation' ? 'border-orange-200' : 'border-gray-200';
+                    const textColor = quiz.quiz_type === 'cloze' ? 'text-blue-700' :
+                                    quiz.quiz_type === 'comprehension' ? 'text-purple-700' :
+                                    quiz.quiz_type === 'inference' ? 'text-green-700' :
+                                    quiz.quiz_type === 'relation' ? 'text-orange-700' : 'text-gray-700';
+                    return (
+                      <div key={idx} className={`p-4 ${bgColor} rounded-lg border ${borderColor}`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className={`font-semibold ${textColor}`}>
+                            {quiz.quiz_order}. {QUIZ_TYPE_LABELS[quiz.quiz_type] || quiz.quiz_type}
+                          </h4>
+                          <div className="flex gap-2">
+                            <Select
+                              value={quiz.quiz_type}
+                              onValueChange={(v) => updateQuizField(idx, 'quiz_type', v)}
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="cloze">빈칸</SelectItem>
+                                <SelectItem value="comprehension">이해</SelectItem>
+                                <SelectItem value="inference">추론</SelectItem>
+                                <SelectItem value="relation">관계</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
 
-              {/* 핵심어 문제 */}
-              <div className="p-4 bg-purple-50 rounded-lg">
-                <h3 className="font-semibold text-purple-700 mb-3">핵심어 문제</h3>
-                <div className="space-y-3">
-                  <div>
-                    <Label htmlFor="keyword_question">핵심어 질문</Label>
-                    <Textarea
-                      id="keyword_question"
-                      value={editForm.keyword_question}
-                      onChange={(e) => setEditForm({ ...editForm, keyword_question: e.target.value })}
-                      rows={2}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="keyword_option_1">선택지 1</Label>
-                      <Input
-                        id="keyword_option_1"
-                        value={editForm.keyword_option_1}
-                        onChange={(e) => setEditForm({ ...editForm, keyword_option_1: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="keyword_option_2">선택지 2</Label>
-                      <Input
-                        id="keyword_option_2"
-                        value={editForm.keyword_option_2}
-                        onChange={(e) => setEditForm({ ...editForm, keyword_option_2: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="keyword_option_3">선택지 3</Label>
-                      <Input
-                        id="keyword_option_3"
-                        value={editForm.keyword_option_3}
-                        onChange={(e) => setEditForm({ ...editForm, keyword_option_3: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="keyword_option_4">선택지 4</Label>
-                      <Input
-                        id="keyword_option_4"
-                        value={editForm.keyword_option_4}
-                        onChange={(e) => setEditForm({ ...editForm, keyword_option_4: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="keyword_answer">정답 (1-4)</Label>
-                      <Select
-                        value={editForm.keyword_answer.toString()}
-                        onValueChange={(v) => setEditForm({ ...editForm, keyword_answer: parseInt(v) })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1번</SelectItem>
-                          <SelectItem value="2">2번</SelectItem>
-                          <SelectItem value="3">3번</SelectItem>
-                          <SelectItem value="4">4번</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="keyword_explanation">해설</Label>
-                    <Textarea
-                      id="keyword_explanation"
-                      value={editForm.keyword_explanation}
-                      onChange={(e) => setEditForm({ ...editForm, keyword_explanation: e.target.value })}
-                      rows={2}
-                    />
-                  </div>
-                </div>
+                        <div className="space-y-3">
+                          <div>
+                            <Label htmlFor={`question_${idx}`}>문제</Label>
+                            <Textarea
+                              id={`question_${idx}`}
+                              value={quiz.question}
+                              onChange={(e) => updateQuizField(idx, 'question', e.target.value)}
+                              rows={2}
+                            />
+                          </div>
+
+                          {/* relation 타입인 경우 sentence_a, sentence_b */}
+                          {quiz.quiz_type === 'relation' && (
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label htmlFor={`sentence_a_${idx}`}>문장 A</Label>
+                                <Input
+                                  id={`sentence_a_${idx}`}
+                                  value={quiz.sentence_a || ''}
+                                  onChange={(e) => updateQuizField(idx, 'sentence_a', e.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor={`sentence_b_${idx}`}>문장 B</Label>
+                                <Input
+                                  id={`sentence_b_${idx}`}
+                                  value={quiz.sentence_b || ''}
+                                  onChange={(e) => updateQuizField(idx, 'sentence_b', e.target.value)}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor={`option_1_${idx}`}>선택지 1</Label>
+                              <Input
+                                id={`option_1_${idx}`}
+                                value={quiz.option_1}
+                                onChange={(e) => updateQuizField(idx, 'option_1', e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`option_2_${idx}`}>선택지 2</Label>
+                              <Input
+                                id={`option_2_${idx}`}
+                                value={quiz.option_2}
+                                onChange={(e) => updateQuizField(idx, 'option_2', e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`option_3_${idx}`}>선택지 3</Label>
+                              <Input
+                                id={`option_3_${idx}`}
+                                value={quiz.option_3}
+                                onChange={(e) => updateQuizField(idx, 'option_3', e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`option_4_${idx}`}>선택지 4</Label>
+                              <Input
+                                id={`option_4_${idx}`}
+                                value={quiz.option_4}
+                                onChange={(e) => updateQuizField(idx, 'option_4', e.target.value)}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor={`correct_answer_${idx}`}>정답 (1-4)</Label>
+                              <Select
+                                value={quiz.correct_answer.toString()}
+                                onValueChange={(v) => updateQuizField(idx, 'correct_answer', parseInt(v))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="1">1번</SelectItem>
+                                  <SelectItem value="2">2번</SelectItem>
+                                  <SelectItem value="3">3번</SelectItem>
+                                  <SelectItem value="4">4번</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label htmlFor={`explanation_${idx}`}>해설</Label>
+                            <Textarea
+                              id={`explanation_${idx}`}
+                              value={quiz.explanation || ''}
+                              onChange={(e) => updateQuizField(idx, 'explanation', e.target.value)}
+                              rows={2}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
 
@@ -686,7 +653,7 @@ export default function SentenceClinicManagementPage(): React.ReactElement {
                 {selectedClinic && (
                   <>
                     <span className="font-semibold text-red-600">
-                      [{selectedClinic.id}] {selectedClinic.keyword}
+                      {selectedClinic.keyword}
                     </span>
                     {' '}항목을 삭제하시겠습니까?
                     <br />

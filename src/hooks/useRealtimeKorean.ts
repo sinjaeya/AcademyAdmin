@@ -7,7 +7,7 @@ import type {
   StudentWordCount,
   StudentHistoricalAccuracy,
   StudentCheckInInfo,
-  SentenceClinicDetail,
+  SentenceClinicV2Detail,
   PassageQuizDetail,
   HandwritingDetail,
   RealtimeKoreanApiResponse
@@ -17,7 +17,7 @@ import type {
 interface TestSessionPayload {
   id: number;
   student_id: number;
-  test_type: 'word_pang' | 'passage_quiz' | 'handwriting';
+  test_type: 'word_pang' | 'passage_quiz' | 'handwriting' | 'sentence_clinic_v2';
   started_at: string;
   completed_at: string | null;
   total_items: number;
@@ -33,24 +33,12 @@ interface TestResultPayload {
   id: number;
   session_id: number;
   student_id: number;
-  test_type: 'word_pang' | 'passage_quiz' | 'handwriting' | 'sc_cloze' | 'sc_keyword';
+  test_type: 'word_pang' | 'passage_quiz' | 'handwriting' | 'sc_v2_cloze' | 'sc_v2_comprehension' | 'sc_v2_inference' | 'sc_v2_relation';
   is_correct: boolean;
   answered_at: string;
   item_id: number | null;
   item_uuid: string | null;
   selected_answer: number | null;
-}
-
-interface SentenceClinicPayload {
-  id: string;
-  student_id: number;
-  short_passage_id: number;
-  started_at: string;
-  completed_at: string | null;
-  cloze_is_correct: boolean;
-  keyword_is_correct: boolean;
-  cloze_selected_answer: number | null;
-  keyword_selected_answer: number | null;
 }
 
 // 연결 상태 타입
@@ -66,7 +54,6 @@ export function useRealtimeKorean(academyId: string | null) {
   const [records, setRecords] = useState<LearningRecord[]>([]);
   const [wordCounts, setWordCounts] = useState<Map<number, StudentWordCount>>(new Map());
   const [historicalAccuracy, setHistoricalAccuracy] = useState<Map<number, StudentHistoricalAccuracy>>(new Map());
-  const [reviewCounts, setReviewCounts] = useState<Map<number, number>>(new Map());
   const [checkInInfo, setCheckInInfo] = useState<Map<number, StudentCheckInInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
@@ -124,13 +111,6 @@ export function useRealtimeKorean(academyId: string | null) {
           newHistorical.set(Number(studentId), data);
         }
         setHistoricalAccuracy(newHistorical);
-      }
-      if (result.reviewCounts) {
-        const newReviewCounts = new Map<number, number>();
-        for (const [studentId, count] of Object.entries(result.reviewCounts)) {
-          newReviewCounts.set(Number(studentId), count as number);
-        }
-        setReviewCounts(newReviewCounts);
       }
       if (result.checkInInfo) {
         const newCheckInInfo = new Map<number, StudentCheckInInfo>();
@@ -240,44 +220,40 @@ export function useRealtimeKorean(academyId: string | null) {
     return details.length > 0 ? details : null;
   }, []);
 
-  // 문장클리닉 지문 정보 조회
-  const fetchShortPassage = useCallback(async (shortPassageId: string): Promise<SentenceClinicDetail | null> => {
+  // 문장클리닉 v2 지문 정보 조회
+  const fetchShortPassageV2 = useCallback(async (shortPassageId: string): Promise<SentenceClinicV2Detail | null> => {
     if (!supabase) return null;
 
-    const { data } = await supabase
-      .from('short_passage')
-      .select('*')
+    // short_passage_v2 + short_passage_quiz_v2 조인
+    const { data: passage } = await supabase
+      .from('short_passage_v2')
+      .select('id, keyword, text')
       .eq('id', shortPassageId)
       .single();
 
-    if (!data) return null;
+    if (!passage) return null;
+
+    const { data: quizzes } = await supabase
+      .from('short_passage_quiz_v2')
+      .select('*')
+      .eq('passage_id', shortPassageId)
+      .order('quiz_order', { ascending: true });
+
+    if (!quizzes) return null;
 
     return {
       passageId: shortPassageId,
-      keyword: data.keyword || '',
-      text: data.text || '',
-      clozeSummary: data.cloze_summary || '',
-      clozeOptions: [
-        data.cloze_option_1 || '',
-        data.cloze_option_2 || '',
-        data.cloze_option_3 || '',
-        data.cloze_option_4 || ''
-      ],
-      clozeAnswer: data.cloze_answer ?? 0,
-      clozeSelectedAnswer: null,
-      clozeIsCorrect: null,
-      clozeExplanation: data.cloze_explanation || '',
-      keywordQuestion: data.keyword_question || '',
-      keywordOptions: [
-        data.keyword_option_1 || '',
-        data.keyword_option_2 || '',
-        data.keyword_option_3 || '',
-        data.keyword_option_4 || ''
-      ],
-      keywordAnswer: data.keyword_answer ?? 0,
-      keywordSelectedAnswer: null,
-      keywordIsCorrect: null,
-      keywordExplanation: data.keyword_explanation || ''
+      keyword: passage.keyword || '',
+      text: passage.text || '',
+      quizzes: quizzes.map(q => ({
+        quizOrder: q.quiz_order,
+        quizType: q.quiz_type as 'cloze' | 'comprehension' | 'inference' | 'relation',
+        question: q.question || '',
+        options: [q.option_1 || '', q.option_2 || '', q.option_3 || '', q.option_4 || ''],
+        correctAnswer: q.correct_answer ?? 0,
+        selectedAnswer: null,
+        isCorrect: null
+      }))
     };
   }, []);
 
@@ -301,21 +277,6 @@ export function useRealtimeKorean(academyId: string | null) {
     };
   }, []);
 
-  // 학생별 복습 카운트 재조회
-  const refreshReviewCount = useCallback(async (studentId: number): Promise<void> => {
-    if (!supabase) return;
-
-    // test_session에서 오늘 복습이 필요한 문장 수 조회 (예시 로직)
-    const today = new Date().toISOString().split('T')[0];
-
-    // 이 부분은 실제 복습 로직에 맞춰 구현해야 함. 
-    // 현재는 test_session 기반으로 변경되었으므로, 관련 RPC나 쿼리를 사용해야 합니다.
-    // 기존 로직이 short_passage_learning_history를 사용했으므로, 
-    // 여기서는 우선 에러가 나지 않도록 빈 함수로 두거나, 필요한 경우 구현을 채워넣어야 합니다.
-    // 일단은 에러 방지를 위해 로그만 남기고, 추후 필요 시 구현합니다.
-    console.log('[refreshReviewCount] Review count logic needs to be updated for test_session.');
-
-  }, []);
 
   // 모든 구독 해제
   const unsubscribeAll = useCallback(() => {
@@ -344,7 +305,7 @@ export function useRealtimeKorean(academyId: string | null) {
           event: '*',
           schema: 'public',
           table: 'test_session',
-          filter: `test_type=in.(word_pang,passage_quiz,handwriting,sentence_clinic)`
+          filter: `test_type=in.(word_pang,passage_quiz,handwriting,sentence_clinic_v2)`
         },
         async (payload) => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
@@ -375,7 +336,7 @@ export function useRealtimeKorean(academyId: string | null) {
             let wordData: { correctWords: string[]; wrongWords: string[]; wordResults: Array<{ word: string; isCorrect: boolean; vocaId: number }> } | null = null;
             let passageQuizData: PassageQuizDetail[] | null = null;
             let handwritingData: HandwritingDetail | null = null;
-            let sentenceClinicDetail: SentenceClinicDetail | null = null;
+            let sentenceClinicV2Detail: SentenceClinicV2Detail | null = null;
 
             if (newRecord.test_type === 'word_pang') {
               wordData = await fetchSessionWords(newRecord.id);
@@ -387,13 +348,13 @@ export function useRealtimeKorean(academyId: string | null) {
                 passageCode: newRecord.metadata?.code_id || '-',
                 passageId: newRecord.metadata?.passage_id
               };
-            } else if (newRecord.test_type === 'sentence_clinic') {
+            } else if (newRecord.test_type === 'sentence_clinic_v2') {
               const passageId = newRecord.metadata?.passage_id;
               if (passageId) {
-                const shortPassage = await fetchShortPassage(passageId);
+                const shortPassage = await fetchShortPassageV2(passageId);
 
                 if (!shortPassage) {
-                  console.warn(`[test_session] fetchShortPassage 실패: passage_id=${passageId}`);
+                  console.warn(`[test_session] fetchShortPassageV2 실패: passage_id=${passageId}`);
                 }
 
                 // 상세 결과 조회 (test_result)
@@ -403,16 +364,24 @@ export function useRealtimeKorean(academyId: string | null) {
                     .select('test_type, selected_answer, is_correct')
                     .eq('session_id', newRecord.id);
 
-                  const clozeResult = results?.find(r => r.test_type === 'sc_cloze');
-                  const keywordResult = results?.find(r => r.test_type === 'sc_keyword');
-
-                  // sentenceClinicDetail 생성
-                  sentenceClinicDetail = {
+                  // quizzes 배열 업데이트
+                  sentenceClinicV2Detail = {
                     ...shortPassage,
-                    clozeSelectedAnswer: clozeResult?.selected_answer ?? null,
-                    clozeIsCorrect: clozeResult?.is_correct ?? null,
-                    keywordSelectedAnswer: keywordResult?.selected_answer ?? null,
-                    keywordIsCorrect: keywordResult?.is_correct ?? null,
+                    quizzes: shortPassage.quizzes.map(quiz => {
+                      const quizTypeMap: Record<string, string> = {
+                        'cloze': 'sc_v2_cloze',
+                        'comprehension': 'sc_v2_comprehension',
+                        'inference': 'sc_v2_inference',
+                        'relation': 'sc_v2_relation'
+                      };
+                      const testType = quizTypeMap[quiz.quizType];
+                      const result = results?.find(r => r.test_type === testType);
+                      return {
+                        ...quiz,
+                        selectedAnswer: result?.selected_answer ?? null,
+                        isCorrect: result?.is_correct ?? null
+                      };
+                    })
                   };
                 }
               } else {
@@ -424,7 +393,7 @@ export function useRealtimeKorean(academyId: string | null) {
               id: `ts_${newRecord.id}`,
               studentId: newRecord.student_id,
               studentName,
-              learningType: newRecord.test_type,
+              learningType: newRecord.test_type as any, // v2 타입 임시 처리
               startedAt: newRecord.started_at,
               completedAt: newRecord.completed_at,
               totalItems: newRecord.total_items || 0,
@@ -435,7 +404,7 @@ export function useRealtimeKorean(academyId: string | null) {
               wordResults: wordData?.wordResults,
               passageQuizDetails: passageQuizData || undefined,
               handwritingDetail: handwritingData || undefined,
-              sentenceClinicDetail: sentenceClinicDetail || undefined
+              sentenceClinicV2Detail: sentenceClinicV2Detail || undefined
             };
 
             setRecords(prev => {
@@ -468,7 +437,7 @@ export function useRealtimeKorean(academyId: string | null) {
           event: 'INSERT',
           schema: 'public',
           table: 'test_result',
-          filter: `test_type=in.(word_pang,passage_quiz,handwriting,sc_cloze,sc_keyword)`
+          filter: `test_type=in.(word_pang,passage_quiz,handwriting,sc_v2_cloze,sc_v2_comprehension,sc_v2_inference,sc_v2_relation)`
         },
         async (payload) => {
           const newResult = payload.new as TestResultPayload;
@@ -544,41 +513,34 @@ export function useRealtimeKorean(academyId: string | null) {
                 }
               }
 
-              // 문장클리닉 결과 업데이트
-              if (testType === 'sc_cloze' || testType === 'sc_keyword') {
-                // sentenceClinicDetail이 없으면 기본값으로 생성 (타이밍 이슈 대응)
-                if (!record.sentenceClinicDetail) {
-                  console.warn(`[test_result] sentenceClinicDetail 없음 (타이밍 이슈): session_id=${sessionId}, student_id=${studentId}`);
-                  record.sentenceClinicDetail = {
-                    passageId: '',
-                    keyword: '',
-                    text: '',
-                    clozeSummary: '',
-                    clozeOptions: ['', '', '', ''],
-                    clozeAnswer: 0,
-                    clozeSelectedAnswer: null,
-                    clozeIsCorrect: null,
-                    clozeExplanation: '',
-                    keywordQuestion: '',
-                    keywordOptions: ['', '', '', ''],
-                    keywordAnswer: 0,
-                    keywordSelectedAnswer: null,
-                    keywordIsCorrect: null,
-                    keywordExplanation: ''
+              // 문장클리닉 v2 결과 업데이트
+              if (['sc_v2_cloze', 'sc_v2_comprehension', 'sc_v2_inference', 'sc_v2_relation'].includes(testType)) {
+                // sentenceClinicV2Detail이 없으면 경고만 (타이밍 이슈 대응)
+                if (!record.sentenceClinicV2Detail) {
+                  console.warn(`[test_result] sentenceClinicV2Detail 없음 (타이밍 이슈): session_id=${sessionId}, student_id=${studentId}`);
+                } else {
+                  // quizzes 배열 업데이트
+                  const quizTypeMap: Record<string, string> = {
+                    'sc_v2_cloze': 'cloze',
+                    'sc_v2_comprehension': 'comprehension',
+                    'sc_v2_inference': 'inference',
+                    'sc_v2_relation': 'relation'
+                  };
+                  const quizType = quizTypeMap[testType];
+                  record.sentenceClinicV2Detail = {
+                    ...record.sentenceClinicV2Detail,
+                    quizzes: record.sentenceClinicV2Detail.quizzes.map(quiz => {
+                      if (quiz.quizType === quizType) {
+                        return {
+                          ...quiz,
+                          selectedAnswer: newResult.selected_answer ?? null,
+                          isCorrect: isCorrect
+                        };
+                      }
+                      return quiz;
+                    })
                   };
                 }
-
-                record.sentenceClinicDetail = {
-                  ...record.sentenceClinicDetail,
-                  ...(testType === 'sc_cloze' ? {
-                    clozeSelectedAnswer: newResult.selected_answer ?? null,
-                    clozeIsCorrect: isCorrect,
-                  } : {}),
-                  ...(testType === 'sc_keyword' ? {
-                    keywordSelectedAnswer: newResult.selected_answer ?? null,
-                    keywordIsCorrect: isCorrect,
-                  } : {})
-                };
               }
 
               updated[recordIndex] = record;
@@ -661,7 +623,7 @@ export function useRealtimeKorean(academyId: string | null) {
       .subscribe();
 
     channelsRef.current = [testSessionChannel, testResultChannel, checkInChannel];
-  }, [academyId, fetchStudentName, fetchSessionWords, fetchSessionPassageQuiz, fetchShortPassage, fetchPassageQuizDetail, refreshReviewCount, unsubscribeAll]);
+  }, [academyId, fetchStudentName, fetchSessionWords, fetchSessionPassageQuiz, fetchShortPassageV2, fetchPassageQuizDetail, unsubscribeAll]);
 
   // 세션 삭제 (고아 세션 정리용)
   const deleteSession = useCallback(async (recordId: string, learningType: string): Promise<boolean> => {
@@ -776,7 +738,6 @@ export function useRealtimeKorean(academyId: string | null) {
     records,
     wordCounts,
     historicalAccuracy,
-    reviewCounts,
     checkInInfo,
     loading,
     connectionStatus,

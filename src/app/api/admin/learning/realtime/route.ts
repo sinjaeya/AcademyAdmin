@@ -5,7 +5,7 @@ interface LearningRecord {
   id: string;
   studentId: number;
   studentName: string;
-  learningType: 'word_pang' | 'passage_quiz' | 'sentence_clinic' | 'handwriting';
+  learningType: 'word_pang' | 'passage_quiz' | 'sentence_clinic_v2' | 'handwriting';
   startedAt: string;
   completedAt: string | null;
   totalItems: number;
@@ -15,24 +15,19 @@ interface LearningRecord {
   wrongWords?: string[];
   // 순서 유지된 단어 결과 (created_at 기준 정렬)
   wordResults?: Array<{ word: string; isCorrect: boolean; vocaId: number }>;
-  // 문장클리닉 상세 정보
-  sentenceClinicDetail?: {
+  // 문장클리닉 v2 상세 정보
+  sentenceClinicV2Detail?: {
     keyword: string;
-    text: string; // 지문
-    // 빈칸 문제
-    clozeSummary: string;
-    clozeOptions: string[];
-    clozeAnswer: number;
-    clozeSelectedAnswer: number | null;
-    clozeIsCorrect: boolean | null;
-    clozeExplanation: string;
-    // 키워드 문제
-    keywordQuestion: string;
-    keywordOptions: string[];
-    keywordAnswer: number;
-    keywordSelectedAnswer: number | null;
-    keywordIsCorrect: boolean | null;
-    keywordExplanation: string;
+    text: string;
+    quizzes: Array<{
+      quizOrder: number;
+      quizType: 'cloze' | 'comprehension' | 'inference' | 'relation';
+      question: string;
+      options: string[];
+      correctAnswer: number;
+      selectedAnswer: number | null;
+      isCorrect: boolean | null;
+    }>;
   };
   // 보물찾기 상세 정보
   passageQuizDetails?: Array<{
@@ -101,7 +96,7 @@ export async function GET(request: Request) {
         accuracy_rate,
         metadata
       `)
-      .in('test_type', ['word_pang', 'passage_quiz', 'handwriting', 'sentence_clinic'])
+      .in('test_type', ['word_pang', 'passage_quiz', 'handwriting', 'sentence_clinic_v2'])
       .gte('started_at', startDate)
       .lte('started_at', endDate);
 
@@ -109,7 +104,7 @@ export async function GET(request: Request) {
     if (academyStudentIds !== null) {
       if (academyStudentIds.length === 0) {
         // 해당 학원에 학생이 없으면 빈 결과 반환
-        return NextResponse.json({ data: [], wordCounts: {}, historicalAccuracy: {}, reviewCounts: {} });
+        return NextResponse.json({ data: [], wordCounts: {}, historicalAccuracy: {}, checkInInfo: {} });
       }
       testSessionQuery = testSessionQuery.in('student_id', academyStudentIds);
     }
@@ -339,37 +334,52 @@ export async function GET(request: Request) {
       }
     }
 
-    // 문장클리닉 세션별 상세 정보 및 결과 조회
-    const sessionSentenceClinicMap = new Map<number, any>();
+    // 문장클리닉 v2 세션별 상세 정보 및 결과 조회
+    const sessionSentenceClinicV2Map = new Map<number, any>();
     if (testSessionData) {
       const scSessionIds = testSessionData
-        .filter(r => r.test_type === 'sentence_clinic')
+        .filter(r => r.test_type === 'sentence_clinic_v2')
         .map(r => r.id);
 
       if (scSessionIds.length > 0) {
         // 1. 상세 결과 (test_result)
         const { data: scResults } = await supabase
           .from('test_result')
-          .select('session_id, test_type, selected_answer, is_correct, item_uuid')
+          .select('session_id, test_type, selected_answer, is_correct')
           .in('session_id', scSessionIds);
 
-        // 2. 지문 정보 (short_passage) - metadata에서 passage_id 수집
+        // 2. 지문 정보 (short_passage_v2) - metadata에서 passage_id 수집
         const passageIds = new Set<string>();
         testSessionData
-          .filter(r => r.test_type === 'sentence_clinic')
+          .filter(r => r.test_type === 'sentence_clinic_v2')
           .forEach(r => {
             const pid = (r.metadata as any)?.passage_id;
             if (pid) passageIds.add(String(pid));
           });
 
         let passageMap = new Map<string, any>();
+        let quizzesMap = new Map<string, any[]>();
         if (passageIds.size > 0) {
           const { data: passages } = await supabase
-            .from('short_passage')
-            .select('*')
+            .from('short_passage_v2')
+            .select('id, keyword, text')
             .in('id', [...passageIds]);
 
           passages?.forEach(p => passageMap.set(p.id, p));
+
+          // 퀴즈 정보 조회
+          const { data: quizzes } = await supabase
+            .from('short_passage_quiz_v2')
+            .select('*')
+            .in('passage_id', [...passageIds])
+            .order('quiz_order', { ascending: true });
+
+          quizzes?.forEach(q => {
+            if (!quizzesMap.has(q.passage_id)) {
+              quizzesMap.set(q.passage_id, []);
+            }
+            quizzesMap.get(q.passage_id)!.push(q);
+          });
         }
 
         // 3. 매핑
@@ -377,26 +387,33 @@ export async function GET(request: Request) {
           const session = testSessionData.find(s => s.id === sessionId);
           const pid = String((session?.metadata as any)?.passage_id || '');
           const passage = passageMap.get(pid);
+          const quizzes = quizzesMap.get(pid) || [];
           const results = scResults?.filter(r => r.session_id === sessionId) || [];
-          const clozeResult = results.find(r => r.test_type === 'sc_cloze');
-          const keywordResult = results.find(r => r.test_type === 'sc_keyword');
 
-          if (passage) {
-            sessionSentenceClinicMap.set(sessionId, {
+          if (passage && quizzes.length > 0) {
+            const quizTypeMap: Record<string, string> = {
+              'cloze': 'sc_v2_cloze',
+              'comprehension': 'sc_v2_comprehension',
+              'inference': 'sc_v2_inference',
+              'relation': 'sc_v2_relation'
+            };
+
+            sessionSentenceClinicV2Map.set(sessionId, {
               keyword: passage.keyword,
               text: passage.text,
-              clozeSummary: passage.cloze_summary,
-              clozeOptions: [passage.cloze_option_1, passage.cloze_option_2, passage.cloze_option_3, passage.cloze_option_4],
-              clozeAnswer: passage.cloze_answer,
-              clozeSelectedAnswer: clozeResult?.selected_answer ?? null,
-              clozeIsCorrect: clozeResult?.is_correct ?? null,
-              clozeExplanation: passage.cloze_explanation,
-              keywordQuestion: passage.keyword_question,
-              keywordOptions: [passage.keyword_option_1, passage.keyword_option_2, passage.keyword_option_3, passage.keyword_option_4],
-              keywordAnswer: passage.keyword_answer,
-              keywordSelectedAnswer: keywordResult?.selected_answer ?? null,
-              keywordIsCorrect: keywordResult?.is_correct ?? null,
-              keywordExplanation: passage.keyword_explanation
+              quizzes: quizzes.map(q => {
+                const testType = quizTypeMap[q.quiz_type];
+                const result = results.find(r => r.test_type === testType);
+                return {
+                  quizOrder: q.quiz_order,
+                  quizType: q.quiz_type,
+                  question: q.question,
+                  options: [q.option_1, q.option_2, q.option_3, q.option_4],
+                  correctAnswer: q.correct_answer,
+                  selectedAnswer: result?.selected_answer ?? null,
+                  isCorrect: result?.is_correct ?? null
+                };
+              })
             });
           }
         }
@@ -439,16 +456,16 @@ export async function GET(request: Request) {
         const correctCount = hwResult ? hwResult.correctCount : (record.correct_count || 0);
         const accuracyRate = totalItems > 0 ? (correctCount / totalItems) * 100 : 0;
 
-        // 문장클리닉 상세 정보
-        const sentenceClinicDetail = record.test_type === 'sentence_clinic'
-          ? sessionSentenceClinicMap.get(Number(record.id))
+        // 문장클리닉 v2 상세 정보
+        const sentenceClinicV2Detail = record.test_type === 'sentence_clinic_v2'
+          ? sessionSentenceClinicV2Map.get(Number(record.id))
           : undefined;
 
         records.push({
           id: `ts_${record.id}`,
           studentId,
           studentName,
-          learningType: record.test_type as 'word_pang' | 'passage_quiz' | 'handwriting' | 'sentence_clinic',
+          learningType: record.test_type as 'word_pang' | 'passage_quiz' | 'handwriting' | 'sentence_clinic_v2',
           startedAt: record.started_at,
           completedAt: record.completed_at,
           totalItems,
@@ -459,7 +476,7 @@ export async function GET(request: Request) {
           wordResults: wordData?.wordResults,
           passageQuizDetails,
           handwritingDetail,
-          sentenceClinicDetail
+          sentenceClinicV2Detail
         });
       }
     }
@@ -468,57 +485,6 @@ export async function GET(request: Request) {
 
     // 시작 시간 기준 내림차순 정렬
     records.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
-
-    // 학생별 문장클리닉 복습 대상 카운트 조회
-    const reviewCounts: Record<number, number> = {};
-
-    if (studentIds.length > 0) {
-      // 각 학생별로 복습 대상 지문 수 조회
-      // 가장 최근 학습에서 틀린 문제가 있는 지문 = 복습 대상
-      const { data: reviewData, error: reviewError } = await supabase.rpc('get_review_count_by_students', {
-        p_student_ids: studentIds
-      });
-
-      if (reviewError) {
-        console.error('Error fetching review counts:', reviewError);
-        // RPC 실패 시 직접 쿼리로 대체 (test_session 사용)
-        for (const studentId of studentIds) {
-          const { data: fallbackData } = await supabase
-            .from('test_session')
-            .select('metadata, correct_count, total_items, completed_at')
-            .eq('student_id', studentId)
-            .eq('test_type', 'sentence_clinic')
-            .not('completed_at', 'is', null)
-            .order('completed_at', { ascending: false });
-
-          if (fallbackData) {
-            // 지문별 최신 결과만 추출 (passage_id 기준)
-            const latestByPassage = new Map<number, boolean>(); // passage_id -> isPassed
-            for (const row of fallbackData) {
-              const passageId = (row.metadata as any)?.passage_id;
-              if (!passageId) continue;
-
-              if (!latestByPassage.has(Number(passageId))) {
-                // 2문제(total_items=2) 모두 맞춰야 통과
-                const isPassed = (row.correct_count === row.total_items);
-                latestByPassage.set(Number(passageId), isPassed);
-              }
-            }
-
-            // 복습 대상 카운트 (통과하지 못한 지문 수)
-            let count = 0;
-            latestByPassage.forEach((isPassed) => {
-              if (!isPassed) count++;
-            });
-            reviewCounts[studentId] = count;
-          }
-        }
-      } else if (reviewData) {
-        for (const row of reviewData) {
-          reviewCounts[row.student_id] = row.review_count;
-        }
-      }
-    }
 
     // 오늘 학습한 학생들의 오늘 이전 누적 정답률 조회 (RPC 함수로 limit 1000 문제 해결)
     const historicalAccuracy: Record<number, { wordPangTotal: number; wordPangCorrect: number; wordPangAccuracyRate: number | null }> = {};
@@ -589,7 +555,7 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({ data: records, wordCounts, historicalAccuracy, reviewCounts, checkInInfo });
+    return NextResponse.json({ data: records, wordCounts, historicalAccuracy, checkInInfo });
   } catch (error) {
     console.error('Error in realtime learning API:', error);
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });

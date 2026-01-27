@@ -9,33 +9,36 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// 문장클리닉 단건 조회
+// 문장클리닉 단건 조회 (v2)
 export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
   try {
     const { id } = await params;
 
     const { data, error } = await supabase
-      .from('short_passage')
+      .from('short_passage_v2')
       .select(`
         id,
-        grade_level,
-        structure_type,
         keyword,
+        grade_level,
         text,
-        cloze_summary,
-        cloze_option_1,
-        cloze_option_2,
-        cloze_option_3,
-        cloze_option_4,
-        cloze_answer,
-        cloze_explanation,
-        keyword_question,
-        keyword_option_1,
-        keyword_option_2,
-        keyword_option_3,
-        keyword_option_4,
-        keyword_answer,
-        keyword_explanation
+        char_count,
+        qa_status,
+        created_at,
+        updated_at,
+        quizzes:short_passage_quiz_v2(
+          id,
+          quiz_order,
+          quiz_type,
+          question,
+          option_1,
+          option_2,
+          option_3,
+          option_4,
+          correct_answer,
+          explanation,
+          sentence_a,
+          sentence_b
+        )
       `)
       .eq('id', id)
       .single();
@@ -56,66 +59,78 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
   }
 }
 
-// 문장클리닉 수정
+// 문장클리닉 수정 (v2)
 export async function PUT(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
   try {
     const { id } = await params;
     const body = await request.json();
     const {
-      grade_level,
-      structure_type,
       keyword,
+      grade_level,
       text,
-      cloze_summary,
-      cloze_option_1,
-      cloze_option_2,
-      cloze_option_3,
-      cloze_option_4,
-      cloze_answer,
-      cloze_explanation,
-      keyword_question,
-      keyword_option_1,
-      keyword_option_2,
-      keyword_option_3,
-      keyword_option_4,
-      keyword_answer,
-      keyword_explanation
+      quizzes // Array<{ id?, quiz_order, quiz_type, question, option_1~4, correct_answer, explanation, sentence_a?, sentence_b? }>
     } = body;
 
-    const { data, error } = await supabase
-      .from('short_passage')
+    // 필수 필드 검증
+    if (!keyword || !text) {
+      return NextResponse.json({ error: '필수 필드가 누락되었습니다.' }, { status: 400 });
+    }
+
+    // 1. 지문 업데이트
+    const { data: passage, error: passageError } = await supabase
+      .from('short_passage_v2')
       .update({
-        grade_level,
-        structure_type,
         keyword,
+        grade_level,
         text,
-        cloze_summary,
-        cloze_option_1,
-        cloze_option_2,
-        cloze_option_3,
-        cloze_option_4,
-        cloze_answer,
-        cloze_explanation,
-        keyword_question,
-        keyword_option_1,
-        keyword_option_2,
-        keyword_option_3,
-        keyword_option_4,
-        keyword_answer,
-        keyword_explanation
+        char_count: text.length
       })
       .eq('id', id)
       .select()
       .single();
 
-    if (error) {
-      console.error('문장클리닉 수정 오류:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (passageError) {
+      console.error('지문 수정 오류:', passageError);
+      return NextResponse.json({ error: passageError.message }, { status: 500 });
+    }
+
+    // 2. 퀴즈 업데이트 (기존 퀴즈 삭제 후 재생성)
+    if (quizzes && Array.isArray(quizzes)) {
+      // 기존 퀴즈 삭제
+      await supabase
+        .from('short_passage_quiz_v2')
+        .delete()
+        .eq('passage_id', id);
+
+      // 새 퀴즈 생성
+      const quizRecords = quizzes.map((q: any) => ({
+        passage_id: id,
+        quiz_order: q.quiz_order,
+        quiz_type: q.quiz_type,
+        question: q.question,
+        option_1: q.option_1,
+        option_2: q.option_2,
+        option_3: q.option_3,
+        option_4: q.option_4,
+        correct_answer: q.correct_answer,
+        explanation: q.explanation || null,
+        sentence_a: q.sentence_a || null,
+        sentence_b: q.sentence_b || null
+      }));
+
+      const { error: quizError } = await supabase
+        .from('short_passage_quiz_v2')
+        .insert(quizRecords);
+
+      if (quizError) {
+        console.error('퀴즈 수정 오류:', quizError);
+        return NextResponse.json({ error: quizError.message }, { status: 500 });
+      }
     }
 
     return NextResponse.json({
       success: true,
-      data,
+      data: passage,
       message: '문장클리닉이 수정되었습니다.'
     });
   } catch (error) {
@@ -124,13 +139,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams): Promis
   }
 }
 
-// 문장클리닉 삭제
+// 문장클리닉 삭제 (v2, cascade로 퀴즈도 함께 삭제됨)
 export async function DELETE(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
   try {
     const { id } = await params;
 
     const { error } = await supabase
-      .from('short_passage')
+      .from('short_passage_v2')
       .delete()
       .eq('id', id);
 

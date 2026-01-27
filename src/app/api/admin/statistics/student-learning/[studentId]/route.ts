@@ -70,7 +70,7 @@ export async function GET(
         passageQuizByDate[date].count += 1;
         passageQuizByDate[date].accuracySum += accuracy;
         passageQuizByDate[date].sessionCount += 1;
-      } else if (session.test_type === 'sentence_clinic') {
+      } else if (session.test_type === 'sentence_clinic_v2') {
         if (!sentenceClinicByDate[date]) {
           sentenceClinicByDate[date] = { count: 0, correctCount: 0, totalQuestions: 0 };
         }

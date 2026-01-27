@@ -29,7 +29,7 @@ export async function GET(): Promise<NextResponse> {
   try {
     // 전체 개수 조회
     const { count: totalCount, error: countError } = await supabase
-      .from('short_passage')
+      .from('short_passage_v2')
       .select('*', { count: 'exact', head: true });
 
     if (countError) {
@@ -52,7 +52,7 @@ export async function GET(): Promise<NextResponse> {
 
       while (hasMore) {
         const { data: pageData, error: pageError } = await supabase
-          .from('short_passage')
+          .from('short_passage_v2')
           .select('grade_level')
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
