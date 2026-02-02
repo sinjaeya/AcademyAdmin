@@ -14,7 +14,7 @@ export async function GET(): Promise<NextResponse> {
     // 이지국어교습소 재원 학생 목록 조회
     const { data: students, error: studentsError } = await supabase
       .from('student')
-      .select('id, name, school, grade, status, sentence_level')
+      .select('id, name, school, grade, status, sentence_level, handwriting_level')
       .eq('status', '재원')
       .eq('academy_id', EJIGUK_ACADEMY_ID)
       .order('name', { ascending: true });
@@ -129,6 +129,7 @@ export async function GET(): Promise<NextResponse> {
         grade: student.grade,
         status: student.status,
         sentenceLevel: student.sentence_level,
+        handwritingLevel: student.handwriting_level,
         wordPangCount: stats.wordPangCount,
         wordPangAccuracy,
         sentenceLearningCount: stats.sentenceLearningCount,

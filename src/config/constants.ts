@@ -132,6 +132,12 @@ export const SENTENCE_LEVEL_LABELS: Record<string, string> = {
   Lv9_CSAT: 'Lv9 수능'
 };
 
+// 내손내줄 학습레벨 옵션 (문장학습레벨과 동일 ENUM 재사용)
+export const HANDWRITING_LEVEL_OPTIONS = SENTENCE_LEVEL_OPTIONS;
+
+// 내손내줄 학습레벨 라벨 (한글)
+export const HANDWRITING_LEVEL_LABELS = SENTENCE_LEVEL_LABELS;
+
 // 타입 정의
 export type GradeOption = typeof GRADE_OPTIONS[number];
 export type SchoolOption = typeof SCHOOL_OPTIONS[number];
@@ -143,4 +149,5 @@ export type StudyMonth = typeof STUDY_MONTH_OPTIONS[number];
 export type RubricGradeLevel = typeof RUBRIC_GRADE_LEVEL_OPTIONS[number];
 export type RubricDifficultyLevel = typeof RUBRIC_DIFFICULTY_LEVEL_OPTIONS[number];
 export type SentenceLevel = typeof SENTENCE_LEVEL_OPTIONS[number];
+export type HandwritingLevel = SentenceLevel;
 

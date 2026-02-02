@@ -24,7 +24,9 @@ import {
   RUBRIC_GRADE_LEVEL_LABELS,
   RUBRIC_DIFFICULTY_LEVEL_LABELS,
   SENTENCE_LEVEL_OPTIONS,
-  SENTENCE_LEVEL_LABELS
+  SENTENCE_LEVEL_LABELS,
+  HANDWRITING_LEVEL_OPTIONS,
+  HANDWRITING_LEVEL_LABELS
 } from '@/config/constants';
 import { 
   Table, 
@@ -66,6 +68,7 @@ interface Student {
   rubric_grade_level?: string | null;
   rubric_difficulty_level?: string | null;
   sentence_level?: string | null;
+  handwriting_level?: string | null;
   academy_id?: string | null;
   academy_name?: string | null;
   status: string;
@@ -89,6 +92,7 @@ interface NewStudentForm {
   rubric_grade_level: string;
   rubric_difficulty_level: string;
   sentence_level: string;
+  handwriting_level: string;
   academy_id?: string | null;
   status: string;
   study_time: string;
@@ -109,6 +113,7 @@ interface EditStudentForm {
   rubric_grade_level: string;
   rubric_difficulty_level: string;
   sentence_level: string;
+  handwriting_level: string;
   academy_id?: string | null;
   status: string;
   study_time: string;
@@ -188,6 +193,7 @@ export default function StudentsPage() {
     rubric_grade_level: 'middle',
     rubric_difficulty_level: 'medium',
     sentence_level: 'Lv3_Mid1',
+    handwriting_level: 'Lv3_Mid1',
     academy_id: null,
     status: '재원',
     study_time: '60'
@@ -206,6 +212,7 @@ export default function StudentsPage() {
     rubric_grade_level: 'middle',
     rubric_difficulty_level: 'medium',
     sentence_level: 'Lv3_Mid1',
+    handwriting_level: 'Lv3_Mid1',
     academy_id: null,
     status: '',
     study_time: ''
@@ -334,6 +341,7 @@ export default function StudentsPage() {
           rubric_grade_level: 'middle',
           rubric_difficulty_level: 'medium',
           sentence_level: 'Lv3_Mid1',
+          handwriting_level: 'Lv3_Mid1',
           academy_id: null,
           status: '재원',
           study_time: '60'
@@ -407,6 +415,7 @@ export default function StudentsPage() {
       rubric_grade_level: student.rubric_grade_level || 'middle',
       rubric_difficulty_level: student.rubric_difficulty_level || 'medium',
       sentence_level: student.sentence_level || 'Lv3_Mid1',
+      handwriting_level: student.handwriting_level || 'Lv3_Mid1',
       academy_id: student.academy_id || null,
       status: student.status,
       study_time: student.study_time || '60'
@@ -437,6 +446,7 @@ export default function StudentsPage() {
           rubric_grade_level: editStudent.rubric_grade_level,
           rubric_difficulty_level: editStudent.rubric_difficulty_level,
           sentence_level: editStudent.sentence_level,
+          handwriting_level: editStudent.handwriting_level,
           academy_id: editStudent.academy_id,
           status: editStudent.status,
           study_time: editStudent.study_time
@@ -878,18 +888,37 @@ export default function StudentsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="sentence_level">문장학습레벨</Label>
+                <Label htmlFor="sentence_level">문장클리닉 레벨</Label>
                 <Select
                   value={newStudent.sentence_level}
                   onValueChange={(value) => handleInputChange('sentence_level', value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="문장학습레벨을 선택하세요" />
+                    <SelectValue placeholder="문장클리닉 레벨을 선택하세요" />
                   </SelectTrigger>
                   <SelectContent>
                     {SENTENCE_LEVEL_OPTIONS.map((level) => (
                       <SelectItem key={level} value={level}>
                         {SENTENCE_LEVEL_LABELS[level] || level}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="handwriting_level">내손내줄 레벨</Label>
+                <Select
+                  value={newStudent.handwriting_level}
+                  onValueChange={(value) => handleInputChange('handwriting_level', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="내손내줄 레벨을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HANDWRITING_LEVEL_OPTIONS.map((level) => (
+                      <SelectItem key={level} value={level}>
+                        {HANDWRITING_LEVEL_LABELS[level] || level}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1155,18 +1184,37 @@ export default function StudentsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-sentence_level">문장학습레벨</Label>
+                <Label htmlFor="edit-sentence_level">문장클리닉 레벨</Label>
                 <Select
                   value={editStudent.sentence_level}
                   onValueChange={(value) => handleEditInputChange('sentence_level', value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="문장학습레벨을 선택하세요" />
+                    <SelectValue placeholder="문장클리닉 레벨을 선택하세요" />
                   </SelectTrigger>
                   <SelectContent>
                     {SENTENCE_LEVEL_OPTIONS.map((level) => (
                       <SelectItem key={level} value={level}>
                         {SENTENCE_LEVEL_LABELS[level] || level}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-handwriting_level">내손내줄 레벨</Label>
+                <Select
+                  value={editStudent.handwriting_level}
+                  onValueChange={(value) => handleEditInputChange('handwriting_level', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="내손내줄 레벨을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HANDWRITING_LEVEL_OPTIONS.map((level) => (
+                      <SelectItem key={level} value={level}>
+                        {HANDWRITING_LEVEL_LABELS[level] || level}
                       </SelectItem>
                     ))}
                   </SelectContent>

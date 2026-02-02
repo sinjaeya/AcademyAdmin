@@ -42,6 +42,7 @@ interface StudentStat {
   grade: string | null;
   status: string;
   sentenceLevel: string | null;
+  handwritingLevel: string | null;
   wordPangCount: number;
   wordPangAccuracy: number | null;
   sentenceLearningCount: number;
@@ -474,6 +475,11 @@ export default function StudentLearningStatisticsPage(): React.ReactElement {
                         )}
                       </TableCell>
                       <TableCell className="text-center">
+                        {student.handwritingLevel && (
+                          <span className="inline-block px-1 py-px text-[10px] font-medium bg-orange-100 text-orange-700 rounded mr-1">
+                            {SENTENCE_LEVEL_LABELS[student.handwritingLevel] || student.handwritingLevel}
+                          </span>
+                        )}
                         <span className="font-semibold text-orange-600">
                           {(student.handwritingCount || 0).toLocaleString()}
                         </span>

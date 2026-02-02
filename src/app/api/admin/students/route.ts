@@ -111,6 +111,7 @@ export async function POST(request: NextRequest) {
       rubric_grade_level: body.rubric_grade_level || 'middle',
       rubric_difficulty_level: body.rubric_difficulty_level || 'medium',
       sentence_level: body.sentence_level || 'Lv3_Mid1',  // 기본값: 'Lv3_Mid1' (중1)
+      handwriting_level: body.handwriting_level || 'Lv3_Mid1',  // 기본값: 'Lv3_Mid1' (중1)
       status: body.status || '재원',
       study_time: body.study_time ? String(body.study_time) : '60',  // TEXT 타입, 기본값: '60'
     };

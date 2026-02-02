@@ -47,6 +47,7 @@ export async function PUT(
     if (body.rubric_grade_level !== undefined) updateData.rubric_grade_level = body.rubric_grade_level || null;
     if (body.rubric_difficulty_level !== undefined) updateData.rubric_difficulty_level = body.rubric_difficulty_level || null;
     if (body.sentence_level !== undefined) updateData.sentence_level = body.sentence_level || null;
+    if (body.handwriting_level !== undefined) updateData.handwriting_level = body.handwriting_level || null;
     // academy_id가 제공된 경우 사용 (UUID 타입)
     if (body.academy_id !== undefined) {
       updateData.academy_id = body.academy_id || null;
