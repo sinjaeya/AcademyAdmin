@@ -28,7 +28,102 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 개요
 
-학원관리 시스템 - Next.js 15 기반 어드민 대시보드. 학원, 학생, 결제, 출결 관리. 대상 사용자: 10명 이하 (학원 관리자, 강사, 튜터).
+학원관리 시스템 - Next.js 16 기반 어드민 대시보드. 학원, 학생, 결제, 출결 관리. 대상 사용자: 10명 이하 (학원 관리자, 강사, 튜터). Student App과 Supabase Realtime으로 실시간 통신.
+
+## 명령어
+
+```bash
+# 개발
+npm run dev          # 개발 서버 실행 (Turbopack)
+npm run build        # 프로덕션 빌드 (Turbopack)
+npm run start        # 프로덕션 모드 실행
+npm run lint         # ESLint 검사
+npm run lint:fix     # ESLint 자동 수정
+npm run type-check   # TypeScript 타입 검사
+
+# 데이터베이스
+npm run db:studio    # Prisma Studio 실행
+npm run db:generate  # Prisma 타입 생성
+npm run db:push      # DB 스키마 푸시
+npm run db:migrate   # 마이그레이션 실행
+
+# 기타
+npm run pwa:icons    # PWA 아이콘 생성
+npm run setup        # Supabase 초기 설정
+npm run clean        # .next, node_modules 삭제
+npm run fresh        # clean + npm install
+```
+
+## 아키텍처
+
+### 기술 스택
+- **프레임워크**: Next.js 16 (App Router), React 19, TypeScript 5
+- **데이터베이스**: Supabase (PostgreSQL) + Prisma ORM
+- **실시간**: Supabase Realtime (postgres_changes + presence)
+- **상태관리**: Zustand (localStorage 키: `auth-storage`)
+- **데이터 페칭**: React Query (TanStack Query)
+- **UI**: shadcn/ui + Radix UI + MUI DataGrid + Tailwind CSS 4 + Lucide icons
+- **폼**: React Hook Form + Zod 유효성 검증
+- **캔버스**: Fabric.js (내손내줄 필기 모니터링)
+- **PWA**: `@ducanh2912/next-pwa` (프로덕션에서만 활성화)
+
+### 주요 디렉토리
+- `src/app/admin/` - 어드민 페이지
+  - `students/`, `payments/` - 학생/결제 관리
+  - `learning/` - 실시간 학습 모니터링 (국어, 국어v2, 수학, 스크린샷)
+  - `handwriting/live/` - 내손내줄 실시간 필기 모니터링 (Fabric.js 캔버스)
+  - `statistics/` - 학습 통계 (문장클리닉, 학생별)
+  - `contents/` - 콘텐츠 관리 (지문, 단어팡, 문장클리닉)
+  - `teacher/` - 선생님 도구 (지문 가이드)
+  - `settings/` - 시스템 설정 (변수, 권한, 학원, 사용자)
+- `src/app/api/` - API 라우트 (RESTful, 응답 형식: `{ success, data, message, error }`)
+- `src/components/ui/` - shadcn/ui 컴포넌트
+- `src/config/constants.ts` - 모든 ENUM 옵션과 라벨 정의 (타입 포함)
+- `src/types/` - TypeScript 타입 정의 (`index.ts`: 공통 타입, `realtime-korean.ts`: 실시간 국어 타입)
+- `src/store/auth.ts` - Zustand 인증 스토어
+- `src/hooks/` - 커스텀 훅
+- `scripts/` - SQL 스크립트 및 설정 유틸리티
+
+### 주요 lib 파일
+- `src/lib/permissions.ts` - 역할 기반 접근 제어 (5분 메모리 캐시, `clearPermissionCache()` 무효화)
+- `src/lib/supabase/client.ts` - Supabase 인스턴스 (`supabase`: anon key, `supabaseAdmin`: service role key)
+- `src/lib/supabase/server.ts` - 서버 사이드 Supabase 인스턴스
+- `src/lib/env.ts` - 환경변수 검증 (`validateEnvironment()`, `logEnvironmentStatus()`)
+- `src/lib/utils.ts` - `cn()` 등 공통 유틸리티
+- `src/lib/db/academy-queries.ts` - 학원 관련 DB 쿼리 함수
+
+### 인증 흐름 (다중 파일 패턴)
+
+미들웨어(`middleware.ts`)는 패스스루만 수행하며, 실제 인증은 클라이언트 사이드에서 처리:
+
+1. **Provider 체인** (`src/app/layout.tsx`): `ToastProvider → AuthProvider → children`
+2. **AuthProvider** (`src/components/auth/AuthProvider.tsx`): 앱 시작 시 `initializeAuth()` 호출
+3. **ProtectedRoute** (`src/components/auth/ProtectedRoute.tsx`): `hasHydrated` 플래그로 SSR 하이드레이션 대기 후 인증 체크
+4. **useAuthStore** (`src/store/auth.ts`): Zustand persist로 `auth-storage` 키에 사용자 정보 유지
+5. **권한 체크** (`src/lib/permissions.ts`): `role_permissions` 테이블에서 역할별 권한 로드, 5분 메모리 캐시
+
+핵심: `hasHydrated` 플래그가 `true`가 되기 전까지는 인증 체크를 수행하지 않음 (SSR/CSR 불일치 방지).
+
+### Supabase 클라이언트 이중 구조
+
+- **`supabase`** (anon key): 클라이언트 사이드, Realtime 구독, 인증된 사용자 쿼리
+- **`supabaseAdmin`** (service role key): API Route에서 RLS 우회가 필요한 서버 사이드 작업
+
+### 커스텀 훅
+- `useRealtimeKorean` - Supabase Realtime으로 `test_session`/`test_result` 변경 실시간 수신, KST 날짜 필터링
+- `useStudentPresence` - Supabase Presence로 학생 접속 상태 추적
+- `use-mobile` - 반응형 모바일 감지
+
+### KST 타임존 패턴
+
+모든 실시간 기능에서 UTC→KST 변환을 사용:
+```typescript
+const getKSTDateString = (date: Date): string => {
+  const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  return kstDate.toISOString().split('T')[0];
+};
+```
+API에서 날짜 필터링 시에도 KST 기준으로 당일 범위를 계산해야 함.
 
 ## 공유 문서 (Student-Admin)
 
@@ -64,65 +159,7 @@ const channel = supabase
 return () => { supabase.removeChannel(channel); };
 ```
 
-주요 실시간 테이블: `test_session`, `handwriting_progress`, `check_in_out`
-
-## 명령어
-
-```bash
-# 개발
-npm run dev          # 개발 서버 실행 (Turbopack)
-npm run build        # 프로덕션 빌드 (Turbopack)
-npm run lint         # ESLint 검사
-npm run lint:fix     # ESLint 자동 수정
-npm run type-check   # TypeScript 타입 검사
-
-# 데이터베이스
-npm run db:studio    # Prisma Studio 실행
-npm run db:generate  # Prisma 타입 생성
-npm run db:push      # DB 스키마 푸시
-npm run db:migrate   # 마이그레이션 실행
-
-# 기타
-npm run pwa:icons    # PWA 아이콘 생성
-npm run setup        # Supabase 초기 설정
-npm run clean        # .next, node_modules 삭제
-npm run fresh        # clean + npm install
-```
-
-## 아키텍처
-
-### 기술 스택
-- **프레임워크**: Next.js 16 (App Router), React 19, TypeScript 5
-- **데이터베이스**: Supabase (PostgreSQL) + Prisma ORM
-- **실시간**: Supabase Realtime (postgres_changes)
-- **상태관리**: Zustand (localStorage 키: `auth-storage`)
-- **데이터 페칭**: React Query (TanStack Query)
-- **UI**: shadcn/ui + Radix UI + Tailwind CSS 4 + Lucide icons
-- **폼**: React Hook Form + Zod 유효성 검증
-- **캔버스**: Fabric.js (내손내줄 필기 모니터링)
-
-### 주요 디렉토리
-- `src/app/admin/` - 어드민 페이지
-  - `students/`, `payments/` - 학생/결제 관리
-  - `learning/` - 실시간 학습 모니터링 (국어, 국어v2, 수학, 스크린샷)
-  - `handwriting/live/` - 내손내줄 실시간 필기 모니터링 (Fabric.js 캔버스)
-  - `statistics/` - 학습 통계 (문장클리닉, 학생별)
-  - `contents/` - 콘텐츠 관리 (지문, 단어팡, 문장클리닉)
-  - `teacher/` - 선생님 도구 (지문 가이드)
-  - `settings/` - 시스템 설정 (변수, 권한, 학원, 사용자)
-- `src/app/api/` - API 라우트 (RESTful, 응답 형식: `{ success, data, message, error }`)
-- `src/components/ui/` - shadcn/ui 컴포넌트
-- `src/config/constants.ts` - 모든 ENUM 옵션과 라벨 정의 (타입 포함)
-- `src/types/` - TypeScript 타입 정의 (`index.ts`: 공통 타입, `realtime-korean.ts`: 실시간 국어 타입)
-- `src/store/auth.ts` - Zustand 인증 스토어
-- `scripts/` - SQL 스크립트 및 설정 유틸리티
-
-### 주요 lib 파일
-- `src/lib/permissions.ts` - 역할 기반 접근 제어 (5분 캐시, `clearPermissionCache()` 무효화)
-- `src/lib/supabase/client.ts` - 클라이언트 사이드 Supabase 인스턴스
-- `src/lib/supabase/server.ts` - 서버 사이드 Supabase 인스턴스
-- `src/lib/utils.ts` - `cn()` 등 공통 유틸리티
-- `src/lib/db/academy-queries.ts` - 학원 관련 DB 쿼리 함수
+주요 실시간 테이블: `test_session`, `test_result`, `handwriting_progress`, `check_in_out`
 
 ## 코딩 규칙
 
@@ -133,9 +170,15 @@ npm run fresh        # clean + npm install
 - 상수: UPPER_SNAKE_CASE (`MAX_STUDENTS`)
 
 ### TypeScript
-- `any` 타입 사용 금지
+- `any` 타입 사용 금지 (ESLint에서 warn으로 설정되어 있으나 사용 자제)
 - 모든 함수에 명시적 반환 타입 지정
 - Props는 interface로 정의
+
+### ESLint 규칙 (eslint.config.mjs)
+빌드 안정성을 위해 일부 규칙이 warn으로 완화:
+- `@typescript-eslint/no-explicit-any`: warn
+- `@typescript-eslint/no-unused-vars`: warn
+- `react-hooks/exhaustive-deps`: warn
 
 ### 컴포넌트
 - 함수형 컴포넌트만 사용
@@ -150,16 +193,12 @@ npm run fresh        # clean + npm install
 ### 권한 카테고리
 `students`, `payments`, `users`, `academy`, `reports` - 권한 추가 시 해당 카테고리 사용
 
-### Zustand 상태관리
-- 인증 상태: `src/store/auth.ts` (`auth-storage` 키)
-- persist 미들웨어로 localStorage 연동 시에만 클라이언트 저장소 접근
-
 ## 데이터베이스 작업
 
-### 🔴 supabase-db 에이전트 위임 원칙
+### supabase-db 에이전트 위임 원칙
 DB 관련 작업은 **supabase-db 에이전트에게 위임**할 것.
 - 직접 `mcp__supabase__execute_sql` 사용 금지
-- 에이전트가 스키마 캐시(`.claude/agents/db-schema-cache.md`)를 활용하여 컬럼명 오류 방지
+- 에이전트가 스키마 캐시(`.claude/docs/db-schema-cache.md`)를 활용하여 컬럼명 오류 방지
 - 에이전트 설정: `.claude/agents/supabase-db.md`
 - 프로젝트 ID: `mhorwnwhcyxynfxmlhit`
 
@@ -208,6 +247,9 @@ import { Dialog, DialogContent, ... } from '@/components/ui/dialog';
 - `payment` - 학원비 수납 내역
 - `settings` - 시스템 변수 관리 (name, value 컬럼)
 - `users` - 관리자/강사 사용자
+- `test_session` - 학습 세션 (단어팡, 지문퀴즈, 필기, 문장클리닉v2)
+- `test_result` - 개별 문제 결과
+- `role_permissions` - 역할별 권한 매핑
 
 ### student 테이블 주요 필드
 | 필드명 | 타입 | 설명 |
@@ -294,7 +336,10 @@ medium, advanced, highest, extreme, high_mock_1, high_mock_2, high_mock_3, csat
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
+
+`src/lib/env.ts`에서 환경변수 검증 수행. 서버 사이드에서는 `validateEnvironment()`, 클라이언트에서는 `logEnvironmentStatus()`로 상태 확인.
 
 ## claude-mem 활용
 
