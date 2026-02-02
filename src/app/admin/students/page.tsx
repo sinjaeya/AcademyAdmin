@@ -19,10 +19,6 @@ import {
   SCHOOL_OPTIONS,
   STATUS_OPTIONS,
   PARENT_TYPE_OPTIONS,
-  RUBRIC_GRADE_LEVEL_OPTIONS,
-  RUBRIC_DIFFICULTY_LEVEL_OPTIONS,
-  RUBRIC_GRADE_LEVEL_LABELS,
-  RUBRIC_DIFFICULTY_LEVEL_LABELS,
   SENTENCE_LEVEL_OPTIONS,
   SENTENCE_LEVEL_LABELS,
   HANDWRITING_LEVEL_OPTIONS,
@@ -65,8 +61,6 @@ interface Student {
   parent_phone: string;
   parent_type: string;
   email?: string;
-  rubric_grade_level?: string | null;
-  rubric_difficulty_level?: string | null;
   sentence_level?: string | null;
   handwriting_level?: string | null;
   academy_id?: string | null;
@@ -89,8 +83,6 @@ interface NewStudentForm {
   parent_type: string;
   email: string;
   password: string;
-  rubric_grade_level: string;
-  rubric_difficulty_level: string;
   sentence_level: string;
   handwriting_level: string;
   academy_id?: string | null;
@@ -110,8 +102,6 @@ interface EditStudentForm {
   parent_type: string;
   email: string;
   password: string;
-  rubric_grade_level: string;
-  rubric_difficulty_level: string;
   sentence_level: string;
   handwriting_level: string;
   academy_id?: string | null;
@@ -190,8 +180,6 @@ export default function StudentsPage() {
     parent_type: '엄마',
     email: '',
     password: '',
-    rubric_grade_level: 'middle',
-    rubric_difficulty_level: 'medium',
     sentence_level: 'Lv3_Mid1',
     handwriting_level: 'Lv3_Mid1',
     academy_id: null,
@@ -209,8 +197,6 @@ export default function StudentsPage() {
     parent_type: '엄마',
     email: '',
     password: '',
-    rubric_grade_level: 'middle',
-    rubric_difficulty_level: 'medium',
     sentence_level: 'Lv3_Mid1',
     handwriting_level: 'Lv3_Mid1',
     academy_id: null,
@@ -338,8 +324,6 @@ export default function StudentsPage() {
           parent_type: '엄마',
           email: '',
           password: '',
-          rubric_grade_level: 'middle',
-          rubric_difficulty_level: 'medium',
           sentence_level: 'Lv3_Mid1',
           handwriting_level: 'Lv3_Mid1',
           academy_id: null,
@@ -412,8 +396,6 @@ export default function StudentsPage() {
       parent_type: student.parent_type || '엄마',
       email: student.email || '',
       password: '',
-      rubric_grade_level: student.rubric_grade_level || 'middle',
-      rubric_difficulty_level: student.rubric_difficulty_level || 'medium',
       sentence_level: student.sentence_level || 'Lv3_Mid1',
       handwriting_level: student.handwriting_level || 'Lv3_Mid1',
       academy_id: student.academy_id || null,
@@ -443,8 +425,6 @@ export default function StudentsPage() {
           parent_type: editStudent.parent_type,
           email: editStudent.email,
           password: editStudent.password,
-          rubric_grade_level: editStudent.rubric_grade_level,
-          rubric_difficulty_level: editStudent.rubric_difficulty_level,
           sentence_level: editStudent.sentence_level,
           handwriting_level: editStudent.handwriting_level,
           academy_id: editStudent.academy_id,
@@ -562,9 +542,7 @@ export default function StudentsPage() {
                       <TableHead>중간4자리</TableHead>
                       <TableHead>학교</TableHead>
                       <TableHead>학년</TableHead>
-                      <TableHead>학년난이도</TableHead>
-                      <TableHead>학습난이도</TableHead>
-                      <TableHead>문장학습레벨</TableHead>
+                      <TableHead>학습레벨</TableHead>
                       <TableHead>부모연락처</TableHead>
                       <TableHead>보호자 타입</TableHead>
                       <TableHead>이메일</TableHead>
@@ -633,25 +611,18 @@ export default function StudentsPage() {
                           <Badge variant="secondary">{student.grade || 'N/A'}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">
-                            {student.rubric_grade_level 
-                              ? RUBRIC_GRADE_LEVEL_LABELS[student.rubric_grade_level] || student.rubric_grade_level
-                              : 'N/A'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {student.rubric_difficulty_level
-                              ? RUBRIC_DIFFICULTY_LEVEL_LABELS[student.rubric_difficulty_level] || student.rubric_difficulty_level
-                              : 'N/A'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {student.sentence_level
-                              ? SENTENCE_LEVEL_LABELS[student.sentence_level] || student.sentence_level
-                              : 'N/A'}
-                          </Badge>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="outline" className="text-xs">
+                              문클 {student.sentence_level
+                                ? SENTENCE_LEVEL_LABELS[student.sentence_level] || student.sentence_level
+                                : 'N/A'}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              내줄 {student.handwriting_level
+                                ? HANDWRITING_LEVEL_LABELS[student.handwriting_level] || student.handwriting_level
+                                : 'N/A'}
+                            </Badge>
+                          </div>
                         </TableCell>
                         <TableCell className="text-sm text-gray-600">
                           {student.parent_phone || 'N/A'}
@@ -836,58 +807,6 @@ export default function StudentsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">비밀번호 (선택)</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={newStudent.password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
-                  placeholder="비밀번호를 입력하세요"
-                />
-                <p className="text-xs text-gray-500">
-                  비밀번호를 입력하지 않으면 기본 비밀번호가 설정됩니다.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="rubric_grade_level">루브릭 학년 레벨</Label>
-                <Select
-                  value={newStudent.rubric_grade_level}
-                  onValueChange={(value) => handleInputChange('rubric_grade_level', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="학년 레벨을 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RUBRIC_GRADE_LEVEL_OPTIONS.map((level) => (
-                      <SelectItem key={level} value={level}>
-                        {RUBRIC_GRADE_LEVEL_LABELS[level] || level}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="rubric_difficulty_level">루브릭 난이도 레벨</Label>
-                <Select
-                  value={newStudent.rubric_difficulty_level}
-                  onValueChange={(value) => handleInputChange('rubric_difficulty_level', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="난이도 레벨을 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RUBRIC_DIFFICULTY_LEVEL_OPTIONS.map((level) => (
-                      <SelectItem key={level} value={level}>
-                        {RUBRIC_DIFFICULTY_LEVEL_LABELS[level] || level}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="sentence_level">문장클리닉 레벨</Label>
                 <Select
                   value={newStudent.sentence_level}
@@ -923,6 +842,20 @@ export default function StudentsPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">비밀번호 (선택)</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={newStudent.password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  placeholder="비밀번호를 입력하세요"
+                />
+                <p className="text-xs text-gray-500">
+                  비밀번호를 입력하지 않으면 기본 비밀번호가 설정됩니다.
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -1132,58 +1065,6 @@ export default function StudentsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-password">비밀번호 변경 (선택)</Label>
-                <Input
-                  id="edit-password"
-                  type="text"
-                  value={editStudent.password}
-                  onChange={(e) => handleEditInputChange('password', e.target.value)}
-                  placeholder="비밀번호를 변경하려면 입력하세요"
-                />
-                <p className="text-xs text-gray-500">
-                  비밀번호를 변경하려면 새 비밀번호를 입력하세요. 입력하지 않으면 기존 비밀번호가 유지됩니다.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-rubric_grade_level">루브릭 학년 레벨</Label>
-                <Select
-                  value={editStudent.rubric_grade_level}
-                  onValueChange={(value) => handleEditInputChange('rubric_grade_level', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="학년 레벨을 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RUBRIC_GRADE_LEVEL_OPTIONS.map((level) => (
-                      <SelectItem key={level} value={level}>
-                        {RUBRIC_GRADE_LEVEL_LABELS[level] || level}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="edit-rubric_difficulty_level">루브릭 난이도 레벨</Label>
-                <Select
-                  value={editStudent.rubric_difficulty_level}
-                  onValueChange={(value) => handleEditInputChange('rubric_difficulty_level', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="난이도 레벨을 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {RUBRIC_DIFFICULTY_LEVEL_OPTIONS.map((level) => (
-                      <SelectItem key={level} value={level}>
-                        {RUBRIC_DIFFICULTY_LEVEL_LABELS[level] || level}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="edit-sentence_level">문장클리닉 레벨</Label>
                 <Select
                   value={editStudent.sentence_level}
@@ -1219,6 +1100,20 @@ export default function StudentsPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-password">비밀번호 변경 (선택)</Label>
+                <Input
+                  id="edit-password"
+                  type="text"
+                  value={editStudent.password}
+                  onChange={(e) => handleEditInputChange('password', e.target.value)}
+                  placeholder="비밀번호를 변경하려면 입력하세요"
+                />
+                <p className="text-xs text-gray-500">
+                  비밀번호를 변경하려면 새 비밀번호를 입력하세요. 입력하지 않으면 기존 비밀번호가 유지됩니다.
+                </p>
               </div>
 
               <div className="space-y-2">
