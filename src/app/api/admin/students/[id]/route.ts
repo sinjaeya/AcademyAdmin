@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 import bcrypt from 'bcryptjs';
 
 // 학생 정보 업데이트
@@ -11,6 +12,31 @@ export async function PUT(
     const { id: studentId } = await params;
     const body = await request.json();
     const supabase = createServerClient();
+
+    // 학원 데이터 격리
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
+
+    // 관리자가 아닌 경우 자기 학원 학생인지 확인
+    if (!isAdmin && academyId) {
+      const { data: studentCheck } = await supabase
+        .from('student')
+        .select('academy_id')
+        .eq('id', studentId)
+        .single();
+
+      if (!studentCheck || studentCheck.academy_id !== academyId) {
+        return NextResponse.json(
+          { error: '접근 권한이 없습니다.' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // admin이 아니면 academy_id 변경 방지
+    if (!isAdmin && body.academy_id !== undefined) {
+      delete body.academy_id;
+    }
 
     // 핸드폰 번호에서 중간 4자리 추출
     const extractMiddle4Digits = (phoneNumber: string): string => {
@@ -130,6 +156,26 @@ export async function DELETE(
   try {
     const { id: studentId } = await params;
     const supabase = createServerClient();
+
+    // 학원 데이터 격리
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
+
+    // 관리자가 아닌 경우 자기 학원 학생인지 확인
+    if (!isAdmin && academyId) {
+      const { data: studentCheck } = await supabase
+        .from('student')
+        .select('academy_id')
+        .eq('id', studentId)
+        .single();
+
+      if (!studentCheck || studentCheck.academy_id !== academyId) {
+        return NextResponse.json(
+          { error: '접근 권한이 없습니다.' },
+          { status: 403 }
+        );
+      }
+    }
 
     const { error } = await supabase
       .from('student')

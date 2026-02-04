@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 
 /**
  * GET /api/admin/checkinout
@@ -20,14 +21,23 @@ export async function GET(request: NextRequest) {
     const nextDate = new Date(selectedDate);
     nextDate.setDate(nextDate.getDate() + 1);
     const endDate = `${nextDate.toISOString().split('T')[0]}T00:00:00.000Z`;
-    
-    // check_in_board 테이블에서 선택한 날짜의 데이터만 조회
-    // created_at이 선택한 날짜의 00:00:00 UTC 이상이고 다음 날 00:00:00 UTC 미만인 데이터
-    const { data: checkInOutData, error: fetchError } = await supabase
+
+    // 학원 데이터 격리
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
+
+    let query = supabase
       .from('check_in_board')
       .select('*')
       .gte('created_at', startDate)
-      .lt('created_at', endDate)
+      .lt('created_at', endDate);
+
+    // 관리자가 아닌 경우 자기 학원 데이터만 조회
+    if (!isAdmin && academyId) {
+      query = query.eq('academy_id', academyId);
+    }
+
+    const { data: checkInOutData, error: fetchError } = await query
       .order('created_at', { ascending: false });
     
     if (fetchError) {

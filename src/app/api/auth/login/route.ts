@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       : '';
 
     // 성공 시 사용자 정보 반환 (password_hash 제외)
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: {
         id: user.id,
@@ -81,6 +81,17 @@ export async function POST(request: NextRequest) {
         academy_name: user.academy_name
       }
     });
+
+    // 서버에서 사용자 식별을 위한 세션 쿠키 설정
+    response.cookies.set('admin-session', user.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7 // 7일
+    });
+
+    return response;
 
   } catch (error) {
     console.error('Login API error:', error);

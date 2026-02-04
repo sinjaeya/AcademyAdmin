@@ -102,9 +102,16 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       logout: async () => {
-        set({ 
+        // 서버 세션 쿠키 삭제
+        try {
+          await fetch('/api/auth/logout', { method: 'POST' });
+        } catch (e) {
+          console.error('로그아웃 API 호출 실패:', e);
+        }
+
+        set({
           user: null,
-          isAuthenticated: false, 
+          isAuthenticated: false,
           isLoading: false,
           academyId: null,
           academyName: null

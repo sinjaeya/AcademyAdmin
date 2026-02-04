@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 
 /**
  * GET /api/admin/checkinout/detail
@@ -20,6 +21,25 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // 학원 데이터 격리: 학생이 자기 학원 소속인지 확인
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
+
+    if (!isAdmin && academyId) {
+      const { data: studentData } = await supabase
+        .from('student')
+        .select('academy_id')
+        .eq('id', parseInt(studentId))
+        .single();
+
+      if (!studentData || studentData.academy_id !== academyId) {
+        return NextResponse.json(
+          { success: false, error: '접근 권한이 없습니다.' },
+          { status: 403 }
+        );
+      }
+    }
+
     // 날짜 범위 설정 (해당 날짜의 00:00:00 ~ 23:59:59)
     const startDate = date ? `${date}T00:00:00.000Z` : null;
     const endDate = date ? `${date}T23:59:59.999Z` : null;
@@ -30,6 +50,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .select('id, check_in_out, has_today_study, today_study_data, success, sent_at')
       .eq('student_id', parseInt(studentId))
       .order('sent_at', { ascending: false });
+
+    // 관리자가 아닌 경우 자기 학원 데이터만 조회
+    if (!isAdmin && academyId) {
+      messagesQuery = messagesQuery.eq('academy_id', academyId);
+    }
 
     // 날짜 필터가 있으면 적용
     if (startDate && endDate) {
@@ -45,14 +70,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     // 2. 갤러리 링크 조회 (parent_share_links 테이블)
-    const { data: galleryData, error: galleryError } = await supabase
+    let galleryQuery = supabase
       .from('parent_share_links')
       .select('token, is_active, valid_until, share_date')
       .eq('student_id', parseInt(studentId))
       .eq('is_active', true)
       .order('share_date', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
+
+    // 관리자가 아닌 경우 자기 학원 데이터만 조회
+    if (!isAdmin && academyId) {
+      galleryQuery = galleryQuery.eq('academy_id', academyId);
+    }
+
+    const { data: galleryData, error: galleryError } = await galleryQuery.single();
 
     if (galleryError && galleryError.code !== 'PGRST116') {
       // PGRST116: 결과 없음 에러는 무시

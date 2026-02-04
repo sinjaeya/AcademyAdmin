@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -9,16 +10,38 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient();
 
+    // 학원 데이터 격리
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
+
     // 해당 월의 시작일과 종료일
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
-    // mathflat_worksheets에서 데이터 가져오기
-    const { data: worksheetsData, error } = await supabase
+    // 관리자가 아닌 경우 자기 학원 학생 이름으로 필터링
+    let academyStudentNames: string[] | null = null;
+    if (!isAdmin && academyId) {
+      const { data: academyStudents } = await supabase
+        .from('student')
+        .select('name')
+        .eq('academy_id', academyId);
+      academyStudentNames = academyStudents?.map(s => s.name) || [];
+    }
+
+    let worksheetsQuery = supabase
       .from('mathflat_worksheets')
       .select('*')
       .gte('issued_date', startDate)
-      .lte('issued_date', `${endDate}T23:59:59.999Z`)
+      .lte('issued_date', `${endDate}T23:59:59.999Z`);
+
+    if (academyStudentNames !== null) {
+      if (academyStudentNames.length === 0) {
+        return NextResponse.json({ data: [] });
+      }
+      worksheetsQuery = worksheetsQuery.in('student_name', academyStudentNames);
+    }
+
+    const { data: worksheetsData, error } = await worksheetsQuery
       .order('issued_date', { ascending: true });
 
     if (error) {

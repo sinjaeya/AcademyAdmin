@@ -1,14 +1,20 @@
+import { cookies } from 'next/headers'
 import { createServerClient } from '@/lib/supabase/server'
 import { UserContext, Academy, User } from '@/types'
 
 /**
- * 서버 컴포넌트에서 현재 사용자의 컨텍스트를 가져옵니다
- * 실제 사용 시에는 세션에서 사용자 ID를 가져와야 합니다
+ * 서버 컴포넌트/API Route에서 현재 로그인 사용자의 컨텍스트를 가져옵니다
+ * 로그인 시 설정된 admin-session 쿠키에서 사용자 ID를 읽습니다
  */
 export async function getServerUserContext(): Promise<UserContext | null> {
   try {
-    // 임시로 하드코딩된 사용자 ID 사용 (실제로는 세션에서 가져와야 함)
-    const userId = 'daacce13-eb9c-4822-87d2-088f2b8a529e'
+    // 쿠키에서 사용자 ID 읽기
+    const cookieStore = await cookies()
+    const userId = cookieStore.get('admin-session')?.value
+
+    if (!userId) {
+      return null
+    }
     
     const supabase = createServerClient()
     

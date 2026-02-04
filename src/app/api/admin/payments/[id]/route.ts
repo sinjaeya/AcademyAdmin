@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 
 // 결제 내역 수정
 export async function PUT(
@@ -10,8 +11,12 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
     console.log(`PUT /api/admin/payments/${id} - 요청 데이터:`, body);
-    
+
     const supabase = createServerClient();
+
+    // 학원 데이터 격리
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
 
     // 업데이트할 데이터 구성
     const updateData: any = {};
@@ -44,7 +49,8 @@ export async function PUT(
     if (body.cash_receipt_issued !== undefined) {
       updateData.cash_receipt_issued = body.cash_receipt_issued === true || body.cash_receipt_issued === 'true';
     }
-    if (body.academy_id !== undefined) updateData.academy_id = body.academy_id || null;
+    // admin만 academy_id 변경 가능
+    if (isAdmin && body.academy_id !== undefined) updateData.academy_id = body.academy_id || null;
 
     // 업데이트할 데이터가 없는 경우
     if (Object.keys(updateData).length === 0) {
@@ -54,10 +60,17 @@ export async function PUT(
       );
     }
 
-    const { data, error } = await supabase
+    let updateQuery = supabase
       .from('payment')
       .update(updateData)
-      .eq('id', id)
+      .eq('id', id);
+
+    // 관리자가 아닌 경우 자기 학원 결제만 수정 가능
+    if (!isAdmin && academyId) {
+      updateQuery = updateQuery.eq('academy_id', academyId);
+    }
+
+    const { data, error } = await updateQuery
       .select(`
         *,
         student:student_id (id, name)
@@ -101,15 +114,24 @@ export async function DELETE(
   try {
     const { id } = await params;
     console.log(`DELETE /api/admin/payments/${id}`);
-    
+
     const supabase = createServerClient();
 
-    // 먼저 존재하는지 확인
-    const { data: existingPayment, error: checkError } = await supabase
+    // 학원 데이터 격리
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
+
+    // 먼저 존재하는지 확인 (자기 학원 소속인지도 체크)
+    let checkQuery = supabase
       .from('payment')
       .select('id')
-      .eq('id', id)
-      .single();
+      .eq('id', id);
+
+    if (!isAdmin && academyId) {
+      checkQuery = checkQuery.eq('academy_id', academyId);
+    }
+
+    const { data: existingPayment, error: checkError } = await checkQuery.single();
 
     if (checkError || !existingPayment) {
       return NextResponse.json(
@@ -119,10 +141,16 @@ export async function DELETE(
     }
 
     // 삭제 실행
-    const { error } = await supabase
+    let deleteQuery = supabase
       .from('payment')
       .delete()
       .eq('id', id);
+
+    if (!isAdmin && academyId) {
+      deleteQuery = deleteQuery.eq('academy_id', academyId);
+    }
+
+    const { error } = await deleteQuery;
 
     if (error) {
       console.error('Supabase delete error:', error);

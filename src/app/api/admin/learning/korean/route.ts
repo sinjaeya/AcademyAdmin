@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -9,12 +10,26 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient();
 
+    // 학원 데이터 격리
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
+
     // 해당 월의 시작일과 종료일
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
+    // 관리자가 아닌 경우 자기 학원 학생만 필터링
+    let academyStudentIds: number[] | null = null;
+    if (!isAdmin && academyId) {
+      const { data: academyStudents } = await supabase
+        .from('student')
+        .select('id')
+        .eq('academy_id', academyId);
+      academyStudentIds = academyStudents?.map(s => Number(s.id)) || [];
+    }
+
     // dailykor_learning_overview에서 데이터 가져오기
-    const { data: learningData, error } = await supabase
+    let learningQuery = supabase
       .from('dailykor_learning_overview')
       .select(`
         id,
@@ -25,7 +40,16 @@ export async function GET(request: NextRequest) {
         score_display
       `)
       .gte('study_date', startDate)
-      .lte('study_date', endDate)
+      .lte('study_date', endDate);
+
+    if (academyStudentIds !== null) {
+      if (academyStudentIds.length === 0) {
+        return NextResponse.json({ data: [] });
+      }
+      learningQuery = learningQuery.in('student_id', academyStudentIds);
+    }
+
+    const { data: learningData, error } = await learningQuery
       .order('study_date', { ascending: true });
 
     if (error) {

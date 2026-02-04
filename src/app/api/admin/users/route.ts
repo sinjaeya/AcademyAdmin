@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
+import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -10,8 +11,12 @@ export async function GET() {
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // 학원 데이터 격리
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
+
     // admin_users 테이블에서 조회 (roles 테이블과 조인)
-    const { data: users, error: usersError } = await supabase
+    let query = supabase
       .from('admin_users')
       .select(`
         id,
@@ -26,7 +31,14 @@ export async function GET() {
         roles:role_id (
           name
         )
-      `)
+      `);
+
+    // 관리자가 아닌 경우 자기 학원 사용자만 조회
+    if (!isAdmin && academyId) {
+      query = query.eq('academy_id', academyId);
+    }
+
+    const { data: users, error: usersError } = await query
       .order('created_at', { ascending: false });
 
     if (usersError) {

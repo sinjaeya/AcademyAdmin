@@ -156,7 +156,10 @@ export function getCategoryName(category: string): string {
     payments: '결제 관리',
     users: '사용자 관리',
     academy: '학원 설정',
-    reports: '리포트'
+    reports: '리포트',
+    contents: '콘텐츠 관리',
+    statistics: '통계',
+    rag: 'RAG 관리'
   };
   return names[category] || category;
 }

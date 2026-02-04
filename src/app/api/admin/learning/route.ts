@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -9,12 +10,26 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient();
 
+    // 학원 데이터 격리
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
+
     // 해당 월의 시작일과 종료일
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
+    // 관리자가 아닌 경우 자기 학원 학생만 필터링
+    let academyStudentIds: number[] | null = null;
+    if (!isAdmin && academyId) {
+      const { data: academyStudents } = await supabase
+        .from('student')
+        .select('id')
+        .eq('academy_id', academyId);
+      academyStudentIds = academyStudents?.map(s => Number(s.id)) || [];
+    }
+
     // test_session에서 데이터 가져오기 (word_pang, passage_quiz, sentence_clinic)
-    const { data: learningData, error } = await supabase
+    let learningQuery = supabase
       .from('test_session')
       .select(`
         student_id,
@@ -26,7 +41,16 @@ export async function GET(request: NextRequest) {
       `)
       .in('test_type', ['word_pang', 'passage_quiz', 'sentence_clinic'])
       .gte('started_at', `${startDate}T00:00:00.000Z`)
-      .lte('started_at', `${endDate}T23:59:59.999Z`)
+      .lte('started_at', `${endDate}T23:59:59.999Z`);
+
+    if (academyStudentIds !== null) {
+      if (academyStudentIds.length === 0) {
+        return NextResponse.json({ data: [] });
+      }
+      learningQuery = learningQuery.in('student_id', academyStudentIds);
+    }
+
+    const { data: learningData, error } = await learningQuery
       .order('started_at', { ascending: true });
 
     if (error) {

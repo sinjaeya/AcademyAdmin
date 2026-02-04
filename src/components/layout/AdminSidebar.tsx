@@ -54,9 +54,14 @@ interface NavigationCategory {
 // 권한 ID 매핑 (DB에서 조회한 값)
 const PERMISSION_IDS = {
   STUDENTS_VIEW: 'students.view',
+  STUDENTS_EDIT: 'students.edit',
+  PAYMENTS_VIEW: 'payments.view',
   REPORTS_VIEW: 'reports.view',
   ACADEMY_SETTINGS: 'academy.settings',
-  USERS_VIEW: 'users.view'
+  USERS_VIEW: 'users.view',
+  CONTENTS_MANAGE: 'contents.manage',
+  STATISTICS_VIEW: 'statistics.view',
+  RAG_MANAGE: 'rag.manage'
 };
 
 const navigationCategories: NavigationCategory[] = [
@@ -66,20 +71,20 @@ const navigationCategories: NavigationCategory[] = [
       { name: '대시보드', href: '/admin', icon: LayoutDashboard, badge: '3', requiredPermission: null },
       { name: '실시간 국어 (v2)', href: '/admin/learning/realtime-korean2', icon: Radio, requiredPermission: null },
       { name: '내손내줄 실시간', href: '/admin/handwriting/live', icon: PenTool, requiredPermission: null },
-      { name: '레벨테스트', href: '/admin/level-test', icon: ClipboardCheck, requiredPermission: null }
+      { name: '레벨테스트', href: '/admin/level-test', icon: ClipboardCheck, requiredPermission: PERMISSION_IDS.REPORTS_VIEW }
     ]
   },
   {
     title: 'ASSESSMENT',
     items: [
-      { name: '레벨테스트', href: '/admin/level-test', icon: ClipboardCheck, requiredPermission: null }
+      { name: '레벨테스트', href: '/admin/level-test', icon: ClipboardCheck, requiredPermission: PERMISSION_IDS.REPORTS_VIEW }
     ]
   },
   {
     title: 'STUDENT MANAGEMENT',
     items: [
       { name: '학생 관리', href: '/admin/students', icon: GraduationCap, requiredPermission: PERMISSION_IDS.STUDENTS_VIEW },
-      { name: '풀스택-국어 카톡 발송', href: '/admin/kakao-report', icon: Send, requiredPermission: null },
+      { name: '풀스택-국어 카톡 발송', href: '/admin/kakao-report', icon: Send, requiredPermission: PERMISSION_IDS.STUDENTS_EDIT },
       { name: '등/하원 조회', href: '/admin/checkinout', icon: Clock, badge: '5', requiredPermission: PERMISSION_IDS.STUDENTS_VIEW },
       { name: '학습관리', href: '/admin/learning', icon: BookText, requiredPermission: PERMISSION_IDS.REPORTS_VIEW },
       { name: '학습리포트', href: '/admin/study-reports', icon: BookOpen, requiredPermission: PERMISSION_IDS.REPORTS_VIEW }
@@ -88,26 +93,26 @@ const navigationCategories: NavigationCategory[] = [
   {
     title: 'STATISTICS',
     items: [
-      { name: '통계', href: '', icon: BarChart3, requiredPermission: null }
+      { name: '통계', href: '', icon: BarChart3, requiredPermission: PERMISSION_IDS.STATISTICS_VIEW }
     ]
   },
   {
     title: 'CONTENTS MANAGEMENT',
     items: [
-      { name: '콘텐츠 관리', href: '', icon: FileText, requiredPermission: null },
-      { name: 'RAG관리', href: '', icon: Database, requiredPermission: null }
+      { name: '콘텐츠 관리', href: '', icon: FileText, requiredPermission: PERMISSION_IDS.CONTENTS_MANAGE },
+      { name: 'RAG관리', href: '', icon: Database, requiredPermission: PERMISSION_IDS.RAG_MANAGE }
     ]
   },
   {
     title: 'FINANCE',
     items: [
-      { name: '학원비수납내역', href: '/admin/payments', icon: Wallet, requiredPermission: null }
+      { name: '학원비수납내역', href: '/admin/payments', icon: Wallet, requiredPermission: PERMISSION_IDS.PAYMENTS_VIEW }
     ]
   },
   {
     title: 'TEACHER',
     items: [
-      { name: '지문가이드', href: '/admin/teacher/passage-guide', icon: BookOpen, requiredPermission: null }
+      { name: '지문가이드', href: '/admin/teacher/passage-guide', icon: BookOpen, requiredPermission: PERMISSION_IDS.REPORTS_VIEW }
     ]
   },
   {
@@ -153,7 +158,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
 
   // 설정 메뉴의 하위 메뉴들
   const settingsSubMenus = useMemo(() => [
-    { name: '변수 관리', href: '/admin/settings/variables', icon: Variable, requiredPermission: null },
+    { name: '변수 관리', href: '/admin/settings/variables', icon: Variable, requiredPermission: PERMISSION_IDS.ACADEMY_SETTINGS },
     { name: '학원관리', href: '/admin/settings/academy', icon: Building2, requiredPermission: PERMISSION_IDS.ACADEMY_SETTINGS },
     { name: '사용자 관리', href: '/admin/settings/users', icon: Users, requiredPermission: PERMISSION_IDS.USERS_VIEW },
     { name: '권한 관리', href: '/admin/settings/permissions', icon: Shield, requiredPermission: null } // Admin 전용은 특별 처리
@@ -277,23 +282,27 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
       return user?.role_id === 'admin';
     }
 
-    // 권한 로딩 중이거나 권한이 아직 로드되지 않았으면 일단 true 반환 (모든 메뉴 표시)
-    // 로딩이 완료되고 권한이 있을 때만 필터링
-    if (loadingPermissions || permissionIdsRef.current.length === 0) {
+    // 권한 로딩 중에는 requiredPermission이 있는 메뉴 숨김
+    if (loadingPermissions) {
+      return false;
+    }
+
+    // admin은 항상 모든 메뉴 접근 가능
+    if (user?.role_id === 'admin') {
       return true;
     }
 
-    // ref를 사용하여 permissionIds 조회 (상태 변경 없이도 체크 가능)
+    // 권한이 비어있으면 (로드 실패 등) 숨김 처리
+    if (permissionIdsRef.current.length === 0) {
+      return false;
+    }
+
+    // ref를 사용하여 permissionIds 조회
     return permissionIdsRef.current.includes(requiredPermission);
   }, [user?.role_id, loadingPermissions]);
 
   // 필터링된 설정 하위 메뉴 (먼저 계산)
   const filteredSettingsSubMenus = useMemo(() => {
-    // 권한 로딩 중이면 필터링하지 않고 전체 메뉴 표시
-    if (loadingPermissions) {
-      return settingsSubMenus;
-    }
-
     return settingsSubMenus.filter(subItem => {
       // 권한 관리 메뉴는 특별 처리
       if (subItem.name === '권한 관리') {
@@ -301,15 +310,10 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
       }
       return hasPermission(subItem.requiredPermission);
     });
-  }, [hasPermission, user?.role_id, loadingPermissions]);
+  }, [hasPermission, user?.role_id, settingsSubMenus]);
 
   // 필터링된 메뉴 카테고리
   const filteredCategories = useMemo(() => {
-    // 권한이 로드되지 않았거나 로딩 중이면 필터링하지 않고 전체 메뉴 표시
-    if (loadingPermissions || permissionIdsRef.current.length === 0) {
-      return navigationCategories;
-    }
-
     return navigationCategories
       .map(category => {
         const filteredItems = category.items.filter(item => {
@@ -325,7 +329,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
         };
       })
       .filter(category => category.items.length > 0); // 빈 카테고리 제거
-  }, [hasPermission, filteredSettingsSubMenus, loadingPermissions, permissionIds]);
+  }, [hasPermission, filteredSettingsSubMenus]);
 
   return (
     <div className={cn('flex h-full w-56 flex-col bg-white border-r border-gray-200', className)}>

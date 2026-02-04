@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -12,6 +13,25 @@ export async function GET(request: NextRequest) {
 
   try {
     const supabase = createServerClient();
+
+    // 학원 데이터 격리: 학생이 자기 학원 소속인지 확인
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
+
+    if (!isAdmin && academyId) {
+      const { data: studentData } = await supabase
+        .from('student')
+        .select('academy_id')
+        .eq('id', parseInt(studentId))
+        .single();
+
+      if (!studentData || studentData.academy_id !== academyId) {
+        return NextResponse.json(
+          { error: '접근 권한이 없습니다.' },
+          { status: 403 }
+        );
+      }
+    }
 
     // dailykor_learning_detail에서 데이터 가져오기
     const { data: detailData, error: detailError } = await supabase
