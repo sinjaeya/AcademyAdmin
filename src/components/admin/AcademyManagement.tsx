@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Edit, Trash2, Building2, MapPin, Phone, Mail, Globe, FileText, MessageSquare, Eye, EyeOff } from 'lucide-react';
 import { Academy } from '@/types';
 import { useToast } from '@/components/ui/toast';
@@ -36,6 +37,7 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
     website: '',
     description: '',
     logo_url: '',
+    type: 'full' as 'full' | 'lite',
     is_active: true,
     // Solapi 카카오 알림톡 설정
     solapi_api_key: '',
@@ -159,6 +161,7 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
       website: '',
       description: '',
       logo_url: '',
+      type: 'full' as 'full' | 'lite',
       is_active: true,
       // Solapi 카카오 알림톡 설정
       solapi_api_key: '',
@@ -185,6 +188,7 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
       website: academy.website || '',
       description: academy.description || '',
       logo_url: academy.logo_url || '',
+      type: (academy as any).type || 'full',
       is_active: academy.is_active,
       // Solapi 카카오 알림톡 설정
       solapi_api_key: academy.solapi_api_key || '',
@@ -344,6 +348,23 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
                     />
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="type">학원 타입</Label>
+                    <Select
+                      value={formData.type}
+                      onValueChange={(value: 'full' | 'lite') => setFormData({ ...formData, type: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="학원 타입 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="full">FULL - 전체 기능</SelectItem>
+                        <SelectItem value="lite">LITE - 문해력 앱</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500">LITE: 문해력(국어) 앱 기능만 제공</p>
+                  </div>
+
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="is_active"
@@ -475,9 +496,14 @@ export function AcademyManagement({ initialAcademies = [] }: AcademyManagementPr
                   <Building2 className="h-5 w-5 text-blue-600" />
                   <CardTitle className="text-lg">{academy.name}</CardTitle>
                 </div>
-                <Badge variant={academy.is_active ? 'default' : 'secondary'}>
-                  {academy.is_active ? '활성' : '비활성'}
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant="outline" className={(academy as any).type === 'lite' ? 'border-amber-500 text-amber-600' : 'border-blue-500 text-blue-600'}>
+                    {(academy as any).type === 'lite' ? 'LITE' : 'FULL'}
+                  </Badge>
+                  <Badge variant={academy.is_active ? 'default' : 'secondary'}>
+                    {academy.is_active ? '활성' : '비활성'}
+                  </Badge>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">

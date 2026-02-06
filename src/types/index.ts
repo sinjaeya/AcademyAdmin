@@ -7,6 +7,7 @@ export interface User {
   role_name: string;
   academy_id: string | null;
   academy_name: string | null;
+  academy_type?: AcademyType | null;
 }
 
 // 인증 상태 타입
@@ -98,6 +99,9 @@ export interface LoginFormData {
   password: string;
 }
 
+// 학원 타입
+export type AcademyType = 'full' | 'lite';
+
 // 학원 정보 타입
 export interface Academy {
   id: string;
@@ -110,6 +114,7 @@ export interface Academy {
   logo_url?: string;
   settings?: Record<string, unknown>;
   is_active: boolean;
+  type?: AcademyType;
   created_at: string;
   updated_at: string;
   // Solapi 카카오 알림톡 설정

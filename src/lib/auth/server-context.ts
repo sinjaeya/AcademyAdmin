@@ -44,7 +44,8 @@ export async function getServerUserContext(): Promise<UserContext | null> {
           settings,
           is_active,
           created_at,
-          updated_at
+          updated_at,
+          type
         )
       `)
       .eq('id', userId)
@@ -75,7 +76,8 @@ export async function getServerUserContext(): Promise<UserContext | null> {
       role_id: userData.role_id,
       role_name: roleName,
       academy_id: userData.academy_id,
-      academy_name: academy?.name || null
+      academy_name: academy?.name || null,
+      academy_type: academy?.type || 'full'
     }
 
     const userContext: UserContext = {
@@ -127,5 +129,18 @@ export async function getServerUserRole(): Promise<string | null> {
   } catch (error) {
     console.error('서버 사용자 역할 조회 오류:', error)
     return null
+  }
+}
+
+/**
+ * 서버 컴포넌트에서 현재 사용자의 학원 타입을 가져옵니다
+ */
+export async function getServerAcademyType(): Promise<string> {
+  try {
+    const userContext = await getServerUserContext()
+    return userContext?.academy?.type || 'full'
+  } catch (error) {
+    console.error('서버 학원 타입 조회 오류:', error)
+    return 'full'
   }
 }

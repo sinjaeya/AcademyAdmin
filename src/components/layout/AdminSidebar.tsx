@@ -44,6 +44,7 @@ interface NavigationItem {
   badge?: string;
   badgeType?: 'new' | 'default';
   requiredPermission?: string | null; // permissionId 또는 null (null이면 권한 체크 없음)
+  liteVisible?: boolean; // lite 학원에서 보여줄지 여부
 }
 
 interface NavigationCategory {
@@ -68,26 +69,26 @@ const navigationCategories: NavigationCategory[] = [
   {
     title: 'OVERVIEW',
     items: [
-      { name: '대시보드', href: '/admin', icon: LayoutDashboard, badge: '3', requiredPermission: null },
-      { name: '실시간 국어 (v2)', href: '/admin/learning/realtime-korean2', icon: Radio, requiredPermission: null },
+      { name: '대시보드', href: '/admin', icon: LayoutDashboard, badge: '3', requiredPermission: null, liteVisible: true },
+      { name: '실시간 국어 (v2)', href: '/admin/learning/realtime-korean2', icon: Radio, requiredPermission: null, liteVisible: true },
       { name: '내손내줄 실시간', href: '/admin/handwriting/live', icon: PenTool, requiredPermission: null },
-      { name: '레벨테스트', href: '/admin/level-test', icon: ClipboardCheck, requiredPermission: PERMISSION_IDS.REPORTS_VIEW }
+      { name: '레벨테스트', href: '/admin/level-test', icon: ClipboardCheck, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true }
     ]
   },
   {
     title: 'ASSESSMENT',
     items: [
-      { name: '레벨테스트', href: '/admin/level-test', icon: ClipboardCheck, requiredPermission: PERMISSION_IDS.REPORTS_VIEW }
+      { name: '레벨테스트', href: '/admin/level-test', icon: ClipboardCheck, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true }
     ]
   },
   {
     title: 'STUDENT MANAGEMENT',
     items: [
-      { name: '학생 관리', href: '/admin/students', icon: GraduationCap, requiredPermission: PERMISSION_IDS.STUDENTS_VIEW },
-      { name: '풀스택-국어 카톡 발송', href: '/admin/kakao-report', icon: Send, requiredPermission: PERMISSION_IDS.STUDENTS_EDIT },
+      { name: '학생 관리', href: '/admin/students', icon: GraduationCap, requiredPermission: PERMISSION_IDS.STUDENTS_VIEW, liteVisible: true },
+      { name: '풀스택-국어 카톡 발송', href: '/admin/kakao-report', icon: Send, requiredPermission: PERMISSION_IDS.STUDENTS_EDIT, liteVisible: true },
       { name: '등/하원 조회', href: '/admin/checkinout', icon: Clock, badge: '5', requiredPermission: PERMISSION_IDS.STUDENTS_VIEW },
       { name: '학습관리', href: '/admin/learning', icon: BookText, requiredPermission: PERMISSION_IDS.REPORTS_VIEW },
-      { name: '학습리포트', href: '/admin/study-reports', icon: BookOpen, requiredPermission: PERMISSION_IDS.REPORTS_VIEW }
+      { name: '학습리포트', href: '/admin/study-reports', icon: BookOpen, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true }
     ]
   },
   {
@@ -112,13 +113,13 @@ const navigationCategories: NavigationCategory[] = [
   {
     title: 'TEACHER',
     items: [
-      { name: '지문가이드', href: '/admin/teacher/passage-guide', icon: BookOpen, requiredPermission: PERMISSION_IDS.REPORTS_VIEW }
+      { name: '지문가이드', href: '/admin/teacher/passage-guide', icon: BookOpen, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true }
     ]
   },
   {
     title: 'SETTINGS',
     items: [
-      { name: '설정', href: '', icon: Settings, requiredPermission: null }
+      { name: '설정', href: '', icon: Settings, requiredPermission: null, liteVisible: true }
     ]
   }
 ];
@@ -130,7 +131,7 @@ interface AdminSidebarProps {
 export function AdminSidebar({ className }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, academyType } = useAuthStore();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [permissionIds, setPermissionIds] = useState<string[]>([]);
   const [loadingPermissions, setLoadingPermissions] = useState(true);
@@ -158,10 +159,10 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
 
   // 설정 메뉴의 하위 메뉴들
   const settingsSubMenus = useMemo(() => [
-    { name: '변수 관리', href: '/admin/settings/variables', icon: Variable, requiredPermission: PERMISSION_IDS.ACADEMY_SETTINGS },
-    { name: '학원관리', href: '/admin/settings/academy', icon: Building2, requiredPermission: PERMISSION_IDS.ACADEMY_SETTINGS },
-    { name: '사용자 관리', href: '/admin/settings/users', icon: Users, requiredPermission: PERMISSION_IDS.USERS_VIEW },
-    { name: '권한 관리', href: '/admin/settings/permissions', icon: Shield, requiredPermission: null } // Admin 전용은 특별 처리
+    { name: '변수 관리', href: '/admin/settings/variables', icon: Variable, requiredPermission: PERMISSION_IDS.ACADEMY_SETTINGS, liteVisible: false },
+    { name: '학원관리', href: '/admin/settings/academy', icon: Building2, requiredPermission: PERMISSION_IDS.ACADEMY_SETTINGS, liteVisible: false },
+    { name: '사용자 관리', href: '/admin/settings/users', icon: Users, requiredPermission: PERMISSION_IDS.USERS_VIEW, liteVisible: true },
+    { name: '권한 관리', href: '/admin/settings/permissions', icon: Shield, requiredPermission: null, liteVisible: false } // Admin 전용은 특별 처리
   ], []);
 
   // 학습관리 서브메뉴들
@@ -303,22 +304,38 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
 
   // 필터링된 설정 하위 메뉴 (먼저 계산)
   const filteredSettingsSubMenus = useMemo(() => {
+    // 유효 학원 타입: null이거나 비어있으면 'full'로 취급
+    const effectiveType = academyType || 'full';
+    const isLite = effectiveType === 'lite';
+
     return settingsSubMenus.filter(subItem => {
       // 권한 관리 메뉴는 특별 처리
       if (subItem.name === '권한 관리') {
         return user?.role_id === 'admin';
       }
+      // admin은 academyType 제한 무시
+      if (user?.role_id !== 'admin' && isLite && !subItem.liteVisible) {
+        return false;
+      }
       return hasPermission(subItem.requiredPermission);
     });
-  }, [hasPermission, user?.role_id, settingsSubMenus]);
+  }, [hasPermission, user?.role_id, settingsSubMenus, academyType]);
 
   // 필터링된 메뉴 카테고리
   const filteredCategories = useMemo(() => {
+    // 유효 학원 타입: null이거나 비어있으면 'full'로 취급
+    const effectiveType = academyType || 'full';
+    const isLite = effectiveType === 'lite';
+
     return navigationCategories
       .map(category => {
         const filteredItems = category.items.filter(item => {
           // 설정 메뉴의 경우 하위 메뉴가 없으면 숨김
           if (item.name === '설정' && filteredSettingsSubMenus.length === 0) {
+            return false;
+          }
+          // admin은 academyType 제한 무시
+          if (user?.role_id !== 'admin' && isLite && !item.liteVisible) {
             return false;
           }
           return hasPermission(item.requiredPermission);
@@ -329,7 +346,7 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
         };
       })
       .filter(category => category.items.length > 0); // 빈 카테고리 제거
-  }, [hasPermission, filteredSettingsSubMenus]);
+  }, [hasPermission, filteredSettingsSubMenus, academyType, user?.role_id]);
 
   return (
     <div className={cn('flex h-full w-56 flex-col bg-white border-r border-gray-200', className)}>

@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
 
     const {
       name, address, phone, email, website, description, logo_url, is_active,
+      type,
       // Solapi 카카오 알림톡 설정
       solapi_api_key, solapi_api_secret, solapi_pf_id, solapi_from_number,
       solapi_template_checkin, solapi_template_checkout, solapi_template_checkout2
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
       website: website || null,
       description: description || null,
       logo_url: logo_url || null,
+      type: type || 'full',
       is_active: is_active !== undefined ? is_active : true,
       // Solapi 카카오 알림톡 설정
       solapi_api_key: solapi_api_key || null,

@@ -34,6 +34,9 @@ export async function POST(request: NextRequest) {
         is_active,
         roles:role_id (
           name
+        ),
+        academy:academy_id (
+          type
         )
       `)
       .eq('email', email)
@@ -68,6 +71,11 @@ export async function POST(request: NextRequest) {
       ? (user.roles as any).name
       : '';
 
+    // 학원 타입 추출
+    const academyData = user.academy && typeof user.academy === 'object' && 'type' in user.academy
+      ? (user.academy as any).type
+      : null;
+
     // 성공 시 사용자 정보 반환 (password_hash 제외)
     const response = NextResponse.json({
       success: true,
@@ -78,7 +86,8 @@ export async function POST(request: NextRequest) {
         role_id: user.role_id,
         role_name: roleName,
         academy_id: user.academy_id,
-        academy_name: user.academy_name
+        academy_name: user.academy_name,
+        academy_type: academyData || 'full'
       }
     });
 

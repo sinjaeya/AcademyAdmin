@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { AcademyType } from '@/types';
 
 interface User {
   id: string;
@@ -9,6 +10,7 @@ interface User {
   role_name: string;
   academy_id: string | null;
   academy_name: string | null;
+  academy_type?: AcademyType | null;
 }
 
 interface AuthError {
@@ -22,6 +24,7 @@ interface AuthState {
   isAuthenticated: boolean;
   academyId: string | null;
   academyName: string | null;
+  academyType: AcademyType | null;
   hasHydrated: boolean;
 }
 
@@ -43,6 +46,7 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: false,
       academyId: null,
       academyName: null,
+      academyType: null,
       hasHydrated: false,
 
       setLoading: (loading: boolean) => set({ isLoading: loading }),
@@ -51,7 +55,8 @@ export const useAuthStore = create<AuthStore>()(
         user,
         isAuthenticated: !!user,
         academyId: user?.academy_id || null,
-        academyName: user?.academy_name || null
+        academyName: user?.academy_name || null,
+        academyType: user?.academy_type || null
       }),
 
       setHasHydrated: (hydrated: boolean) => set({ hasHydrated: hydrated }),
@@ -80,12 +85,13 @@ export const useAuthStore = create<AuthStore>()(
           }
 
           // 로그인 성공
-          set({ 
+          set({
             user: result.user,
             isAuthenticated: true,
             isLoading: false,
             academyId: result.user.academy_id,
-            academyName: result.user.academy_name
+            academyName: result.user.academy_name,
+            academyType: result.user.academy_type || 'full'
           });
 
           return { success: true };
@@ -114,7 +120,8 @@ export const useAuthStore = create<AuthStore>()(
           isAuthenticated: false,
           isLoading: false,
           academyId: null,
-          academyName: null
+          academyName: null,
+          academyType: null
         });
       },
 
@@ -125,7 +132,8 @@ export const useAuthStore = create<AuthStore>()(
           set({
             isAuthenticated: true,
             academyId: state.user.academy_id,
-            academyName: state.user.academy_name
+            academyName: state.user.academy_name,
+            academyType: state.user.academy_type || 'full'
           });
         }
       },
@@ -136,7 +144,8 @@ export const useAuthStore = create<AuthStore>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
         academyId: state.academyId,
-        academyName: state.academyName
+        academyName: state.academyName,
+        academyType: state.academyType
       }),
       onRehydrateStorage: () => (state) => {
         // 하이드레이션 완료 시 hasHydrated를 true로 설정
