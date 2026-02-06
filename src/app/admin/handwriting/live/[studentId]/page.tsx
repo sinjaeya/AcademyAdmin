@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase/client';
 import { ArrowLeft, Wifi, WifiOff, User, Clock, CheckCircle, Circle, ImageOff, Pen, Highlighter, Eraser, Undo2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/toast';
+import { useAuthStore } from '@/store/auth';
 import * as fabric from 'fabric';
 
 // Progress 정보 타입
@@ -84,6 +85,7 @@ export default function HandwritingStudentPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { academyId } = useAuthStore();
   const studentId = Number(params.studentId);
 
   const [progressInfo, setProgressInfo] = useState<ProgressInfo | null>(null);
@@ -206,12 +208,19 @@ export default function HandwritingStudentPage() {
         return;
       }
 
-      // 학생 이름 조회
+      // 학생 이름 조회 및 학원 소속 확인
       const { data: student } = await supabase
         .from('student')
-        .select('name')
+        .select('name, academy_id')
         .eq('id', studentId)
         .single();
+
+      // 학원 소속 확인
+      if (academyId && student?.academy_id !== academyId) {
+        toast({ type: 'error', description: '접근 권한이 없습니다' });
+        router.push('/admin/handwriting/live');
+        return;
+      }
 
       setProgressInfo({
         id: progress.id,
@@ -287,7 +296,7 @@ export default function HandwritingStudentPage() {
     } finally {
       setLoading(false);
     }
-  }, [studentId, router, toast]);
+  }, [studentId, academyId, router, toast]);
 
   // 초기 로드
   useEffect(() => {

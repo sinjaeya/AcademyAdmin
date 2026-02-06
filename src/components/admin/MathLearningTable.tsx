@@ -46,11 +46,13 @@ interface MathLearningTableProps {
   initialMonth: number;
 }
 
+// 요일 상수
+const DAYS_OF_WEEK = ['일', '월', '화', '수', '목', '금', '토'];
+
 // 요일 계산 함수
 const getDayOfWeek = (year: number, month: number, day: number) => {
   const date = new Date(year, month - 1, day);
-  const days = ['일', '월', '화', '수', '목', '금', '토'];
-  return days[date.getDay()];
+  return DAYS_OF_WEEK[date.getDay()];
 };
 
 // 점수에 따른 배지 색상 결정

@@ -2,124 +2,143 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Clock, User, FileText, Settings } from 'lucide-react';
+import { Clock, UserPlus, BookOpen, UserCheck, PlayCircle, CheckCircle2 } from 'lucide-react';
 
-const activities = [
-  {
-    id: 1,
-    user: '김관리',
-    action: '새 사용자를 추가했습니다',
-    target: '이사용',
-    time: '5분 전',
-    type: 'user' as const,
-  },
-  {
-    id: 2,
-    user: '박관리',
-    action: '문서를 업데이트했습니다',
-    target: '시스템 가이드',
-    time: '1시간 전',
-    type: 'document' as const,
-  },
-  {
-    id: 3,
-    user: '최관리',
-    action: '시스템 설정을 변경했습니다',
-    target: '이메일 설정',
-    time: '2시간 전',
-    type: 'settings' as const,
-  },
-  {
-    id: 4,
-    user: '정관리',
-    action: '새 사용자를 추가했습니다',
-    target: '한사용',
-    time: '3시간 전',
-    type: 'user' as const,
-  },
-  {
-    id: 5,
-    user: '김관리',
-    action: '문서를 생성했습니다',
-    target: 'API 문서',
-    time: '4시간 전',
-    type: 'document' as const,
-  },
-];
+interface DashboardData {
+  role: 'admin' | 'academy_owner' | 'teacher';
+  academyCount?: number;
+  students?: {
+    total: number;
+    active: number;
+    paused: number;
+    terminated: number;
+  };
+  todayAttendance?: number;
+  payments?: {
+    totalAmount: number;
+    count: number;
+  };
+  sessions?: {
+    total: number;
+    byType: Record<string, number>;
+  };
+  activeSessions?: number;
+  completedSessions?: number;
+  recentStudents?: Array<{
+    id: number;
+    name: string;
+    grade: string;
+    school: string;
+    academy_name?: string;
+    created_at: string;
+  }>;
+}
 
-const getActivityIcon = (type: string) => {
-  switch (type) {
-    case 'user':
-      return User;
-    case 'document':
-      return FileText;
-    case 'settings':
-      return Settings;
-    default:
-      return Clock;
+// 날짜를 상대적 시간 문자열로 변환
+function getRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffMin < 1) return '방금 전';
+  if (diffMin < 60) return `${diffMin}분 전`;
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  if (diffDay < 7) return `${diffDay}일 전`;
+  return date.toLocaleDateString('ko-KR');
+}
+
+export function RecentActivity({ data }: { data: DashboardData }) {
+  // admin, academy_owner → 최근 등록 학생
+  if (data.role === 'admin' || data.role === 'academy_owner') {
+    const students = data.recentStudents || [];
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            최근 등록 학생
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {students.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">등록된 학생이 없습니다.</p>
+          ) : (
+            <div className="space-y-4">
+              {students.map((student) => (
+                <div key={student.id} className="flex items-start space-x-3">
+                  <div className="rounded-full bg-blue-100 p-2">
+                    <UserPlus className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <p className="text-sm font-medium">{student.name}</p>
+                      <Badge variant="secondary" className="text-xs">
+                        {student.grade}
+                      </Badge>
+                      {data.role === 'admin' && student.academy_name && (
+                        <Badge variant="outline" className="text-xs">
+                          {student.academy_name}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      {student.school || '학교 미등록'}
+                    </p>
+                    <p className="text-xs text-gray-400">{getRelativeTime(student.created_at)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
   }
-};
 
-const getActivityColor = (type: string) => {
-  switch (type) {
-    case 'user':
-      return 'bg-blue-100 text-blue-800';
-    case 'document':
-      return 'bg-green-100 text-green-800';
-    case 'settings':
-      return 'bg-purple-100 text-purple-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
-
-export function RecentActivity() {
+  // teacher → 오늘 학습 요약
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Clock className="h-5 w-5" />
-          최근 활동
+          <BookOpen className="h-5 w-5" />
+          오늘 학습 요약
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {activities.map((activity) => {
-            const Icon = getActivityIcon(activity.type);
-            return (
-              <div key={activity.id} className="flex items-start space-x-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={`/avatars/${activity.user}.jpg`} />
-                  <AvatarFallback>
-                    {activity.user.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <p className="text-sm font-medium">{activity.user}</p>
-                    <Badge 
-                      variant="secondary" 
-                      className={`text-xs ${getActivityColor(activity.type)}`}
-                    >
-                      <Icon className="mr-1 h-3 w-3" />
-                      {activity.type}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    {activity.action} <span className="font-medium">{activity.target}</span>
-                  </p>
-                  <p className="text-xs text-gray-400">{activity.time}</p>
-                </div>
-              </div>
-            );
-          })}
+          <div className="flex items-center space-x-3">
+            <div className="rounded-full bg-blue-100 p-2">
+              <UserCheck className="h-4 w-4 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">오늘 출석</p>
+              <p className="text-sm text-gray-600">{data.todayAttendance || 0}명 등원</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <div className="rounded-full bg-green-100 p-2">
+              <PlayCircle className="h-4 w-4 text-green-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">진행중 세션</p>
+              <p className="text-sm text-gray-600">{data.activeSessions || 0}건 학습 중</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <div className="rounded-full bg-purple-100 p-2">
+              <CheckCircle2 className="h-4 w-4 text-purple-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">완료 세션</p>
+              <p className="text-sm text-gray-600">{data.completedSessions || 0}건 완료</p>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
   );
 }
-
-
-
-

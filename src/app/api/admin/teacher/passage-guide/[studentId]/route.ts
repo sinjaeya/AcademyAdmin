@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 
 /**
  * GET /api/admin/teacher/passage-guide/[studentId]
@@ -13,6 +14,21 @@ export async function GET(
   try {
     const { studentId } = await context.params;
     const supabase = createServerClient();
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
+
+    // 학원 소속 검증
+    if (!isAdmin && academyId) {
+      const { data: studentData } = await supabase
+        .from('student')
+        .select('academy_id')
+        .eq('id', parseInt(studentId))
+        .single();
+
+      if (!studentData || studentData.academy_id !== academyId) {
+        return NextResponse.json({ error: '접근 권한이 없습니다.' }, { status: 403 });
+      }
+    }
 
     // test_session과 test_result를 join하여 passage_quiz 타입의 데이터 가져오기
     const { data: sessions, error } = await supabase

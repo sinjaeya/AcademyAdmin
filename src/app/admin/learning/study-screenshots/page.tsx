@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,9 @@ interface Screenshot {
   url: string;
   createdAt: string;
 }
+
+// 요일 상수
+const DAYS_OF_WEEK = ['일', '월', '화', '수', '목', '금', '토'];
 
 export default function StudyScreenshotsPage(): React.ReactElement {
   const { academyId } = useAuthStore();
@@ -75,8 +78,8 @@ export default function StudyScreenshotsPage(): React.ReactElement {
     fetchStudents();
   }, [academyId]);
 
-  // 스크린샷 조회
-  const fetchScreenshots = useCallback(async (): Promise<void> => {
+  // 학생 또는 날짜 변경시 스크린샷 조회
+  useEffect(() => {
     if (!selectedStudentId || !selectedDate) {
       setScreenshots([]);
       return;
@@ -88,51 +91,50 @@ export default function StudyScreenshotsPage(): React.ReactElement {
       return;
     }
 
-    setLoading(true);
-    if (!supabase) return;
+    const loadScreenshots = async (): Promise<void> => {
+      setLoading(true);
+      if (!supabase) return;
 
-    // Storage 경로: {academy_id}/{student_id}/{date}/
-    const storagePath = `${student.academy_id}/${student.id}/${selectedDate}`;
+      // Storage 경로: {academy_id}/{student_id}/{date}/
+      const storagePath = `${student.academy_id}/${student.id}/${selectedDate}`;
 
-    const { data, error } = await supabase.storage
-      .from('academy_works')
-      .list(storagePath, {
-        limit: 100,
-        sortBy: { column: 'created_at', order: 'desc' }
+      const { data, error } = await supabase.storage
+        .from('academy_works')
+        .list(storagePath, {
+          limit: 100,
+          sortBy: { column: 'created_at', order: 'desc' }
+        });
+
+      if (error) {
+        console.error('스크린샷 조회 실패:', error);
+        setScreenshots([]);
+        setLoading(false);
+        return;
+      }
+
+      // 이미지 파일만 필터링하고 URL 생성
+      const imageFiles = (data || []).filter((file: FileObject) =>
+        file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+      );
+
+      const screenshotList: Screenshot[] = imageFiles.map((file: FileObject) => {
+        const { data: urlData } = supabase!.storage
+          .from('academy_works')
+          .getPublicUrl(`${storagePath}/${file.name}`);
+
+        return {
+          name: file.name,
+          url: urlData.publicUrl,
+          createdAt: file.created_at || ''
+        };
       });
 
-    if (error) {
-      console.error('스크린샷 조회 실패:', error);
-      setScreenshots([]);
+      setScreenshots(screenshotList);
       setLoading(false);
-      return;
-    }
+    };
 
-    // 이미지 파일만 필터링하고 URL 생성
-    const imageFiles = (data || []).filter((file: FileObject) =>
-      file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-    );
-
-    const screenshotList: Screenshot[] = imageFiles.map((file: FileObject) => {
-      const { data: urlData } = supabase!.storage
-        .from('academy_works')
-        .getPublicUrl(`${storagePath}/${file.name}`);
-
-      return {
-        name: file.name,
-        url: urlData.publicUrl,
-        createdAt: file.created_at || ''
-      };
-    });
-
-    setScreenshots(screenshotList);
-    setLoading(false);
+    loadScreenshots();
   }, [selectedStudentId, selectedDate, students]);
-
-  // 학생 또는 날짜 변경시 스크린샷 조회
-  useEffect(() => {
-    fetchScreenshots();
-  }, [fetchScreenshots]);
 
   // 날짜 이동
   const changeDate = (days: number): void => {
@@ -175,8 +177,7 @@ export default function StudyScreenshotsPage(): React.ReactElement {
   // 날짜 포맷팅 (요일 포함)
   const formatDateWithDay = (dateStr: string): string => {
     const date = new Date(dateStr);
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
-    const dayName = days[date.getDay()];
+    const dayName = DAYS_OF_WEEK[date.getDay()];
     return `${dateStr} (${dayName})`;
   };
 

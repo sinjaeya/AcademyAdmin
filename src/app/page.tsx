@@ -167,7 +167,49 @@ export default function Home() {
                       개발자 로그인 중...
                     </>
                   ) : (
-                    '개발자 로그인'
+                    '개발자 로그인 (Admin)'
+                  )}
+                </Button>
+              )}
+              {process.env.NODE_ENV === 'development' && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full mt-2"
+                  onClick={async () => {
+                    setFormData({
+                      email: 'academyowner@gmail.com',
+                      password: 'dkzkepaldhsj12#'
+                    });
+
+                    setTimeout(async () => {
+                      setError(null);
+                      setIsLoading(true);
+
+                      try {
+                        const result = await login('academyowner@gmail.com', 'dkzkepaldhsj12#');
+
+                        if (result.success) {
+                          router.push('/admin');
+                        } else {
+                          setError(result.error?.message || '학원장 로그인에 실패했습니다.');
+                        }
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : '학원장 로그인 중 오류가 발생했습니다.');
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }, 100);
+                  }}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      학원장 로그인 중...
+                    </>
+                  ) : (
+                    '학원장 로그인 (Academy Owner)'
                   )}
                 </Button>
               )}

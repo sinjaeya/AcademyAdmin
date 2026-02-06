@@ -1,16 +1,32 @@
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { LearningTableKorean } from '@/components/admin/LearningTableKorean';
+import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 
 async function getLearningData(year: number, month: number) {
   const { createServerClient } = await import('@/lib/supabase/server');
   const supabase = createServerClient();
-  
+
+  // 학원 데이터 격리
+  const academyId = await getServerAcademyId();
+  const isAdmin = await isServerUserAdmin();
+
   // 해당 월의 시작일과 종료일
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
   const endDate = new Date(year, month, 0).toISOString().split('T')[0];
-  
+
+  // admin이 아니면 해당 학원 학생 ID 목록 조회
+  let academyStudentIds: number[] | null = null;
+  if (!isAdmin && academyId) {
+    const { data: academyStudents } = await supabase
+      .from('student')
+      .select('id')
+      .eq('academy_id', academyId);
+    academyStudentIds = academyStudents?.map(s => Number(s.id)) || [];
+    if (academyStudentIds.length === 0) return [];
+  }
+
   // dailykor_learning_overview에서 데이터 가져오기
-  const { data: learningData, error } = await supabase
+  let query = supabase
     .from('dailykor_learning_overview')
     .select(`
       id,
@@ -21,8 +37,13 @@ async function getLearningData(year: number, month: number) {
       score_display
     `)
     .gte('study_date', startDate)
-    .lte('study_date', endDate)
-    .order('study_date', { ascending: true });
+    .lte('study_date', endDate);
+
+  if (academyStudentIds) {
+    query = query.in('student_id', academyStudentIds);
+  }
+
+  const { data: learningData, error } = await query.order('study_date', { ascending: true });
 
   if (error) {
     console.error('Error fetching learning data:', error);
@@ -31,12 +52,18 @@ async function getLearningData(year: number, month: number) {
 
   // 학생 ID 목록 가져오기
   const studentIds = [...new Set(learningData?.map(r => r.student_id) || [])];
-  
+
   // 학생 정보 가져오기
-  const { data: studentsData } = await supabase
+  let studentQuery = supabase
     .from('student')
     .select('id, name')
     .in('id', studentIds);
+
+  if (academyStudentIds) {
+    studentQuery = studentQuery.in('id', academyStudentIds);
+  }
+
+  const { data: studentsData } = await studentQuery;
 
   // 학생별로 데이터 그룹화
   const studentsMap = new Map();

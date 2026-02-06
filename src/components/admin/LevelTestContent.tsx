@@ -30,8 +30,10 @@ import {
   getStatusLabel,
   getStatusColor,
 } from '@/types/level-test';
+import { useAuthStore } from '@/store/auth';
 
 export function LevelTestContent() {
+  const { academyId } = useAuthStore();
   const [sessions, setSessions] = useState<LevelTestSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -48,8 +50,7 @@ export function LevelTestContent() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      // academyId 필터 제거 - 모든 데이터를 표시하도록 변경
-      // if (academyId) params.append('academyId', academyId);
+      if (academyId) params.append('academyId', academyId);
       if (statusFilter !== 'all') params.append('status', statusFilter);
       params.append('page', page.toString());
       params.append('pageSize', pageSize.toString());
@@ -66,7 +67,7 @@ export function LevelTestContent() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, page, pageSize]);
+  }, [academyId, statusFilter, page, pageSize]);
 
   useEffect(() => {
     loadData();

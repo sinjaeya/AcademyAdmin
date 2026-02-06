@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { createServerClient } from '@/lib/supabase/server';
+import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 
 interface DailyData {
   date: string;
@@ -28,6 +25,23 @@ export async function GET(
 
     if (isNaN(studentIdNum)) {
       return NextResponse.json({ error: '유효하지 않은 학생 ID입니다.' }, { status: 400 });
+    }
+
+    const supabase = createServerClient();
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
+
+    // 학원 소속 검증
+    if (!isAdmin && academyId) {
+      const { data: studentData } = await supabase
+        .from('student')
+        .select('academy_id')
+        .eq('id', studentIdNum)
+        .single();
+
+      if (!studentData || studentData.academy_id !== academyId) {
+        return NextResponse.json({ error: '접근 권한이 없습니다.' }, { status: 403 });
+      }
     }
 
     // 단어팡, 보물찾기, 문장클리닉 일별 데이터 조회 (test_session 테이블)

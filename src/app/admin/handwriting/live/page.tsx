@@ -44,7 +44,20 @@ export default function HandwritingLivePage() {
     if (!supabase || !academyId) return;
 
     try {
-      // handwriting_progress 조회 (student 조인)
+      // 해당 학원 학생 ID 목록 먼저 조회
+      const { data: academyStudents } = await supabase
+        .from('student')
+        .select('id')
+        .eq('academy_id', academyId);
+
+      const studentIds = academyStudents?.map(s => Number(s.id)) || [];
+      if (studentIds.length === 0) {
+        setProgressSessions([]);
+        setLoading(false);
+        return;
+      }
+
+      // 해당 학원 학생의 progress만 조회
       const { data: progressData, error } = await supabase
         .from('handwriting_progress')
         .select(`
@@ -56,6 +69,7 @@ export default function HandwritingLivePage() {
           updated_at,
           student:student_id (id, name, academy_id)
         `)
+        .in('student_id', studentIds)
         .order('started_at', { ascending: false });
 
       if (error) {
@@ -68,25 +82,19 @@ export default function HandwritingLivePage() {
         return;
       }
 
-      // 해당 학원 학생만 필터링
-      const sessionList: ProgressSession[] = [];
-
-      for (const p of progressData) {
-        // student는 단일 객체 또는 배열로 올 수 있음
+      // 이미 학원 필터링됨 - 바로 매핑
+      const sessionList: ProgressSession[] = progressData.map(p => {
         const studentData = Array.isArray(p.student) ? p.student[0] : p.student;
-
-        if (studentData?.academy_id === academyId) {
-          sessionList.push({
-            id: p.id,
-            studentId: p.student_id,
-            studentName: studentData?.name || `학생 ${p.student_id}`,
-            passageId: p.passage_id,
-            passageCode: p.passage_code || '-',
-            startedAt: p.started_at,
-            updatedAt: p.updated_at
-          });
-        }
-      }
+        return {
+          id: p.id,
+          studentId: p.student_id,
+          studentName: studentData?.name || `학생 ${p.student_id}`,
+          passageId: p.passage_id,
+          passageCode: p.passage_code || '-',
+          startedAt: p.started_at,
+          updatedAt: p.updated_at
+        };
+      });
 
       setProgressSessions(sessionList);
     } catch (error) {

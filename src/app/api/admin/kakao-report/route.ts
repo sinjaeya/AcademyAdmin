@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-// 이지국어교습소 academy_id
-const EJIGUK_ACADEMY_ID = '219a944e-529b-4b50-ad73-4ed694af8af8';
+import { createServerClient } from '@/lib/supabase/server';
+import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 
 // 학생별 학습 데이터 조회
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    const supabase = createServerClient();
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
+
     const searchParams = request.nextUrl.searchParams;
     const studentId = searchParams.get('student_id');
     const date = searchParams.get('date');
@@ -18,12 +16,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     // 학생 ID가 있으면 해당 학생의 학습 데이터 조회
     if (studentId) {
-      // 학생 정보 조회
-      const { data: student, error: studentError } = await supabase
+      // 학생 정보 조회 (academy_id 교차검증 포함)
+      let studentQuery = supabase
         .from('student')
-        .select('id, name, parent_phone, school, grade')
-        .eq('id', studentId)
-        .single();
+        .select('id, name, parent_phone, school, grade, academy_id')
+        .eq('id', studentId);
+
+      // 관리자가 아니고 academyId가 있으면 academy_id 필터 추가
+      if (!isAdmin && academyId) {
+        studentQuery = studentQuery.eq('academy_id', academyId);
+      }
+
+      const { data: student, error: studentError } = await studentQuery.single();
 
       if (studentError || !student) {
         return NextResponse.json({ error: '학생을 찾을 수 없습니다.' }, { status: 404 });
@@ -133,12 +137,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    // 학생 ID가 없으면 이지국어교습소 재원 학생 목록 반환
-    const { data: students, error: studentsError } = await supabase
+    // 학생 ID가 없으면 재원 학생 목록 반환
+    let studentsQuery = supabase
       .from('student')
-      .select('id, name, parent_phone, school, grade')
-      .eq('status', '재원')
-      .eq('academy_id', EJIGUK_ACADEMY_ID)
+      .select('id, name, parent_phone, school, grade, academy_id')
+      .eq('status', '재원');
+
+    // 관리자가 아니고 academyId가 있으면 academy_id 필터 추가
+    if (!isAdmin && academyId) {
+      studentsQuery = studentsQuery.eq('academy_id', academyId);
+    }
+
+    const { data: students, error: studentsError } = await studentsQuery
       .order('name', { ascending: true });
 
     if (studentsError) {
@@ -159,11 +169,32 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 // 카카오톡 메시지 발송
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const supabase = createServerClient();
+    const academyId = await getServerAcademyId();
+    const isAdmin = await isServerUserAdmin();
+
     const body = await request.json();
     const { studentId, studentName, parentPhone, message } = body;
 
     if (!studentId || !studentName || !parentPhone || !message) {
       return NextResponse.json({ error: '필수 정보가 누락되었습니다.' }, { status: 400 });
+    }
+
+    // 학생 소속 academy 검증
+    if (!isAdmin && academyId) {
+      const { data: studentData, error: studentError } = await supabase
+        .from('student')
+        .select('academy_id')
+        .eq('id', studentId)
+        .single();
+
+      if (studentError || !studentData) {
+        return NextResponse.json({ error: '학생 정보를 찾을 수 없습니다.' }, { status: 404 });
+      }
+
+      if (studentData.academy_id !== academyId) {
+        return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
+      }
     }
 
     // webhook_log에 기록

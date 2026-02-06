@@ -58,7 +58,7 @@ const { data: students } = await supabase
 
 **예상 개선**: 100-150ms (2쿼리→1쿼리)
 
-#### Task 1-2: 결제 API JOIN 활용
+#### Task 1-2: 결제 API JOIN 활용 ✅ 완료 (기존 코드에서 이미 JOIN 사용 중)
 **파일**: `src/app/api/admin/payments/route.ts`
 
 ```typescript
@@ -120,12 +120,12 @@ const ChartSection = lazy(() => import('./ChartSection'));
 
 **예상 개선**: 800KB 번들 감소
 
-#### Task 1-6: next.config.ts 최적화 설정
+#### Task 1-6: next.config.ts 최적화 설정 ✅ 완료 (이미 적용됨)
 ```typescript
-// next.config.ts
+// next.config.ts - 이미 lucide-react, recharts 설정됨
 const nextConfig: NextConfig = {
   experimental: {
-    optimizePackageImports: ['lucide-react', 'recharts', '@radix-ui/react-icons'],
+    optimizePackageImports: ['lucide-react', 'recharts'],
   },
 };
 ```
@@ -275,7 +275,7 @@ const StudentRow = React.memo(({ summary, ... }) => {
 
 ### 3.3 의존성 체인 제거
 
-#### Task 3-5: useCallback → 직접 useEffect
+#### Task 3-5: useCallback → 직접 useEffect ✅ 완료 (2026-02-04)
 **파일**: `src/app/admin/learning/study-screenshots/page.tsx`
 
 ```typescript
@@ -313,7 +313,7 @@ useEffect(() => {
 
 ### 4.2 정적 상수 호이스팅
 
-#### Task 4-2: 배열/객체 외부 이동
+#### Task 4-2: 배열/객체 외부 이동 ✅ 완료 (2026-02-04)
 ```typescript
 // 컴포넌트 외부로 이동
 const DAYS_OF_WEEK = ['일', '월', '화', '수', '목', '금', '토'] as const;
@@ -366,12 +366,12 @@ canvas.on('path:created', () => {
 ## 실행 체크리스트
 
 ### Phase 1 (1주) - CRITICAL
-- [ ] Task 1-1: 학생 API 병렬화
-- [ ] Task 1-2: 결제 API JOIN
+- [x] Task 1-1: 학생 API JOIN 통합 (2026-01-19)
+- [x] Task 1-2: 결제 API JOIN (기존 코드에서 이미 적용됨)
 - [ ] Task 1-3: 클라이언트 병렬 fetch
 - [ ] Task 1-4: Fabric.js 동적 로드
 - [ ] Task 1-5: Recharts 동적 로드
-- [ ] Task 1-6: next.config.ts 설정
+- [x] Task 1-6: next.config.ts 설정 (이미 적용됨)
 - [ ] Task 1-7: SELECT * 제거 (17개 파일)
 
 ### Phase 2 (2주) - HIGH
@@ -385,11 +385,11 @@ canvas.on('path:created', () => {
 - [ ] Task 3-2: 상태 분리 (Context)
 - [ ] Task 3-3: useCallback 의존성 수정
 - [ ] Task 3-4: ElapsedTime 메모이제이션
-- [ ] Task 3-5: 의존성 체인 제거
+- [x] Task 3-5: 의존성 체인 제거 (2026-02-04)
 
 ### Phase 4 (1주) - MEDIUM
 - [ ] Task 4-1: content-visibility 적용
-- [ ] Task 4-2: 정적 상수 호이스팅
+- [x] Task 4-2: 정적 상수 호이스팅 (2026-02-04)
 - [ ] Task 4-3: .toSorted() 적용
 
 ### Phase 5 (선택) - LOW

@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exec } from 'child_process';
+import { isServerUserAdmin } from '@/lib/auth/server-context';
 
 export async function POST(request: NextRequest) {
   try {
+    // admin만 동기화 실행 가능
+    const isAdmin = await isServerUserAdmin();
+    if (!isAdmin) {
+      return NextResponse.json(
+        { success: false, error: '관리자만 사용할 수 있습니다.' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { year, month } = body;
 
