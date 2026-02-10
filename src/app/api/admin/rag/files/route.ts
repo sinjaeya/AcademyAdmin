@@ -8,14 +8,31 @@ export async function GET(request: NextRequest) {
 
         const pageParam = Number(searchParams.get('page') ?? '1');
         const limitParam = Number(searchParams.get('limit') ?? '20');
+        // 필터 파라미터 추출
+        const levelFilter = searchParams.get('level');
+        const gradeFilter = searchParams.get('grade');
 
         const page = pageParam > 0 ? pageParam : 1;
         const limit = limitParam > 0 ? limitParam : 20;
         const offset = (page - 1) * limit;
 
-        const { data, count, error } = await supabase
+        // 쿼리 빌더 시작
+        let query = supabase
             .from('rag_files')
-            .select('*', { count: 'exact' })
+            .select('*', { count: 'exact' });
+
+        // 레벨 필터 적용
+        if (levelFilter) {
+            query = query.eq('level', levelFilter);
+        }
+
+        // 학년 필터 적용
+        if (gradeFilter) {
+            query = query.eq('grade', Number(gradeFilter));
+        }
+
+        // 정렬 및 페이징 적용
+        const { data, count, error } = await query
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
 

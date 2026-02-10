@@ -48,10 +48,17 @@ export interface PassageQuizDetail {
   answer: string;
 }
 
+// 내손내줄 개별 문제 결과
+export interface HandwritingQuizResult {
+  sortOrder: number;       // 문제 순서 (1~5)
+  isCorrect: boolean | null; // 정답 여부 (null=미응답)
+}
+
 // 내손내줄 상세 정보
 export interface HandwritingDetail {
   passageCode: string;  // 지문 코드
   passageId?: string;   // 지문 ID (UUID)
+  quizzes?: HandwritingQuizResult[]; // 개별 문제 결과
 }
 
 // 학습 기록

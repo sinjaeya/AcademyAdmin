@@ -2,7 +2,7 @@
 
 > 이 파일은 supabase-db 에이전트가 자동으로 관리합니다.
 > 스키마 에러 발생 시 에이전트가 DB에서 최신 정보를 조회하여 업데이트합니다.
-> 마지막 업데이트: 2026-01-20
+> 마지막 업데이트: 2026-02-10
 
 ---
 
@@ -61,6 +61,7 @@
 | `solapi_template_checkin` | text | YES | 체크인 템플릿 |
 | `solapi_template_checkout` | text | YES | 체크아웃 템플릿 |
 | `solapi_template_checkout2` | text | YES | 체크아웃 템플릿2 |
+| `type` | text | NO | 학원 타입 (full/lite) |
 
 ---
 
@@ -401,3 +402,56 @@
 | `created_at` | timestamptz | YES | 생성 시각 |
 | `review_status` | text | YES | 검토 상태 |
 | `keyword_option_5` | text | YES | 키워드 선택지 5 |
+
+---
+
+## handwriting_quiz (내손내줄 문제)
+
+| 컬럼 | 타입 | Nullable | 비고 |
+|------|------|----------|------|
+| `id` | uuid | NO | **PK** |
+| `passage_id` | uuid | NO | FK → handwriting_passage.id |
+| `question` | text | NO | 문제 내용 |
+| `option_1` | text | NO | 선택지 1 |
+| `option_2` | text | NO | 선택지 2 |
+| `option_3` | text | NO | 선택지 3 |
+| `option_4` | text | NO | 선택지 4 |
+| `option_5` | text | YES | 선택지 5 |
+| `correct_answer` | integer | NO | 정답 (1~5) |
+| `explanation` | text | YES | 해설 |
+| `sort_order` | integer | YES | 문제 순서 |
+| `points` | integer | YES | 배점 |
+| `created_at` | timestamptz | YES | |
+
+**주의**: `test_result` 테이블의 `item_uuid`가 이 테이블의 `id`와 연결됨
+
+---
+
+## handwriting_passage (내손내줄 지문)
+
+| 컬럼 | 타입 | Nullable | 비고 |
+|------|------|----------|------|
+| `id` | uuid | NO | **PK** |
+| `domain_id` | text | YES | 도메인 ID |
+| `category_id` | text | YES | 카테고리 ID |
+| `sub_id` | text | YES | 하위 ID |
+| `keyword_id` | uuid | YES | 키워드 ID |
+| `keyword_list` | ARRAY | YES | 키워드 배열 |
+| `content` | text | NO | 지문 본문 |
+| `char_count` | integer | YES | 문자 수 |
+| `paragraph_count` | integer | YES | 문단 수 |
+| `qa_status` | USER-DEFINED | YES | QA 상태 enum |
+| `qa_notes` | text | YES | QA 노트 |
+| `model_name` | text | YES | 생성 모델명 |
+| `prompt_template` | text | YES | 프롬프트 템플릿 |
+| `code_id` | char | YES | 지문 코드 (A0019 등) |
+| `metadata` | jsonb | YES | 메타데이터 |
+| `created_at` | timestamptz | YES | |
+| `updated_at` | timestamptz | YES | |
+| `grade_level` | USER-DEFINED | YES | 학년 레벨 enum |
+| `eval_score_passage` | integer | YES | 지문 평가 점수 |
+| `eval_score_quiz` | integer | YES | 문제 평가 점수 |
+| `eval_total` | integer | YES | 총점 |
+| `eval_grade` | text | YES | 평가 등급 |
+| `eval_feedback` | text | YES | 평가 피드백 |
+| `eval_raw` | text | YES | 원본 평가 데이터 |

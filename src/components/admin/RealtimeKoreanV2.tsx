@@ -216,9 +216,26 @@ function SentenceClinicV2Badges({ record }: { record: LearningRecord }) {
   );
 }
 
+// 내손내줄 문제 유형 라벨 (sort_order 기준 고정)
+const hwQuizTypeLabels: Record<number, string> = {
+  1: '사실확인',
+  2: '사실확인',
+  3: '추론',
+  4: '[보기]',
+  5: '단어'
+};
+
 // 내손내줄 결과 배지
 function HandwritingBadges({ record }: { record: LearningRecord }) {
   const detail = record.handwritingDetail;
+  const quizzes = detail?.quizzes || [];
+
+  // 정답 상태 렌더링
+  const renderResult = (isCorrect: boolean | null): React.ReactNode => {
+    if (isCorrect === null) return <span className="text-gray-400">-</span>;
+    if (isCorrect) return <span className="text-green-600">○</span>;
+    return <span className="text-red-600">✗</span>;
+  };
 
   return (
     <div className="flex items-center gap-2">
@@ -226,14 +243,25 @@ function HandwritingBadges({ record }: { record: LearningRecord }) {
         {detail?.passageCode || '-'}
       </Badge>
       <span className="text-xs text-gray-500">
-        {record.correctCount}/{record.totalItems}문제
-        {record.totalItems > 0 && (
-          <span className={`ml-1 ${
-            record.accuracyRate >= 80 ? 'text-green-600' :
-            record.accuracyRate >= 60 ? 'text-yellow-600' : 'text-red-600'
-          }`}>
-            ({record.accuracyRate.toFixed(0)}%)
-          </span>
+        {quizzes.length > 0 ? (
+          quizzes.map((quiz, idx) => (
+            <React.Fragment key={idx}>
+              {idx > 0 && ' / '}
+              {hwQuizTypeLabels[quiz.sortOrder] || `${quiz.sortOrder}번`}: {renderResult(quiz.isCorrect)}
+            </React.Fragment>
+          ))
+        ) : (
+          <>
+            {record.correctCount}/{record.totalItems}문제
+            {record.totalItems > 0 && (
+              <span className={`ml-1 ${
+                record.accuracyRate >= 80 ? 'text-green-600' :
+                record.accuracyRate >= 60 ? 'text-yellow-600' : 'text-red-600'
+              }`}>
+                ({record.accuracyRate.toFixed(0)}%)
+              </span>
+            )}
+          </>
         )}
       </span>
     </div>

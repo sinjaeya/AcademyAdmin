@@ -306,29 +306,52 @@ export async function GET(request: Request) {
       }
     }
 
-    // 내손내줄 세션별 실제 정답 수 집계 (test_session.correct_count가 업데이트 안 되는 문제 해결)
-    const handwritingResultMap = new Map<number, { totalItems: number; correctCount: number }>();
+    // 내손내줄 세션별 실제 정답 수 집계 + 개별 문제 결과
+    const handwritingResultMap = new Map<number, {
+      totalItems: number;
+      correctCount: number;
+      quizzes: Array<{ sortOrder: number; isCorrect: boolean | null }>;
+    }>();
     if (testSessionData) {
       const handwritingSessionIds = testSessionData
         .filter(r => r.test_type === 'handwriting')
         .map(r => r.id);
 
       if (handwritingSessionIds.length > 0) {
+        // item_uuid 포함하여 조회
         const { data: hwResultData } = await supabase
           .from('test_result')
-          .select('session_id, is_correct')
+          .select('session_id, is_correct, item_uuid')
           .eq('test_type', 'handwriting')
           .in('session_id', handwritingSessionIds);
+
+        // item_uuid로 handwriting_quiz의 sort_order 조회
+        const itemUuids = hwResultData?.map(r => r.item_uuid).filter(Boolean) || [];
+        let quizSortMap = new Map<string, number>();
+        if (itemUuids.length > 0) {
+          const { data: quizData } = await supabase
+            .from('handwriting_quiz')
+            .select('id, sort_order')
+            .in('id', itemUuids);
+          quizData?.forEach(q => quizSortMap.set(q.id, q.sort_order ?? 0));
+        }
 
         if (hwResultData) {
           for (const result of hwResultData) {
             const sessionId = Number(result.session_id);
             if (!handwritingResultMap.has(sessionId)) {
-              handwritingResultMap.set(sessionId, { totalItems: 0, correctCount: 0 });
+              handwritingResultMap.set(sessionId, { totalItems: 0, correctCount: 0, quizzes: [] });
             }
             const data = handwritingResultMap.get(sessionId)!;
             data.totalItems += 1;
             if (result.is_correct) data.correctCount += 1;
+            // 개별 문제 결과 추가
+            const sortOrder = result.item_uuid ? (quizSortMap.get(result.item_uuid) ?? 0) : 0;
+            data.quizzes.push({ sortOrder, isCorrect: result.is_correct });
+          }
+          // 각 세션의 quizzes를 sort_order 순으로 정렬
+          for (const [, data] of handwritingResultMap) {
+            data.quizzes.sort((a, b) => a.sortOrder - b.sortOrder);
           }
         }
       }
@@ -439,19 +462,20 @@ export async function GET(request: Request) {
           ? sessionPassageQuizMap.get(Number(record.id))
           : undefined;
 
-        // 내손내줄인 경우 metadata에서 code_id 추출
+        // 내손내줄인 경우 metadata에서 code_id 추출 및 test_result 집계 값 사용
         const metadata = record.metadata as { code_id?: string; passage_id?: string } | null;
+        const hwResult = record.test_type === 'handwriting'
+          ? handwritingResultMap.get(Number(record.id))
+          : undefined;
         const handwritingDetail = record.test_type === 'handwriting'
           ? {
             passageCode: metadata?.code_id || '-',
-            passageId: metadata?.passage_id
+            passageId: metadata?.passage_id,
+            quizzes: hwResult?.quizzes || []
           }
           : undefined;
 
         // 내손내줄인 경우 test_result 집계 값 사용 (test_session.correct_count 업데이트 안 되는 문제 해결)
-        const hwResult = record.test_type === 'handwriting'
-          ? handwritingResultMap.get(Number(record.id))
-          : undefined;
         const totalItems = hwResult ? hwResult.totalItems : (record.total_items || 0);
         const correctCount = hwResult ? hwResult.correctCount : (record.correct_count || 0);
         const accuracyRate = totalItems > 0 ? (correctCount / totalItems) * 100 : 0;

@@ -1,6 +1,7 @@
 // 레벨테스트 상세 조회 API
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
+import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 
 interface RouteParams {
   params: Promise<{ sessionId: string }>;
@@ -281,4 +282,87 @@ function generateAnalysis(items: ResultItem[]): AnalysisResult {
   }
 
   return analysis;
+}
+
+// DELETE: 레벨테스트 삭제
+export async function DELETE(
+  request: NextRequest,
+  { params }: RouteParams
+): Promise<NextResponse> {
+  try {
+    const supabase = createServerClient();
+    const { sessionId } = await params;
+
+    // 세션 정보 조회 (academy_id 확인용)
+    const { data: session, error: sessionError } = await supabase
+      .from('level_test_session')
+      .select(`
+        id,
+        student_id,
+        student:student_id (
+          academy_id
+        )
+      `)
+      .eq('id', sessionId)
+      .single();
+
+    if (sessionError || !session) {
+      return NextResponse.json(
+        { success: false, error: '세션을 찾을 수 없습니다.' },
+        { status: 404 }
+      );
+    }
+
+    // 권한 검증: admin이 아니면 academy_id 확인
+    const isAdmin = await isServerUserAdmin();
+    if (!isAdmin) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const studentInfo = session.student as any;
+      const sessionAcademyId = studentInfo?.academy_id;
+      const userAcademyId = await getServerAcademyId();
+
+      if (!sessionAcademyId || sessionAcademyId !== userAcademyId) {
+        return NextResponse.json(
+          { success: false, error: '권한이 없습니다.' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // 1. level_test_result 삭제
+    const { error: resultError } = await supabase
+      .from('level_test_result')
+      .delete()
+      .eq('session_id', sessionId);
+
+    if (resultError) {
+      console.error('답안 삭제 오류:', resultError);
+      return NextResponse.json(
+        { success: false, error: '답안 삭제 중 오류가 발생했습니다.' },
+        { status: 500 }
+      );
+    }
+
+    // 2. level_test_session 삭제
+    const { error: sessionDeleteError } = await supabase
+      .from('level_test_session')
+      .delete()
+      .eq('id', sessionId);
+
+    if (sessionDeleteError) {
+      console.error('세션 삭제 오류:', sessionDeleteError);
+      return NextResponse.json(
+        { success: false, error: '세션 삭제 중 오류가 발생했습니다.' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('레벨테스트 삭제 API 오류:', error);
+    return NextResponse.json(
+      { success: false, error: '서버 오류가 발생했습니다.' },
+      { status: 500 }
+    );
+  }
 }

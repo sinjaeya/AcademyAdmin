@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 
 interface RagFile {
@@ -17,6 +18,7 @@ interface RagFile {
     level: string;
     grade: number;
     content_type: string;
+    source: string;
     token_count: number;
     created_at: string;
 }
@@ -27,15 +29,27 @@ export default function RagFilesPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
+    // 필터 상태
+    const [filterLevel, setFilterLevel] = useState<string>('all');
+    const [filterGrade, setFilterGrade] = useState<string>('all');
 
     useEffect(() => {
         fetchData(currentPage);
-    }, [currentPage]);
+    }, [currentPage, filterLevel, filterGrade]);
 
     const fetchData = async (page: number) => {
         try {
             setLoading(true);
-            const res = await fetch(`/api/admin/rag/files?page=${page}&limit=20`);
+            // 필터 파라미터 구성
+            let url = `/api/admin/rag/files?page=${page}&limit=20`;
+            if (filterLevel !== 'all') {
+                url += `&level=${filterLevel}`;
+            }
+            if (filterGrade !== 'all') {
+                url += `&grade=${filterGrade}`;
+            }
+
+            const res = await fetch(url);
             const result = await res.json();
 
             if (result.data) {
@@ -48,6 +62,17 @@ export default function RagFilesPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    // 필터 변경 시 페이지를 1로 리셋
+    const handleLevelChange = (value: string) => {
+        setFilterLevel(value);
+        setCurrentPage(1);
+    };
+
+    const handleGradeChange = (value: string) => {
+        setFilterGrade(value);
+        setCurrentPage(1);
     };
 
     return (
@@ -64,6 +89,37 @@ export default function RagFilesPage() {
                         <CardDescription>업로드된 문서 파일들을 보여줍니다.</CardDescription>
                     </CardHeader>
                     <CardContent>
+                        {/* 필터 영역 */}
+                        <div className="flex gap-4 mb-6">
+                            <div className="w-40">
+                                <Select value={filterLevel} onValueChange={handleLevelChange}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="레벨 선택" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">교과전체</SelectItem>
+                                        <SelectItem value="중등">중등</SelectItem>
+                                        <SelectItem value="고등">고등</SelectItem>
+                                        <SelectItem value="공통">공통</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="w-40">
+                                <Select value={filterGrade} onValueChange={handleGradeChange}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="학년 선택" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">학년전체</SelectItem>
+                                        <SelectItem value="0">0학년</SelectItem>
+                                        <SelectItem value="1">1학년</SelectItem>
+                                        <SelectItem value="2">2학년</SelectItem>
+                                        <SelectItem value="3">3학년</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
                         {loading ? (
                             <div className="py-10 text-center">로딩 중...</div>
                         ) : data.length === 0 ? (
@@ -77,6 +133,7 @@ export default function RagFilesPage() {
                                             <TableHead>레벨</TableHead>
                                             <TableHead>학년</TableHead>
                                             <TableHead>타입</TableHead>
+                                            <TableHead>출판사</TableHead>
                                             <TableHead>토큰수</TableHead>
                                             <TableHead>생성일</TableHead>
                                         </TableRow>
@@ -90,6 +147,7 @@ export default function RagFilesPage() {
                                                 <TableCell>
                                                     <Badge variant="outline">{item.content_type}</Badge>
                                                 </TableCell>
+                                                <TableCell>{item.source ?? '-'}</TableCell>
                                                 <TableCell>{item.token_count?.toLocaleString() ?? '-'}</TableCell>
                                                 <TableCell className="text-sm text-gray-500">
                                                     {item.created_at ? format(new Date(item.created_at), 'yyyy-MM-dd HH:mm') : '-'}

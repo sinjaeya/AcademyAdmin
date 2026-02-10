@@ -243,7 +243,7 @@ import { Dialog, DialogContent, ... } from '@/components/ui/dialog';
 
 ### 주요 테이블
 - `student` - 학생 정보 (이름, 연락처, 학교, 학년, 학습레벨 등)
-- `academy` - 학원 정보
+- `academy` - 학원 정보 (type: full/lite로 기능 범위 구분)
 - `payment` - 학원비 수납 내역
 - `settings` - 시스템 변수 관리 (name, value 컬럼)
 - `users` - 관리자/강사 사용자
@@ -297,6 +297,12 @@ medium, advanced, highest, extreme, high_mock_1, high_mock_2, high_mock_3, csat
 ```
 재원, 휴원, 해지
 ```
+
+**academy_type (학원 타입)** - text + CHECK 제약
+```
+full, lite
+```
+라벨: 전체 기능, 문해력 앱
 
 
 ## 주요 API 엔드포인트

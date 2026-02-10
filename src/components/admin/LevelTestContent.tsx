@@ -20,7 +20,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ClipboardCheck, Search, ChevronLeft, ChevronRight, Loader2, ExternalLink } from 'lucide-react';
+import { ClipboardCheck, Search, ChevronLeft, ChevronRight, Loader2, ExternalLink, Trash2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/toast';
 import {
   type LevelTestSession,
   LEVEL_LABELS,
@@ -34,6 +43,7 @@ import { useAuthStore } from '@/store/auth';
 
 export function LevelTestContent() {
   const { academyId } = useAuthStore();
+  const { toast } = useToast();
   const [sessions, setSessions] = useState<LevelTestSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -43,6 +53,10 @@ export function LevelTestContent() {
   // 필터
   const [searchName, setSearchName] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // 삭제 관련
+  const [deleteTarget, setDeleteTarget] = useState<LevelTestSession | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
 
   // 데이터 로드
@@ -84,6 +98,41 @@ export function LevelTestContent() {
   // 행 클릭 핸들러 - 새 창으로 리포트 열기
   const handleRowClick = (sessionId: string): void => {
     window.open(`/admin/level-test/report/${sessionId}`, '_blank', 'width=900,height=800');
+  };
+
+  // 삭제 핸들러
+  const handleDelete = async (): Promise<void> => {
+    if (!deleteTarget) return;
+
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/admin/level-test/${deleteTarget.id}`, {
+        method: 'DELETE',
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          type: 'success',
+          description: '레벨테스트가 삭제되었습니다.',
+        });
+        setDeleteTarget(null);
+        loadData(); // 목록 새로고침
+      } else {
+        toast({
+          type: 'error',
+          description: result.error || '삭제 중 오류가 발생했습니다.',
+        });
+      }
+    } catch (error) {
+      console.error('삭제 오류:', error);
+      toast({
+        type: 'error',
+        description: '삭제 중 오류가 발생했습니다.',
+      });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // 페이지네이션
@@ -156,18 +205,19 @@ export function LevelTestContent() {
               <TableHead className="w-[80px]">소요시간</TableHead>
               <TableHead className="w-[80px]">상태</TableHead>
               <TableHead className="w-[60px]"></TableHead>
+              <TableHead className="w-[60px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-10">
+                <TableCell colSpan={9} className="text-center py-10">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
                 </TableCell>
               </TableRow>
             ) : filteredSessions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-10 text-gray-500">
+                <TableCell colSpan={9} className="text-center py-10 text-gray-500">
                   레벨테스트 이력이 없습니다
                 </TableCell>
               </TableRow>
@@ -233,6 +283,17 @@ export function LevelTestContent() {
                     <TableCell>
                       <ExternalLink className="w-4 h-4 text-gray-400" />
                     </TableCell>
+                    <TableCell>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget(session);
+                        }}
+                        className="cursor-pointer p-1 rounded hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500 hover:text-red-700" />
+                      </button>
+                    </TableCell>
                   </TableRow>
                 );
               })
@@ -270,6 +331,48 @@ export function LevelTestContent() {
           </div>
         )}
       </Card>
+
+      {/* 삭제 확인 다이얼로그 */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>레벨테스트 삭제</DialogTitle>
+            <DialogDescription>
+              {deleteTarget && (
+                <>
+                  <span className="font-semibold">{deleteTarget.student_name}</span>의{' '}
+                  <span className="font-semibold">{formatDate(deleteTarget.started_at)}</span> 레벨테스트를 삭제하시겠습니까?
+                  <br />
+                  <span className="text-red-600 text-sm mt-2 block">이 작업은 되돌릴 수 없습니다.</span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteTarget(null)}
+              disabled={deleting}
+            >
+              취소
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  삭제 중...
+                </>
+              ) : (
+                '삭제'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
