@@ -9,6 +9,7 @@ import { useStudentPresence, type StudentPresenceState } from '@/hooks/useStuden
 import { useAuthStore } from '@/store/auth';
 import type { LearningRecord, StudentSummary } from '@/types/realtime-korean';
 import { WordPangDetailDialog } from '@/components/admin/WordPangDetailDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 // 학습 유형 한글 변환
 const getLearningTypeLabel = (type: string): string => {
@@ -344,13 +345,14 @@ const DurationDisplay = React.memo(function DurationDisplay({
 });
 
 // 학생 로우 컴포넌트
-const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, onWordClick, deletedVocaIds }: {
+const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, onWordClick, deletedVocaIds, onStudentNameClick }: {
   summary: StudentSummary;
   onDeleteOrphanSessions: (records: { id: string; learningType: string }[]) => Promise<void>;
   presence?: StudentPresenceState;
   checkInTime?: string;
   onWordClick?: (vocaId: number, word: string) => void;
   deletedVocaIds?: Set<number>;
+  onStudentNameClick?: (studentId: number, studentName: string) => void;
 }) {
   const isActive = summary.currentActivity !== null;
   const isOnline = !!presence;
@@ -375,7 +377,12 @@ const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessi
           <Circle
             className={`w-3 h-3 ${isOnline ? 'fill-green-500 text-green-500' : 'fill-gray-300 text-gray-300'}`}
           />
-          <h3 className="font-bold text-lg text-gray-900">{summary.studentName}</h3>
+          <h3
+            className="font-bold text-lg text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+            onClick={() => onStudentNameClick?.(summary.studentId, summary.studentName)}
+          >
+            {summary.studentName}
+          </h3>
           {/* 체크인 상태: 등원 후 경과 시간 표시 */}
           {isCheckedIn && (
             <ElapsedTime onlineAt={checkInTime} />
@@ -578,6 +585,34 @@ export function RealtimeKoreanV2() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedVocaId, setSelectedVocaId] = useState(0);
   const [selectedWord, setSelectedWord] = useState('');
+
+  // 학생 진행현황 다이얼로그
+  const [progressDialogOpen, setProgressDialogOpen] = useState(false);
+  const [progressData, setProgressData] = useState<{
+    studentName: string;
+    wordPang: { total: number; completed: number };
+    sentenceClinic: { total: number; completed: number };
+    passageQuiz: { total: number; completed: number };
+    handwriting: { total: number; completed: number };
+  } | null>(null);
+  const [progressLoading, setProgressLoading] = useState(false);
+
+  const handleStudentNameClick = async (studentId: number, studentName: string) => {
+    setProgressDialogOpen(true);
+    setProgressLoading(true);
+    setProgressData(null);
+    try {
+      const res = await fetch(`/api/admin/learning/student-progress/${studentId}`);
+      const result = await res.json();
+      if (result.success) {
+        setProgressData({ studentName, ...result.data });
+      }
+    } catch (error) {
+      console.error('진행현황 조회 실패:', error);
+    } finally {
+      setProgressLoading(false);
+    }
+  };
 
   // 레코드 변경 감지 - 새 업데이트가 있는 학생은 다시 표시
   useEffect(() => {
@@ -820,6 +855,7 @@ export function RealtimeKoreanV2() {
               checkInTime={checkInInfo.get(summary.studentId)?.checkInTime}
               onWordClick={handleWordClick}
               deletedVocaIds={deletedVocaIds}
+              onStudentNameClick={handleStudentNameClick}
             />
           ))}
         </div>
@@ -833,6 +869,44 @@ export function RealtimeKoreanV2() {
         word={selectedWord}
         onDelete={handleWordDelete}
       />
+
+      {/* 학생 진행현황 다이얼로그 */}
+      <Dialog open={progressDialogOpen} onOpenChange={setProgressDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{progressData?.studentName || '학생'} 학습 현황</DialogTitle>
+          </DialogHeader>
+          {progressLoading ? (
+            <div className="py-8 text-center text-gray-500">로딩 중...</div>
+          ) : progressData ? (
+            <div className="space-y-4">
+              {[
+                { label: '단어팡', data: progressData.wordPang, color: 'bg-blue-500' },
+                { label: '문장클리닉', data: progressData.sentenceClinic, color: 'bg-purple-500' },
+                { label: '보물찾기', data: progressData.passageQuiz, color: 'bg-green-500' },
+                { label: '내손내줄', data: progressData.handwriting, color: 'bg-amber-500' },
+              ].map(({ label, data, color }) => (
+                <div key={label} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">{label}</span>
+                    <span className="text-gray-600">
+                      {data.completed.toLocaleString()} / {data.total.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${color} rounded-full transition-all`}
+                      style={{ width: `${Math.min((data.completed / Math.max(data.total, 1)) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-gray-500">데이터를 불러올 수 없습니다.</div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
