@@ -45,7 +45,8 @@ import {
   Plus,
   Edit,
   Trash2,
-  Phone
+  Phone,
+  LogIn
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { useAuthStore } from '@/store/auth';
@@ -161,7 +162,7 @@ const extractMiddle4Digits = (phoneNumber: string): string => {
 
 export default function StudentsPage() {
   const { toast } = useToast();
-  const { academyId } = useAuthStore();
+  const { academyId, hasHydrated } = useAuthStore();
   const [students, setStudents] = useState<Student[]>([]);
   const [academies, setAcademies] = useState<Academy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -223,6 +224,9 @@ export default function StudentsPage() {
 
   // 데이터 가져오기
   const fetchStudents = useCallback(async () => {
+    // hydration 완료 전에는 조회하지 않음 (academyId가 아직 로드 안 됐을 수 있음)
+    if (!hasHydrated) return;
+
     try {
       setLoading(true);
       setError(null);
@@ -249,7 +253,7 @@ export default function StudentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [academyId]);
+  }, [academyId, hasHydrated]);
 
   useEffect(() => {
     fetchStudents();
@@ -288,6 +292,36 @@ export default function StudentsPage() {
       toast({
         type: 'error',
         description: err instanceof Error ? err.message : '학생 삭제 중 오류가 발생했습니다.'
+      });
+    }
+  };
+
+  // 학생 화면으로 대리 로그인
+  const handleProxyLogin = async (studentId: string) => {
+    try {
+      const response = await fetch('/api/admin/proxy-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: Number(studentId) }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || '대리 로그인 토큰 생성 실패');
+      }
+
+      // 새 탭에서 Student App 열기
+      window.open(result.data.url, '_blank');
+      toast({
+        type: 'success',
+        description: '학생 앱이 새 탭에서 열렸습니다.'
+      });
+    } catch (err) {
+      console.error('Proxy login error:', err);
+      toast({
+        type: 'error',
+        description: err instanceof Error ? err.message : '대리 로그인 중 오류가 발생했습니다.'
       });
     }
   };
@@ -575,21 +609,29 @@ export default function StudentsPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="sticky left-[100px] z-10 bg-white hover:bg-muted/50 border-r min-w-[120px]">
+                        <TableCell className="sticky left-[100px] z-10 bg-white hover:bg-muted/50 border-r min-w-[150px]">
                           <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant="outline"
                               onClick={() => handleEditStudent(student)}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant="outline"
                               onClick={() => handleDeleteClick(student.id)}
                             >
                               <Trash2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleProxyLogin(student.id)}
+                              title="학생 화면으로 로그인"
+                            >
+                              <LogIn className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>

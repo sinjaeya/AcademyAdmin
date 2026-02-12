@@ -2,7 +2,7 @@
 
 > 이 파일은 supabase-db 에이전트가 자동으로 관리합니다.
 > 스키마 에러 발생 시 에이전트가 DB에서 최신 정보를 조회하여 업데이트합니다.
-> 마지막 업데이트: 2026-02-10
+> 마지막 업데이트: 2026-02-12
 
 ---
 
@@ -455,3 +455,18 @@
 | `eval_grade` | text | YES | 평가 등급 |
 | `eval_feedback` | text | YES | 평가 피드백 |
 | `eval_raw` | text | YES | 원본 평가 데이터 |
+
+---
+
+## admin_proxy_login_tokens (관리자 대리 로그인 토큰)
+
+| 컬럼 | 타입 | Nullable | 비고 |
+|------|------|----------|------|
+| `id` | uuid | NO | **PK** |
+| `token` | varchar | NO | 토큰 문자열 |
+| `student_id` | bigint | NO | FK → student.id |
+| `admin_user_id` | uuid | NO | FK → admin_users.id |
+| `academy_id` | uuid | NO | FK → academy.id |
+| `created_at` | timestamptz | NO | 생성 시각 |
+| `expires_at` | timestamptz | NO | 만료 시각 |
+| `used` | boolean | NO | 사용 여부 |
