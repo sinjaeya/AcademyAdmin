@@ -148,15 +148,17 @@ function generateAnalysis(items: ResultItem[]): AnalysisResult {
   // 영역별 시간 합계 계산용
   const timeSum: Record<string, { total: number; count: number }> = {};
 
+  // 사실확인 유형 정의 (Student App과 동일)
+  const factualTypes = ['평범한 사실 확인', '숫자·비교 강조'];
+
   for (const item of items) {
-    // 장문 독해 유형별 분석
+    // 장문 독해 유형별 분석 (사실확인/추론)
     if (item.question_type === 'reading' && item.sub_type) {
-      if (item.sub_type === 'factual') {
-        analysis.readingByType.factual.total++;
-        if (item.is_correct) analysis.readingByType.factual.correct++;
-      } else if (item.sub_type === 'inferential') {
-        analysis.readingByType.inferential.total++;
-        if (item.is_correct) analysis.readingByType.inferential.correct++;
+      const isFactual = factualTypes.includes(item.sub_type);
+      const category = isFactual ? 'factual' : 'inferential';
+      analysis.readingByType[category].total++;
+      if (item.is_correct) {
+        analysis.readingByType[category].correct++;
       }
     }
 

@@ -34,7 +34,8 @@
       "Bash(git -C \"C:\\\\Source\\\\AcademyAdmin\" diff)",
       "Skill(open-chat)",
       "mcp__plugin_supabase_supabase__apply_migration",
-      "Bash(git -C \"C:/Source/AcademyAdmin\" commit -m \"$\\(cat <<''EOF''\nfeat: 문장클리닉 v2 마이그레이션 \\(4문제 형식\\)\n\n주요 변경사항:\n- 문장클리닉 데이터 구조를 5문제에서 4문제 형식으로 변경\n- questions 배열에서 question1~4 개별 컬럼으로 마이그레이션\n- sentences 배열에서 sentence1~4 개별 컬럼으로 마이그레이션\n- 실시간 국어 모니터링 타입 및 로직 업데이트\n- 통계 API의 문장클리닉 쿼리 수정\n- 콘텐츠 관리 페이지 UI 4문제 형식으로 조정\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git -C \"C:/Source/AcademyAdmin\" commit -m \"$\\(cat <<''EOF''\nfeat: 문장클리닉 v2 마이그레이션 \\(4문제 형식\\)\n\n주요 변경사항:\n- 문장클리닉 데이터 구조를 5문제에서 4문제 형식으로 변경\n- questions 배열에서 question1~4 개별 컬럼으로 마이그레이션\n- sentences 배열에서 sentence1~4 개별 컬럼으로 마이그레이션\n- 실시간 국어 모니터링 타입 및 로직 업데이트\n- 통계 API의 문장클리닉 쿼리 수정\n- 콘텐츠 관리 페이지 UI 4문제 형식으로 조정\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []

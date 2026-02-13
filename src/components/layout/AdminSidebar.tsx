@@ -33,7 +33,8 @@ import {
   Database,
   FileJson,
   History,
-  RefreshCw
+  RefreshCw,
+  LogIn
 } from 'lucide-react';
 
 // 네비게이션 아이템 타입 정의
@@ -162,7 +163,8 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
     { name: '변수 관리', href: '/admin/settings/variables', icon: Variable, requiredPermission: PERMISSION_IDS.ACADEMY_SETTINGS, liteVisible: false },
     { name: '학원관리', href: '/admin/settings/academy', icon: Building2, requiredPermission: PERMISSION_IDS.ACADEMY_SETTINGS, liteVisible: false },
     { name: '사용자 관리', href: '/admin/settings/users', icon: Users, requiredPermission: PERMISSION_IDS.USERS_VIEW, liteVisible: true },
-    { name: '권한 관리', href: '/admin/settings/permissions', icon: Shield, requiredPermission: null, liteVisible: false } // Admin 전용은 특별 처리
+    { name: '권한 관리', href: '/admin/settings/permissions', icon: Shield, requiredPermission: null, liteVisible: false }, // Admin 전용은 특별 처리
+    { name: '로그인 로그', href: '/admin/settings/login-logs', icon: LogIn, requiredPermission: PERMISSION_IDS.ACADEMY_SETTINGS, liteVisible: false }
   ], []);
 
   // 학습관리 서브메뉴들

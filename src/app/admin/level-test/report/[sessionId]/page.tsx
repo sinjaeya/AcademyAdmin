@@ -159,6 +159,7 @@ export default function LevelTestReportPage({ params }: PageProps) {
   // 레이더 차트 데이터
   const radarData = results && session.analysis
     ? [
+        { area: '종합', score: calculateRate(results.suneung.correct, results.suneung.total) },
         { area: '어휘', score: calculateRate(results.vocab.correct, results.vocab.total) },
         { area: '구조', score: calculateRate(results.sentence.correct, results.sentence.total) },
         {
@@ -174,7 +175,6 @@ export default function LevelTestReportPage({ params }: PageProps) {
             : 0
         },
         { area: '문맥', score: calculateRate(results.reading.correct, results.reading.total) },
-        { area: '종합', score: calculateRate(results.suneung.correct, results.suneung.total) },
       ]
     : [];
 

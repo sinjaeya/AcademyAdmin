@@ -470,3 +470,22 @@
 | `created_at` | timestamptz | NO | 생성 시각 |
 | `expires_at` | timestamptz | NO | 만료 시각 |
 | `used` | boolean | NO | 사용 여부 |
+
+---
+
+## login_logs (로그인 로그)
+
+| 컬럼 | 타입 | Nullable | 비고 |
+|------|------|----------|------|
+| `id` | bigint | NO | **PK** |
+| `created_at` | timestamptz | NO | 기본: now() |
+| `student_id` | bigint | YES | FK → student.id |
+| `student_name` | text | YES | 학생 이름 |
+| `email` | text | YES | 이메일 |
+| `academy_id` | uuid | YES | FK → academy.id |
+| `login_type` | text | NO | 로그인 유형 (normal 등) |
+| `success` | boolean | NO | 성공 여부 |
+| `error_message` | text | YES | 에러 메시지 |
+| `user_agent` | text | YES | 사용자 에이전트 |
+| `metadata` | jsonb | YES | 메타데이터 |
+| `ip_address` | text | YES | IP 주소 |

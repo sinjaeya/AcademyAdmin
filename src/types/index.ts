@@ -134,6 +134,22 @@ export interface UserContext {
   isAdmin: boolean;
 }
 
+// 로그인 로그 타입
+export interface LoginLog {
+  id: number;
+  created_at: string;
+  student_id: number | null;
+  student_name: string | null;
+  email: string | null;
+  academy_id: string | null;
+  login_type: 'normal' | 'proxy' | 'dev';
+  success: boolean;
+  error_message: string | null;
+  user_agent: string | null;
+  metadata: Record<string, unknown> | null;
+  ip_address: string | null;
+}
+
 // 결제 내역 타입
 export interface Payment {
   id: string;
