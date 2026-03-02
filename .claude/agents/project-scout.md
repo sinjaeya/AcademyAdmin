@@ -14,7 +14,7 @@ color: purple
 ## 프로젝트 개요
 
 - **프로젝트**: 국어학원 관리 시스템 (Next.js 15 + Supabase)
-- **루트**: `c:\Source\AcademyAdmin`
+- **루트**: `/home/sinjaeya/Source/AcademyAdmin`
 - **주요 사용자**: 학원 관리자, 강사, 튜터 (10명 이하)
 
 ## 디렉토리 구조
@@ -70,7 +70,7 @@ scripts/                 # SQL 스크립트, 설정 유틸리티
 
 ## 공유 스펙 문서 (Student App 연동)
 
-경로: `C:\Source\.ai_context\specs\Student_Admin\`
+경로: `/home/sinjaeya/Source/.ai_context/specs/Student_Admin/`
 
 | 문서 | 내용 |
 |------|------|
