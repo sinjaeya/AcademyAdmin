@@ -16,6 +16,8 @@
 | `role_permissions` | 역할별 권한 | - |
 | `check_in_out` | 출입 기록 | `student_id` |
 | `handwriting_progress` | 필기 진행 상태 | `student_id`, `session_id` |
+| `level_test_session` | 레벨테스트 세션 | `student_id` → `student` |
+| `level_test_result` | 레벨테스트 개별 답안 | `session_id` → `level_test_session` |
 
 ## student 테이블 주요 필드
 
@@ -49,7 +51,29 @@
 
 **academy_type** (text + CHECK): `full` (전체 기능), `lite` (문해력 앱)
 
+## level_test_session 주요 필드
+
+| 필드명 | 타입 | 설명 |
+|--------|------|------|
+| `id` | UUID | PK |
+| `student_id` | INT | FK → student.id |
+| `status` | VARCHAR | in_progress / completed / abandoned |
+| `results` | JSONB | 영역별 결과 (vocab, sentence, reading, suneung, overall) |
+| `recommended_level` | VARCHAR(20) | 추천 레벨 (Lv3_Mid1 ~ Lv7_High2) |
+| `elapsed_seconds` | INT | 총 소요 시간 |
+
+### 추천 레벨 산출 방식 (2026-03 변경)
+
+- **이전**: CAT 평균 난이도(avgDifficulty) 기반 — 상하급 모두 수렴하여 변별력 없음
+- **현재**: 영역별 정답률 + Bayesian 문항수 보정 + 가중 평균
+  - Bayesian 보정: `adjusted = (correct + 2.5) / (total + 5)` (소수 문항 과대평가 방지)
+  - 가중치: vocab=1.0, sentence=1.5, reading=2.0, suneung=2.5
+  - score = Σ(adjusted × weight) / Σ(weight)
+  - 구간: `<0.63` → Lv3_Mid1, `<0.74` → Lv4_Mid2, `<0.84` → Lv5_Mid3, `<0.92` → Lv6_High1, `>=0.92` → Lv7_High2
+- AcademyAdmin은 DB에서 `recommended_level` 읽기만 하므로 **코드 변경 없음, 자동 호환**
+
 ## 참고
 
 - ENUM 옵션과 라벨 매핑: `src/config/constants.ts`
 - 타입 정의: `src/types/index.ts`
+- 레벨테스트 타입/유틸: `src/types/level-test.ts`

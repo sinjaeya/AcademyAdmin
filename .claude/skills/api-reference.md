@@ -13,6 +13,8 @@
 | 필기 | `/api/admin/handwriting/live` | 내손내줄 실시간 필기 |
 | 콘텐츠 | `/api/admin/contents/passages`, `/api/admin/contents/word-pang`, `/api/admin/contents/sentence-clinic` | 지문/단어/문장 관리 |
 | 통계 | `/api/admin/statistics/sentence-clinic`, `/api/admin/statistics/student-learning` | 학습 통계 |
+| 레벨테스트 | `/api/admin/level-test` | 세션 목록 조회 (academyId, status, page 필터) |
+| 레벨테스트 | `/api/admin/level-test/[sessionId]` | GET: 상세+분석, DELETE: 세션+답안 삭제 |
 | 학원 | `/api/admin/academy`, `/api/admin/academy/[id]` | 학원 CRUD |
 | 설정 | `/api/admin/settings`, `/api/admin/permissions` | 변수/권한 관리 |
 

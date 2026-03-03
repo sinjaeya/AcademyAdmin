@@ -301,7 +301,7 @@
 | `current_difficulty` | jsonb | YES | 현재 난이도 (영역별) |
 | `progress` | jsonb | YES | 진행률 (영역별) |
 | `results` | jsonb | YES | 결과 데이터 |
-| `recommended_level` | varchar(20) | YES | 추천 레벨 |
+| `recommended_level` | varchar(20) | YES | 추천 레벨 (Lv3_Mid1~Lv7_High2, 정답률 기반 Bayesian 보정, 2026-03 변경) |
 | `created_at` | timestamptz | YES | |
 
 ---
