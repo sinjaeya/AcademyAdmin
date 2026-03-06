@@ -15,7 +15,8 @@ interface Student {
   id: string;
   name: string;
   grade: string;
-  school?: string;
+  school?: string;           // 레거시 텍스트 필드
+  school_name?: string | null; // school_id FK 기반 (우선 사용)
   academy_id?: string | null;
 }
 
@@ -161,9 +162,10 @@ export default function PassageGuidePage() {
                       <Badge variant="secondary" className="text-xs">
                         {student.grade}
                       </Badge>
-                      {student.school && (
+                      {(student.school_name || student.school) && (
                         <span className="text-xs text-gray-500 truncate max-w-[80px]">
-                          {student.school}
+                          {/* school_name: school_id FK 우선, 없으면 기존 school 텍스트 폴백 */}
+                          {student.school_name || student.school}
                         </span>
                       )}
                     </div>

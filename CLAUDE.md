@@ -67,6 +67,11 @@ Next.js 16 (App Router) + React 19 + TypeScript 5 | Supabase (PostgreSQL) + Pris
 - `alert()`/`confirm()` 금지 → Toast(`useToast`) + Dialog 사용
 - 클릭 가능한 요소에 `cursor-pointer` 필수
 
+## 에이전트 메모리
+
+- 커스텀 에이전트는 `memory: local` 필수 — `.claude/agent-memory-local/<name>/`에 학습 저장
+- `agent-memory-local/` 폴더는 정상 동작 — 삭제 금지
+
 ## DB 작업
 
 - DB 작업은 **supabase-db 에이전트에 위임** (직접 `execute_sql` 금지)

@@ -81,8 +81,10 @@ export async function GET() {
             name,
             grade,
             school,
+            school_id,
             academy_id,
             academy:academy_id(name),
+            school_info:school_id(short_name),
             created_at
           `)
           .order('created_at', { ascending: false })
@@ -114,11 +116,20 @@ export async function GET() {
           ? academy[0]?.name
           : academy?.name;
 
+        // school_info: schools 테이블 JOIN 결과
+        const schoolInfo = s.school_info as { short_name: string } | { short_name: string }[] | null;
+        const schoolShortName = Array.isArray(schoolInfo)
+          ? schoolInfo[0]?.short_name
+          : schoolInfo?.short_name;
+        // school_id FK 있으면 short_name 우선, 없으면 기존 school 텍스트 폴백
+        const school_name = schoolShortName || s.school || null;
+
         return {
           id: s.id,
           name: s.name,
           grade: s.grade,
           school: s.school,
+          school_name,
           academy_name,
           created_at: s.created_at
         };

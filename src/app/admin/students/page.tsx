@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/select';
 import {
   GRADE_OPTIONS,
-  SCHOOL_OPTIONS,
   STATUS_OPTIONS,
   PARENT_TYPE_OPTIONS,
   SENTENCE_LEVEL_OPTIONS,
@@ -51,13 +50,22 @@ import {
 import { useToast } from '@/components/ui/toast';
 import { useAuthStore } from '@/store/auth';
 
+// 학교 데이터 타입
+interface School {
+  id: number;
+  full_name: string;
+  short_name: string;
+}
+
 // 학생 데이터 타입 정의
 interface Student {
   id: string;
   name: string;
   phone_number: string;
   phone_middle_4: string;
-  school: string;
+  school: string;           // 기존 텍스트 필드 (레거시 호환)
+  school_id?: number | null; // FK (bigint)
+  school_name?: string | null; // schools.short_name 우선, 없으면 school 텍스트
   grade: string;
   parent_phone: string;
   parent_type: string;
@@ -78,7 +86,8 @@ interface NewStudentForm {
   name: string;
   phone_number: string;
   phone_middle_4: string;
-  school: string;
+  school: string;           // 레거시 텍스트 (school_id 없을 때 폴백)
+  school_id: number | null; // FK (schools 테이블)
   grade: string;
   parent_phone: string;
   parent_type: string;
@@ -97,7 +106,8 @@ interface EditStudentForm {
   name: string;
   phone_number: string;
   phone_middle_4: string;
-  school: string;
+  school: string;           // 레거시 텍스트 (school_id 없을 때 폴백)
+  school_id: number | null; // FK (schools 테이블)
   grade: string;
   parent_phone: string;
   parent_type: string;
@@ -165,6 +175,7 @@ export default function StudentsPage() {
   const { academyId, hasHydrated } = useAuthStore();
   const [students, setStudents] = useState<Student[]>([]);
   const [academies, setAcademies] = useState<Academy[]>([]);
+  const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
@@ -176,6 +187,7 @@ export default function StudentsPage() {
     phone_number: '',
     phone_middle_4: '',
     school: '',
+    school_id: null,
     grade: '',
     parent_phone: '',
     parent_type: '엄마',
@@ -193,6 +205,7 @@ export default function StudentsPage() {
     phone_number: '',
     phone_middle_4: '',
     school: '',
+    school_id: null,
     grade: '',
     parent_phone: '',
     parent_type: '엄마',
@@ -219,6 +232,18 @@ export default function StudentsPage() {
       setAcademies(result.academies || []);
     } catch (err) {
       console.error('Error fetching academies:', err);
+    }
+  };
+
+  // 학교 목록 가져오기 (schools 테이블)
+  const fetchSchools = async () => {
+    try {
+      const response = await fetch('/api/admin/schools');
+      if (!response.ok) return;
+      const result = await response.json();
+      setSchools(result.data || []);
+    } catch (err) {
+      console.error('Error fetching schools:', err);
     }
   };
 
@@ -258,6 +283,7 @@ export default function StudentsPage() {
   useEffect(() => {
     fetchStudents();
     fetchAcademies();
+    fetchSchools();
   }, [fetchStudents]);
 
   const handleDeleteClick = (studentId: string) => {
@@ -353,6 +379,7 @@ export default function StudentsPage() {
           phone_number: '',
           phone_middle_4: '',
           school: '',
+          school_id: null,
           grade: '',
           parent_phone: '',
           parent_type: '엄마',
@@ -425,6 +452,7 @@ export default function StudentsPage() {
       phone_number: student.phone_number,
       phone_middle_4: student.phone_middle_4,
       school: student.school,
+      school_id: student.school_id || null,
       grade: student.grade,
       parent_phone: student.parent_phone,
       parent_type: student.parent_type || '엄마',
@@ -454,6 +482,7 @@ export default function StudentsPage() {
           phone_number: editStudent.phone_number,
           phone_middle_4: editStudent.phone_middle_4,
           school: editStudent.school,
+          school_id: editStudent.school_id,
           grade: editStudent.grade,
           parent_phone: editStudent.parent_phone,
           parent_type: editStudent.parent_type,
@@ -647,7 +676,8 @@ export default function StudentsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{student.school || 'N/A'}</Badge>
+                          {/* school_name: school_id FK 우선, 없으면 기존 school 텍스트 폴백 */}
+                          <Badge variant="outline">{student.school_name || student.school || 'N/A'}</Badge>
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary">{student.grade || 'N/A'}</Badge>
@@ -773,20 +803,47 @@ export default function StudentsPage() {
               <div className="space-y-2">
                 <Label htmlFor="school">학교</Label>
                 <Select
-                  value={newStudent.school}
-                  onValueChange={(value) => handleInputChange('school', value)}
+                  value={newStudent.school_id ? String(newStudent.school_id) : '__text__'}
+                  onValueChange={(value) => {
+                    if (value === '__text__') {
+                      // 직접 입력 모드 (레거시)
+                      setNewStudent(prev => ({ ...prev, school_id: null }));
+                    } else {
+                      const selectedSchool = schools.find(s => String(s.id) === value);
+                      setNewStudent(prev => ({
+                        ...prev,
+                        school_id: selectedSchool ? selectedSchool.id : null,
+                        school: selectedSchool ? selectedSchool.short_name : prev.school
+                      }));
+                    }
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="학교를 선택하세요" />
                   </SelectTrigger>
                   <SelectContent>
-                    {SCHOOL_OPTIONS.map((school) => (
-                      <SelectItem key={school} value={school}>
-                        {school}
+                    {schools.length > 0 ? (
+                      schools.map((school) => (
+                        <SelectItem key={school.id} value={String(school.id)}>
+                          {school.short_name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="__text__" disabled>
+                        학교 목록 로딩 중...
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
+                {/* 학교 목록에 없는 경우 직접 입력 */}
+                {!newStudent.school_id && (
+                  <Input
+                    value={newStudent.school}
+                    onChange={(e) => handleInputChange('school', e.target.value)}
+                    placeholder="직접 입력 (목록에 없는 경우)"
+                    className="mt-1"
+                  />
+                )}
               </div>
               
               <div className="space-y-2">
@@ -1029,22 +1086,48 @@ export default function StudentsPage() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="edit-school">학교 *</Label>
+                <Label htmlFor="edit-school">학교</Label>
                 <Select
-                  value={editStudent.school}
-                  onValueChange={(value) => handleEditInputChange('school', value)}
+                  value={editStudent.school_id ? String(editStudent.school_id) : '__text__'}
+                  onValueChange={(value) => {
+                    if (value === '__text__') {
+                      setEditStudent(prev => ({ ...prev, school_id: null }));
+                    } else {
+                      const selectedSchool = schools.find(s => String(s.id) === value);
+                      setEditStudent(prev => ({
+                        ...prev,
+                        school_id: selectedSchool ? selectedSchool.id : null,
+                        school: selectedSchool ? selectedSchool.short_name : prev.school
+                      }));
+                    }
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="학교를 선택하세요" />
                   </SelectTrigger>
                   <SelectContent>
-                    {SCHOOL_OPTIONS.map((school) => (
-                      <SelectItem key={school} value={school}>
-                        {school}
+                    {schools.length > 0 ? (
+                      schools.map((school) => (
+                        <SelectItem key={school.id} value={String(school.id)}>
+                          {school.short_name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="__text__" disabled>
+                        학교 목록 로딩 중...
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
+                {/* 학교 목록에 없는 경우 직접 입력 */}
+                {!editStudent.school_id && (
+                  <Input
+                    value={editStudent.school}
+                    onChange={(e) => handleEditInputChange('school', e.target.value)}
+                    placeholder="직접 입력 (목록에 없는 경우)"
+                    className="mt-1"
+                  />
+                )}
               </div>
               
               <div className="space-y-2">
@@ -1245,7 +1328,7 @@ export default function StudentsPage() {
               </Button>
               <Button
                 onClick={handleUpdateStudent}
-                disabled={isSubmitting || !editStudent.name || !editStudent.phone_number || !editStudent.phone_middle_4 || editStudent.phone_middle_4.length !== 4 || !editStudent.school || !editStudent.grade || !editStudent.parent_phone || !editStudent.academy_id || !editStudent.status || !editStudent.study_time}
+                disabled={isSubmitting || !editStudent.name || !editStudent.phone_number || !editStudent.phone_middle_4 || editStudent.phone_middle_4.length !== 4 || !editStudent.grade || !editStudent.parent_phone || !editStudent.academy_id || !editStudent.status || !editStudent.study_time}
               >
                 {isSubmitting ? '수정 중...' : '수정'}
               </Button>

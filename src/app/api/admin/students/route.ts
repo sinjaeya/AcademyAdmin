@@ -26,6 +26,11 @@ export async function GET(request: NextRequest) {
           id,
           name
         ),
+        school_info:school_id (
+          id,
+          full_name,
+          short_name
+        ),
         current_month_payment:payment!left (student_id, study_month)
       `);
 
@@ -49,23 +54,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 학생 목록에 당월 납부 여부 추가 및 academy 정보 정리
+    // 학생 목록에 당월 납부 여부 추가 및 academy/school 정보 정리
     const studentsWithPaymentStatus = (students || []).map((student: any) => {
       const academy = student.academy && typeof student.academy === 'object' && !Array.isArray(student.academy)
         ? student.academy
+        : null;
+
+      // school_info: schools 테이블 JOIN 결과 (school_id FK)
+      const schoolInfo = student.school_info && typeof student.school_info === 'object' && !Array.isArray(student.school_info)
+        ? student.school_info
         : null;
 
       // current_month_payment에서 당월(currentMonthStr)에 해당하는 결제 내역이 있는지 확인
       const hasPaid = Array.isArray(student.current_month_payment)
         && student.current_month_payment.some((p: any) => p.study_month === currentMonthStr);
 
-      // current_month_payment 필드는 응답에서 제외
-      const { current_month_payment, ...studentData } = student;
+      // current_month_payment, school_info 필드는 응답에서 제외
+      const { current_month_payment, school_info, ...studentData } = student;
 
       return {
         ...studentData,
         academy_id: student.academy_id || null,
         academy_name: academy?.name || null,
+        school_id: student.school_id || null,
+        // school_id FK 있으면 schools.short_name 우선, 없으면 기존 school 텍스트 폴백
+        school_name: schoolInfo?.short_name || student.school || null,
         hasPaidThisMonth: hasPaid
       };
     });
@@ -119,6 +132,11 @@ export async function POST(request: NextRequest) {
     // academy_id가 제공된 경우 사용 (UUID 타입)
     if (body.academy_id) {
       studentToInsert.academy_id = body.academy_id;
+    }
+
+    // school_id가 제공된 경우 사용 (bigint FK)
+    if (body.school_id) {
+      studentToInsert.school_id = body.school_id;
     }
 
     // 1단계: student 테이블에 학생 정보 추가

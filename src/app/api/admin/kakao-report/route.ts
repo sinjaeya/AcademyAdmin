@@ -19,7 +19,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       // 학생 정보 조회 (academy_id 교차검증 포함)
       let studentQuery = supabase
         .from('student')
-        .select('id, name, parent_phone, school, grade, academy_id')
+        .select('id, name, parent_phone, school, school_id, grade, academy_id, school_info:school_id(short_name)')
         .eq('id', studentId);
 
       // 관리자가 아니고 academyId가 있으면 academy_id 필터 추가
@@ -32,6 +32,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       if (studentError || !student) {
         return NextResponse.json({ error: '학생을 찾을 수 없습니다.' }, { status: 404 });
       }
+
+      // school_name 계산 (school_id FK 우선, 텍스트 폴백)
+      const schoolInfoData = (student as any).school_info;
+      const schoolInfo = schoolInfoData && typeof schoolInfoData === 'object' && !Array.isArray(schoolInfoData)
+        ? schoolInfoData
+        : null;
+      const studentWithSchoolName = {
+        ...student,
+        school_name: schoolInfo?.short_name || student.school || null,
+        school_info: undefined
+      };
 
       // 학습 이력 날짜 목록 조회 (최대 3개)
       if (getDates) {
@@ -55,7 +66,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({
           success: true,
           data: {
-            student,
+            student: studentWithSchoolName,
             learningDates: uniqueDates
           }
         });
@@ -116,7 +127,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({
         success: true,
         data: {
-          student,
+          student: studentWithSchoolName,
           date,
           stats: {
             wordPang: {
@@ -140,7 +151,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // 학생 ID가 없으면 재원 학생 목록 반환
     let studentsQuery = supabase
       .from('student')
-      .select('id, name, parent_phone, school, grade, academy_id')
+      .select('id, name, parent_phone, school, school_id, grade, academy_id, school_info:school_id(short_name)')
       .eq('status', '재원');
 
     // 관리자가 아니고 academyId가 있으면 academy_id 필터 추가
@@ -156,9 +167,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: studentsError.message }, { status: 500 });
     }
 
+    // school_name 계산 (school_id FK 우선, 텍스트 폴백)
+    const studentsWithSchoolName = (students || []).map((s: any) => {
+      const schoolInfoData = s.school_info;
+      const si = schoolInfoData && typeof schoolInfoData === 'object' && !Array.isArray(schoolInfoData)
+        ? schoolInfoData
+        : null;
+      const { school_info, ...rest } = s;
+      return {
+        ...rest,
+        school_name: si?.short_name || s.school || null,
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      data: { students }
+      data: { students: studentsWithSchoolName }
     });
   } catch (error) {
     console.error('카톡 리포트 API 오류:', error);

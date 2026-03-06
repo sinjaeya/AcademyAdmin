@@ -2,7 +2,7 @@
 
 > 이 파일은 supabase-db 에이전트가 자동으로 관리합니다.
 > 스키마 에러 발생 시 에이전트가 DB에서 최신 정보를 조회하여 업데이트합니다.
-> 마지막 업데이트: 2026-02-12
+> 마지막 업데이트: 2026-03-06 (school_grade_textbook PK 변경)
 
 ---
 
@@ -35,6 +35,7 @@
 | `level_test_completed` | boolean | YES | 레벨테스트 완료 여부 |
 | `level_test_completed_at` | timestamptz | YES | 레벨테스트 완료 시각 |
 | `level_test_session_id` | uuid | YES | FK → level_test_session.id |
+| `school_id` | bigint | YES | FK → schools.id |
 
 ---
 
@@ -470,6 +471,46 @@
 | `created_at` | timestamptz | NO | 생성 시각 |
 | `expires_at` | timestamptz | NO | 만료 시각 |
 | `used` | boolean | NO | 사용 여부 |
+
+---
+
+## schools (학교 정보)
+
+| 컬럼 | 타입 | Nullable | 비고 |
+|------|------|----------|------|
+| `id` | bigint | NO | **PK** |
+| `full_name` | text | NO | 학교 전체명 |
+| `short_name` | text | NO | 학교 약칭 |
+| `created_at` | timestamptz | NO | 기본: now() |
+
+---
+
+## textbooks (교과서)
+
+| 컬럼 | 타입 | Nullable | 비고 |
+|------|------|----------|------|
+| `id` | uuid | NO | **PK**, 기본: gen_random_uuid() |
+| `publisher` | text | NO | 출판사 |
+| `author` | text | YES | 저자 |
+| `subject` | text | NO | 과목 (기본: '국어') |
+| `level` | text | NO | 레벨 |
+| `grade` | smallint | NO | 학년 |
+| `semester` | smallint | NO | 학기 |
+| `curriculum_year` | smallint | YES | 교육과정 연도 (기본: 2022) |
+| `rag_filter` | text | YES | RAG 필터값 |
+| `created_at` | timestamptz | YES | 기본: now() |
+
+---
+
+## school_grade_textbook (학교-학년-교과서 매핑)
+
+| 컬럼 | 타입 | Nullable | 비고 |
+|------|------|----------|------|
+| `school_id` | bigint | NO | **PK** (복합), FK → schools.id |
+| `grade` | text | NO | **PK** (복합), 학년 |
+| `textbook_id` | uuid | NO | **PK** (복합), FK → textbooks.id |
+
+**비고**: (school_id, grade, textbook_id) 복합 PK — 한 학교/학년에 여러 교과서 매핑 가능 (2026-03-06 변경, 기존 PK는 school_id+grade)
 
 ---
 

@@ -34,7 +34,8 @@ import {
   FileJson,
   History,
   RefreshCw,
-  LogIn
+  LogIn,
+  School
 } from 'lucide-react';
 
 // 네비게이션 아이템 타입 정의
@@ -115,6 +116,12 @@ const navigationCategories: NavigationCategory[] = [
     title: 'TEACHER',
     items: [
       { name: '지문가이드', href: '/admin/teacher/passage-guide', icon: BookOpen, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true }
+    ]
+  },
+  {
+    title: 'SCHOOL MANAGEMENT',
+    items: [
+      { name: '학교 관리', href: '/admin/schools', icon: School, requiredPermission: PERMISSION_IDS.ACADEMY_SETTINGS }
     ]
   },
   {

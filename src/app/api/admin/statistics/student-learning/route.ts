@@ -14,7 +14,7 @@ export async function GET(): Promise<NextResponse> {
     // 이지국어교습소 재원 학생 목록 조회
     const { data: students, error: studentsError } = await supabase
       .from('student')
-      .select('id, name, school, grade, status, sentence_level, handwriting_level')
+      .select('id, name, school, school_id, grade, status, sentence_level, handwriting_level, school_info:school_id(short_name)')
       .eq('status', '재원')
       .eq('academy_id', EJIGUK_ACADEMY_ID)
       .order('name', { ascending: true });
@@ -96,7 +96,14 @@ export async function GET(): Promise<NextResponse> {
     });
 
     // 학생 데이터와 통계 결합
-    const result = students?.map((student) => {
+    const result = students?.map((student: any) => {
+      // school_name: school_id FK 있으면 short_name 우선, 없으면 기존 school 텍스트 폴백
+      const schoolInfoData = student.school_info;
+      const si = schoolInfoData && typeof schoolInfoData === 'object' && !Array.isArray(schoolInfoData)
+        ? schoolInfoData
+        : null;
+      const school_name = si?.short_name || student.school || null;
+
       const stats = studentStats[student.id] || {
         wordPangCount: 0,
         wordPangAccuracySum: 0,
@@ -126,6 +133,7 @@ export async function GET(): Promise<NextResponse> {
         id: student.id,
         name: student.name,
         school: student.school,
+        school_name,
         grade: student.grade,
         status: student.status,
         sentenceLevel: student.sentence_level,

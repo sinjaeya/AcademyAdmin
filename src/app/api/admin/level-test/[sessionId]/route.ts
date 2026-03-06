@@ -36,6 +36,7 @@ export async function GET(
           name,
           grade,
           school,
+          school_id,
           academy_id,
           academy:academy_id (
             id,
@@ -43,6 +44,10 @@ export async function GET(
             logo_url,
             phone,
             email
+          ),
+          school_info:school_id (
+            id,
+            short_name
           )
         )
       `)
@@ -75,12 +80,18 @@ export async function GET(
     const studentInfo = session.student as any;
     const academyInfo = studentInfo?.academy as any;
 
+    // school_info: schools 테이블 JOIN 결과 (school_id FK 우선, 기존 school 텍스트 폴백)
+    const schoolInfo = studentInfo?.school_info && typeof studentInfo.school_info === 'object' && !Array.isArray(studentInfo.school_info)
+      ? studentInfo.school_info
+      : null;
+    const studentSchool = schoolInfo?.short_name || studentInfo?.school || null;
+
     const sessionDetail = {
       id: session.id,
       student_id: session.student_id,
       student_name: studentInfo?.name || '알 수 없음',
       student_grade: studentInfo?.grade || null,
-      student_school: studentInfo?.school || null,
+      student_school: studentSchool,
       academy_name: academyInfo?.name || null,
       academy_logo_url: academyInfo?.logo_url || null,
       academy_phone: academyInfo?.phone || null,

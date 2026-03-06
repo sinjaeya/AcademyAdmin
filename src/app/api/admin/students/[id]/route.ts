@@ -64,6 +64,7 @@ export async function PUT(
     }
     if (body.phone_middle_4 !== undefined) updateData.phone_middle_4 = body.phone_middle_4;
     if (body.school !== undefined) updateData.school = body.school;
+    if (body.school_id !== undefined) updateData.school_id = body.school_id || null;
     if (body.grade !== undefined) updateData.grade = body.grade;
     if (body.parent_phone !== undefined) updateData.parent_phone = body.parent_phone;
     if (body.parent_type !== undefined && body.parent_type !== '') {
@@ -103,6 +104,11 @@ export async function PUT(
         academy:academy_id (
           id,
           name
+        ),
+        school_info:school_id (
+          id,
+          full_name,
+          short_name
         )
       `);
 
@@ -123,18 +129,27 @@ export async function PUT(
       );
     }
 
-    // academy 정보 정리
+    // academy, school 정보 정리
     const updatedStudent = data[0];
     const academy = updatedStudent.academy && typeof updatedStudent.academy === 'object' && !Array.isArray(updatedStudent.academy)
       ? updatedStudent.academy
       : null;
+    const schoolInfo = updatedStudent.school_info && typeof updatedStudent.school_info === 'object' && !Array.isArray(updatedStudent.school_info)
+      ? updatedStudent.school_info
+      : null;
+
+    // school_info 필드는 응답에서 제외
+    const { school_info, ...studentData } = updatedStudent;
 
     return NextResponse.json({
       success: true,
       data: {
-        ...updatedStudent,
+        ...studentData,
         academy_id: updatedStudent.academy_id || null,
         academy_name: academy?.name || null,
+        school_id: updatedStudent.school_id || null,
+        // school_id FK 있으면 schools.short_name 우선, 없으면 기존 school 텍스트 폴백
+        school_name: schoolInfo?.short_name || updatedStudent.school || null,
       },
       message: '학생 정보가 성공적으로 업데이트되었습니다.'
     }, { status: 200 });
