@@ -70,7 +70,7 @@ scripts/                 # SQL 스크립트, 설정 유틸리티
 
 ## 공유 스펙 문서 (Student App 연동)
 
-경로: `/home/sinjaeya/Source/.ai_context/specs/Student_Admin/`
+MCP Memory에서 `shared-memory` 스킬로 검색 (태그: 작업명으로 검색)
 
 | 문서 | 내용 |
 |------|------|

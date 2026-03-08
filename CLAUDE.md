@@ -12,7 +12,7 @@
 ## 환경
 
 - **OS**: WSL/Linux, **루트**: `/home/sinjaeya/Source/AcademyAdmin`
-- **공유 컨텍스트**: `/home/sinjaeya/Source/.ai_context/`
+- **프로젝트 간 공유 스펙/할일/의사결정**: `/shared-memory` 스킬 사용
 - 한글/공백 포함 경로는 반드시 **큰따옴표**로 감싸기
 
 ## 명령어

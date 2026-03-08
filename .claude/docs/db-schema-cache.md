@@ -2,7 +2,7 @@
 
 > 이 파일은 supabase-db 에이전트가 자동으로 관리합니다.
 > 스키마 에러 발생 시 에이전트가 DB에서 최신 정보를 조회하여 업데이트합니다.
-> 마지막 업데이트: 2026-03-06 (school_grade_textbook PK 변경)
+> 마지막 업데이트: 2026-03-06 (homework_assignment 재생성, student.daily_word_count 추가)
 
 ---
 
@@ -36,6 +36,7 @@
 | `level_test_completed_at` | timestamptz | YES | 레벨테스트 완료 시각 |
 | `level_test_session_id` | uuid | YES | FK → level_test_session.id |
 | `school_id` | bigint | YES | FK → schools.id |
+| `daily_word_count` | smallint | NO | 일일 단어팡 숙제 단어 수 (기본: 30) |
 
 ---
 
@@ -511,6 +512,22 @@
 | `textbook_id` | uuid | NO | **PK** (복합), FK → textbooks.id |
 
 **비고**: (school_id, grade, textbook_id) 복합 PK — 한 학교/학년에 여러 교과서 매핑 가능 (2026-03-06 변경, 기존 PK는 school_id+grade)
+
+---
+
+## homework_assignment (단어팡 숙제 배정)
+
+| 컬럼 | 타입 | Nullable | 비고 |
+|------|------|----------|------|
+| `id` | bigint | NO | **PK** (GENERATED ALWAYS AS IDENTITY) |
+| `student_id` | bigint | NO | FK → student.id |
+| `assigned_date` | date | NO | 숙제 배정 날짜 |
+| `word_count` | smallint | NO | 출제 단어 수 (기본: 30) |
+| `session_id` | bigint | YES | FK → test_session.id (완료한 세션) |
+| `completed_at` | timestamptz | YES | 완료 시각 |
+
+**인덱스**: `idx_homework_pending` — (student_id, completed_at) WHERE completed_at IS NULL (미완료 숙제 조회 최적화)
+**제약**: UNIQUE (student_id, assigned_date)
 
 ---
 

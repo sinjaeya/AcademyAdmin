@@ -30,7 +30,8 @@
       "Bash(gh:*)",
       "WebSearch",
       "WebFetch",
-      "Bash(hash -r && which claude 2>&1)"
+      "Bash(hash -r && which claude 2>&1)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

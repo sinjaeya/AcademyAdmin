@@ -30,6 +30,8 @@ import {
   Camera,
   PenTool,
   ClipboardCheck,
+  ClipboardList,
+  BookOpenCheck,
   Database,
   FileJson,
   History,
@@ -87,10 +89,12 @@ const navigationCategories: NavigationCategory[] = [
     title: 'STUDENT MANAGEMENT',
     items: [
       { name: '학생 관리', href: '/admin/students', icon: GraduationCap, requiredPermission: PERMISSION_IDS.STUDENTS_VIEW, liteVisible: true },
+      { name: '단어팡 숙제', href: '/admin/homework', icon: ClipboardList, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true },
       { name: '풀스택-국어 카톡 발송', href: '/admin/kakao-report', icon: Send, requiredPermission: PERMISSION_IDS.STUDENTS_EDIT, liteVisible: true },
       { name: '등/하원 조회', href: '/admin/checkinout', icon: Clock, badge: '5', requiredPermission: PERMISSION_IDS.STUDENTS_VIEW },
       { name: '학습관리', href: '/admin/learning', icon: BookText, requiredPermission: PERMISSION_IDS.REPORTS_VIEW },
-      { name: '학습리포트', href: '/admin/study-reports', icon: BookOpen, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true }
+      { name: '학습리포트', href: '/admin/study-reports', icon: BookOpen, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true },
+      { name: '개념학습 관리', href: '/admin/concept-learning', icon: BookOpenCheck, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true }
     ]
   },
   {

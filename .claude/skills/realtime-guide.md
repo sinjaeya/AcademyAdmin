@@ -4,13 +4,7 @@
 
 ## 공유 문서 (Student-Admin)
 
-`/home/sinjaeya/Source/.ai_context/specs/Student_Admin/`
-
-| 문서 | 내용 |
-|------|------|
-| `REALTIME_SPEC.md` | Supabase Realtime 통신 스펙 (postgres_changes, 채널 구조) |
-| `DB_SCHEMA.md` | 공유 테이블 구조 (handwriting_progress, test_session 등) |
-| `HANDWRITING_FLOW.md` | 내손내줄 학습/모니터링 Phase별 흐름 |
+MCP Memory에서 `shared-memory` 스킬로 검색 (태그: 작업명으로 검색)
 
 ## Realtime 구독 패턴
 
