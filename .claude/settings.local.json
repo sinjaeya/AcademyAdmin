@@ -31,7 +31,9 @@
       "WebSearch",
       "WebFetch",
       "Bash(hash -r && which claude 2>&1)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(agent-browser:*)",
+      "Bash(npx agent-browser:*)"
     ],
     "deny": [],
     "ask": []
