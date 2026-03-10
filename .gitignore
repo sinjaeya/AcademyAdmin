@@ -57,3 +57,6 @@ tsc-output.txt
 
 # Playwright MCP
 .playwright-mcp/
+
+# Claude Code plans
+.claude/plans/

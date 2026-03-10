@@ -266,9 +266,10 @@ export default function StudentLearningStatisticsPage(): React.ReactElement {
             />
             <Tooltip
               contentStyle={{ fontSize: 12 }}
-              formatter={(value: number, name: string) => {
-                if (name === '정답률') return [`${value}%`, name];
-                return [value.toLocaleString(), name];
+              formatter={(value, name) => {
+                const v = Number(value);
+                if (name === '정답률') return [`${v}%`, name];
+                return [v.toLocaleString(), String(name)];
               }}
               labelFormatter={(label) => `날짜: ${label}`}
             />
