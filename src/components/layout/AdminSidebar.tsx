@@ -33,6 +33,7 @@ import {
   ClipboardList,
   BookOpenCheck,
   ListChecks,
+  CalendarCheck,
   Database,
   FileJson,
   History,
@@ -96,7 +97,8 @@ const navigationCategories: NavigationCategory[] = [
       { name: '학습관리', href: '/admin/learning', icon: BookText, requiredPermission: PERMISSION_IDS.REPORTS_VIEW },
       { name: '학습리포트', href: '/admin/study-reports', icon: BookOpen, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true },
       { name: '개념학습 관리', href: '/admin/concept-learning', icon: BookOpenCheck, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true },
-      { name: '단원평가 관리', href: '/admin/unit-exam', icon: ListChecks, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true }
+      { name: '단원평가 관리', href: '/admin/unit-exam', icon: ListChecks, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true },
+      { name: '시험기간 관리', href: '/admin/exam-schedule', icon: CalendarCheck, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true }
     ]
   },
   {

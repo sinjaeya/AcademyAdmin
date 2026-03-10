@@ -220,8 +220,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '배정할 학생이 없습니다.' }, { status: 400 });
     }
 
+    // 시험기간 D-7 체크: 시험 7일 전 ~ 종료일 사이 학생 제외
+    const todayKst = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+    const d7Date = new Date(new Date(todayKst).getTime() + 7 * 24 * 60 * 60 * 1000)
+      .toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+    const { data: activeExams } = await supabase
+      .from('exam_schedule')
+      .select('school_id, grade')
+      .lte('start_date', d7Date)
+      .gte('end_date', todayKst);
+
+    let examExcludedIds = new Set<number>();
+    if (activeExams && activeExams.length > 0) {
+      // 시험기간에 해당하는 학교+학년 학생 조회
+      const examConditions = activeExams.map((e) => `${e.school_id}__${e.grade}`);
+      const { data: allStudentsWithSchool } = await supabase
+        .from('student')
+        .select('id, school_id, grade')
+        .eq('academy_id', academy_id)
+        .eq('status', '재원')
+        .in('id', students.map((s) => s.id));
+
+      if (allStudentsWithSchool) {
+        for (const s of allStudentsWithSchool) {
+          if (s.school_id && s.grade && examConditions.includes(`${s.school_id}__${s.grade}`)) {
+            examExcludedIds.add(s.id);
+          }
+        }
+      }
+    }
+
+    // 시험기간 학생 제외 후 배정 대상 필터링
+    const eligibleStudents = examExcludedIds.size > 0
+      ? students.filter((s) => !examExcludedIds.has(s.id))
+      : students;
+
     // 이미 배정된 학생 확인
-    const allStudentIds = students.map((s) => s.id);
+    const allStudentIds = eligibleStudents.map((s) => s.id);
     const { data: existing } = await supabase
       .from('homework_assignment')
       .select('student_id')
@@ -230,8 +265,8 @@ export async function POST(request: NextRequest) {
 
     const existingStudentIds = new Set((existing || []).map((e) => e.student_id));
 
-    // 새로 배정할 학생만 필터링 (UNIQUE 제약으로 이미 배정된 학생 스킵)
-    const toInsert = students
+    // 새로 배정할 학생만 필터링 (UNIQUE 제약 + 시험기간 제외)
+    const toInsert = eligibleStudents
       .filter((s) => !existingStudentIds.has(s.id))
       .map((s) => ({
         student_id: s.id,
@@ -240,10 +275,11 @@ export async function POST(request: NextRequest) {
       }));
 
     if (toInsert.length === 0) {
+      const examMsg = examExcludedIds.size > 0 ? ` (시험기간 제외: ${examExcludedIds.size}명)` : '';
       return NextResponse.json({
         success: true,
-        data: { assigned_count: 0, skipped_count: students.length },
-        message: '이미 모든 학생에게 숙제가 배정되어 있습니다.',
+        data: { assigned_count: 0, skipped_count: students.length, exam_excluded_count: examExcludedIds.size },
+        message: `이미 모든 학생에게 숙제가 배정되어 있습니다.${examMsg}`,
       });
     }
 
@@ -256,13 +292,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '숙제 배정 중 오류가 발생했습니다.' }, { status: 500 });
     }
 
+    const examMsg = examExcludedIds.size > 0 ? ` (시험기간 제외: ${examExcludedIds.size}명)` : '';
     return NextResponse.json({
       success: true,
       data: {
         assigned_count: toInsert.length,
-        skipped_count: students.length - toInsert.length,
+        skipped_count: eligibleStudents.length - toInsert.length,
+        exam_excluded_count: examExcludedIds.size,
       },
-      message: `${toInsert.length}명에게 숙제를 배정했습니다.`,
+      message: `${toInsert.length}명에게 숙제를 배정했습니다.${examMsg}`,
     });
   } catch (error) {
     console.error('homework POST 오류:', error);
