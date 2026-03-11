@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/client';
+import { createServerClient } from '@/lib/supabase/server';
 import { getServerAcademyId, isServerUserAdmin } from '@/lib/auth/server-context';
 
 // 사전 검색기록 목록 조회
@@ -20,16 +20,10 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get('date_from');
     const dateTo = searchParams.get('date_to');
 
-    // supabaseAdmin null 체크
-    if (!supabaseAdmin) {
-      return NextResponse.json(
-        { success: false, error: '서버 설정 오류가 발생했습니다.' },
-        { status: 500 }
-      );
-    }
+    const supabase = createServerClient();
 
     // 쿼리 빌더
-    let query = supabaseAdmin
+    let query = supabase
       .from('dictionary_search_log')
       .select('id, query, searched_at, student:student_id(id, name)', { count: 'exact' })
       .order('searched_at', { ascending: false });
@@ -42,7 +36,7 @@ export async function GET(request: NextRequest) {
       );
     }
     if (!isAdmin && academyId) {
-      const { data: students } = await supabaseAdmin
+      const { data: students } = await supabase
         .from('student')
         .select('id')
         .eq('academy_id', academyId);

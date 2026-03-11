@@ -24,17 +24,3 @@ export const supabase = env.supabase.url && env.supabase.anonKey
       }
     })
   : null
-
-// 서버 사이드용 Supabase 클라이언트 (Service Role Key 사용)
-export const supabaseAdmin = env.supabase.url && env.supabase.serviceRoleKey
-  ? createClient(
-      env.supabase.url,
-      env.supabase.serviceRoleKey,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    )
-  : null

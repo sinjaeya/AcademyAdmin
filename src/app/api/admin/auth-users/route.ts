@@ -14,6 +14,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다.' },
+        { status: 500 }
+      );
+    }
+
     // Service Role Key를 사용하여 실제 auth.users에 계정 생성
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email: email,

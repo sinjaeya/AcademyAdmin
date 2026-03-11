@@ -8,14 +8,17 @@ export const createServerClient = () => {
   return createClient(supabaseUrl, supabaseAnonKey)
 }
 
-// 서버 사이드용 Supabase 클라이언트 (Service Role Key 사용)
-export const supabaseAdmin = createClient(
-  supabaseUrl,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-key',
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+// 서버 사이드용 Supabase Admin 클라이언트 (Service Role Key 필수)
+// auth.admin.createUser 등 관리자 전용 기능에만 사용
+export const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(
+      supabaseUrl,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+  : null

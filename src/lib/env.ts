@@ -25,7 +25,7 @@ export function validateEnvironment() {
     errors.push('NEXT_PUBLIC_SUPABASE_ANON_KEY가 설정되지 않았습니다.');
   }
   
-  // Service Role Key는 선택적 (사용자 생성 기능이 필요한 경우에만)
+  // Service Role Key는 선택적 (auth.admin.createUser에만 필요)
   if (!env.supabase.serviceRoleKey) {
     console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다. 사용자 생성 기능이 제한됩니다.');
   }
