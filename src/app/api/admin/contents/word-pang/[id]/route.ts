@@ -166,11 +166,44 @@ export async function PUT(request: NextRequest, { params }: RouteParams): Promis
   }
 }
 
-// 단어팡 퀴즈 삭제
+// 단어팡 퀴즈 삭제 또는 출제 제외
 export async function DELETE(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
   try {
     const { id } = await params;
+    const url = new URL(request.url);
+    const action = url.searchParams.get('action'); // 'exclude' = 출제 제외, null = 완전 삭제
 
+    if (action === 'exclude') {
+      // 출제 제외: word_pang_shuffle_order에서 해당 voca_id 제거
+      // 먼저 퀴즈에서 voca_id 조회
+      const { data: quiz, error: quizError } = await supabase
+        .from('korean_voca_quiz')
+        .select('voca_id')
+        .eq('id', id)
+        .single();
+
+      if (quizError || !quiz) {
+        return NextResponse.json({ error: '퀴즈를 찾을 수 없습니다.' }, { status: 404 });
+      }
+
+      // shuffle_order에서 해당 voca_id의 모든 시드 삭제
+      const { error: shuffleError, count } = await supabase
+        .from('word_pang_shuffle_order')
+        .delete({ count: 'exact' })
+        .eq('voca_id', quiz.voca_id);
+
+      if (shuffleError) {
+        console.error('출제 제외 오류:', shuffleError);
+        return NextResponse.json({ error: shuffleError.message }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `출제에서 제외되었습니다. (${count ?? 0}건 삭제)`
+      });
+    }
+
+    // 기존 동작: 퀴즈 완전 삭제
     const { error } = await supabase
       .from('korean_voca_quiz')
       .delete()
@@ -186,7 +219,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams): Pro
       message: '퀴즈가 삭제되었습니다.'
     });
   } catch (error) {
-    console.error('단어팡 퀴즈 삭제 오류:', error);
+    console.error('단어팡 퀴즈 삭제/제외 오류:', error);
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 }

@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/toast';
-import { Loader2, Edit, Trash2, X } from 'lucide-react';
+import { Loader2, Edit, Trash2, X, Ban } from 'lucide-react';
 
 interface HanjaDetail {
   id: number;
@@ -73,6 +73,7 @@ export function WordPangDetailDialog({
   const [quiz, setQuiz] = useState<WordPangQuiz | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [excludeConfirmOpen, setExcludeConfirmOpen] = useState(false);
 
   // 수정 폼 상태
   const [editForm, setEditForm] = useState({
@@ -94,6 +95,7 @@ export function WordPangDetailDialog({
       setQuiz(null);
       setIsEditMode(false);
       setDeleteConfirmOpen(false);
+      setExcludeConfirmOpen(false);
       loadQuizData();
     }
   }, [open, vocaId]);
@@ -155,6 +157,35 @@ export function WordPangDetailDialog({
     } catch (error) {
       console.error('수정 오류:', error);
       toast({ type: 'error', description: '수정 중 오류가 발생했습니다.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 출제 제외 실행 (shuffle_order에서만 삭제, 퀴즈 데이터 유지)
+  const handleExclude = async (): Promise<void> => {
+    if (!quiz) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/admin/contents/word-pang/${quiz.id}?action=exclude`, {
+        method: 'DELETE'
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({ type: 'success', description: result.message || '출제에서 제외되었습니다.' });
+        setExcludeConfirmOpen(false);
+        onOpenChange(false);
+        onDelete?.(quiz.voca_id);
+        onUpdate?.();
+      } else {
+        toast({ type: 'error', description: result.error || '출제 제외 실패' });
+      }
+    } catch (error) {
+      console.error('출제 제외 오류:', error);
+      toast({ type: 'error', description: '출제 제외 중 오류가 발생했습니다.' });
     } finally {
       setLoading(false);
     }
@@ -279,6 +310,14 @@ export function WordPangDetailDialog({
                     >
                       <Edit className="w-4 h-4 mr-1" />
                       수정
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setExcludeConfirmOpen(true)}
+                      className="text-orange-600 hover:text-orange-700 border-orange-200 hover:border-orange-300 cursor-pointer"
+                    >
+                      <Ban className="w-4 h-4 mr-1" />
+                      출제 제외
                     </Button>
                     <Button
                       variant="outline"
@@ -422,6 +461,37 @@ export function WordPangDetailDialog({
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* 출제 제외 확인 다이얼로그 */}
+      <Dialog open={excludeConfirmOpen} onOpenChange={setExcludeConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>출제 제외</DialogTitle>
+            <DialogDescription>
+              <span className="font-semibold text-orange-600">{word}</span> 단어를 출제에서 제외하시겠습니까?
+              <br />
+              <span className="text-sm text-gray-500">퀴즈 데이터는 유지되며, 학생에게 더 이상 출제되지 않습니다.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setExcludeConfirmOpen(false)}
+              className="cursor-pointer"
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handleExclude}
+              disabled={loading}
+              className="bg-orange-600 hover:bg-orange-700 text-white cursor-pointer"
+            >
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              출제 제외
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
