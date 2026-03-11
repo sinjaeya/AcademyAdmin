@@ -21,7 +21,7 @@ coder → code-reviewer → project-builder → agent-browser(화면확인) → 
   - 새 UI 컴포넌트: 렌더링 확인, 클릭/인터랙션, 조건부 표시
   - API 연동: 데이터 로드 여부, 빈 데이터 시 fallback
   - 기존 기능 회귀: 변경된 페이지의 기존 동작이 깨지지 않았는지
-- dev 서버를 띄운 후 agent-browser로 시나리오 수행
+- dev 서버(`npm run dev`)를 띄운 후 agent-browser로 시나리오 수행
 - 스크린샷으로 결과 증빙
 
 ## 프로젝트 개요

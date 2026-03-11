@@ -104,7 +104,7 @@ export async function GET(request: Request) {
     if (academyStudentIds !== null) {
       if (academyStudentIds.length === 0) {
         // 해당 학원에 학생이 없으면 빈 결과 반환
-        return NextResponse.json({ data: [], wordCounts: {}, historicalAccuracy: {}, checkInInfo: {} });
+        return NextResponse.json({ data: [], wordCounts: {}, historicalAccuracy: {}, checkInInfo: {}, dictionarySearches: {} });
       }
       testSessionQuery = testSessionQuery.in('student_id', academyStudentIds);
     }
@@ -579,7 +579,71 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({ data: records, wordCounts, historicalAccuracy, checkInInfo });
+    // 오늘 사전 검색 기록 조회
+    const dictionarySearches: Record<number, Array<{ id: number; query: string; searchedAt: string; studentName?: string }>> = {};
+
+    if (studentIds.length > 0) {
+      const { data: dictSearchData } = await supabase
+        .from('dictionary_search_log')
+        .select('id, student_id, query, searched_at')
+        .in('student_id', studentIds)
+        .gte('searched_at', startDate)
+        .lte('searched_at', endDate)
+        .order('searched_at', { ascending: false });
+
+      // 학생별로 그룹핑 (최신순 정렬 유지)
+      for (const row of dictSearchData || []) {
+        const sid = Number(row.student_id);
+        if (!dictionarySearches[sid]) dictionarySearches[sid] = [];
+        dictionarySearches[sid].push({
+          id: row.id,
+          query: row.query,
+          searchedAt: row.searched_at,
+          studentName: studentInfoMap.get(sid)
+        });
+      }
+    }
+
+    // 검색기록만 있는 학생도 포함 (학습기록이 없어 studentIds에 없는 경우)
+    // academy_id가 있으면 해당 학원의 학생 전체를 대상으로 추가 조회
+    if (academyStudentIds !== null && academyStudentIds.length > 0) {
+      // 이미 조회된 학생 제외한 나머지 학생들의 검색기록 조회
+      const remainingIds = academyStudentIds.filter(id => !studentIds.includes(id));
+      if (remainingIds.length > 0) {
+        const { data: extraDictData } = await supabase
+          .from('dictionary_search_log')
+          .select('id, student_id, query, searched_at')
+          .in('student_id', remainingIds)
+          .gte('searched_at', startDate)
+          .lte('searched_at', endDate)
+          .order('searched_at', { ascending: false });
+
+        if (extraDictData && extraDictData.length > 0) {
+          // 이름 조회용 학생 ID 목록
+          const extraStudentIds = [...new Set(extraDictData.map(r => Number(r.student_id)))];
+          const { data: extraStudentsData } = await supabase
+            .from('student')
+            .select('id, name')
+            .in('id', extraStudentIds);
+
+          const extraStudentMap = new Map<number, string>();
+          extraStudentsData?.forEach(s => extraStudentMap.set(Number(s.id), s.name));
+
+          for (const row of extraDictData) {
+            const sid = Number(row.student_id);
+            if (!dictionarySearches[sid]) dictionarySearches[sid] = [];
+            dictionarySearches[sid].push({
+              id: row.id,
+              query: row.query,
+              searchedAt: row.searched_at,
+              studentName: extraStudentMap.get(sid)
+            });
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({ data: records, wordCounts, historicalAccuracy, checkInInfo, dictionarySearches });
   } catch (error) {
     console.error('Error in realtime learning API:', error);
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });

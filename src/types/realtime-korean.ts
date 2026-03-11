@@ -141,10 +141,19 @@ export interface StudentCheckInInfo {
   hasCheckOut: boolean; // 체크아웃 완료 여부 (하원 완료 = true)
 }
 
+// 사전 검색 기록
+export interface DictionarySearchEntry {
+  id: number;
+  query: string;
+  searchedAt: string;
+  studentName?: string; // API 초기 로드 시에만 포함 (실시간 이벤트에서는 불필요)
+}
+
 // API 응답
 export interface RealtimeKoreanApiResponse {
   data: LearningRecord[];
   wordCounts: Record<number, StudentWordCount>;
   historicalAccuracy: Record<number, StudentHistoricalAccuracy>;
   checkInInfo: Record<number, StudentCheckInInfo>; // 오늘 체크인 중인 학생 정보
+  dictionarySearches: Record<number, DictionarySearchEntry[]>; // 학생ID → 오늘 검색 목록
 }

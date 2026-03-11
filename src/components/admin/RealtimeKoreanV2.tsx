@@ -7,7 +7,7 @@ import { Radio, Wifi, WifiOff, AlertCircle, X, Circle } from 'lucide-react';
 import { useRealtimeKorean, ConnectionStatus } from '@/hooks/useRealtimeKorean';
 import { useStudentPresence, type StudentPresenceState } from '@/hooks/useStudentPresence';
 import { useAuthStore } from '@/store/auth';
-import type { LearningRecord, StudentSummary } from '@/types/realtime-korean';
+import type { LearningRecord, StudentSummary, DictionarySearchEntry } from '@/types/realtime-korean';
 import { WordPangDetailDialog } from '@/components/admin/WordPangDetailDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -345,7 +345,7 @@ const DurationDisplay = React.memo(function DurationDisplay({
 });
 
 // 학생 로우 컴포넌트
-const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, onWordClick, deletedVocaIds, onStudentNameClick }: {
+const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, onWordClick, deletedVocaIds, onStudentNameClick, dictionarySearches }: {
   summary: StudentSummary;
   onDeleteOrphanSessions: (records: { id: string; learningType: string }[]) => Promise<void>;
   presence?: StudentPresenceState;
@@ -353,6 +353,7 @@ const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessi
   onWordClick?: (vocaId: number, word: string) => void;
   deletedVocaIds?: Set<number>;
   onStudentNameClick?: (studentId: number, studentName: string) => void;
+  dictionarySearches?: DictionarySearchEntry[];
 }) {
   const isActive = summary.currentActivity !== null;
   const isOnline = !!presence;
@@ -556,8 +557,35 @@ const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessi
           </div>
         )}
 
+        {/* 사전 검색어 */}
+        {dictionarySearches && dictionarySearches.length > 0 && (
+          <div className="flex items-start gap-3 py-2 border-t border-gray-100">
+            <Badge className="bg-cyan-100 text-cyan-800 border-cyan-200 shrink-0 w-20 justify-center">
+              검색어
+            </Badge>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-medium text-gray-700">
+                  {dictionarySearches.length}건
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {dictionarySearches.map(search => (
+                  <Badge
+                    key={search.id}
+                    className="bg-cyan-50 text-cyan-700 border-cyan-200 text-xs px-1.5 py-0"
+                    title={new Date(search.searchedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                  >
+                    {search.query}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 학습 기록 없음 */}
-        {summary.wordPang.count === 0 && summary.passageQuiz.count === 0 && summary.sentenceClinic.count === 0 && summary.handwriting.count === 0 && (
+        {summary.wordPang.count === 0 && summary.passageQuiz.count === 0 && summary.sentenceClinic.count === 0 && summary.handwriting.count === 0 && (!dictionarySearches || dictionarySearches.length === 0) && (
           <div className="text-center text-gray-400 py-4">
             학습 기록이 없습니다
           </div>
@@ -570,7 +598,7 @@ const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessi
 // 메인 컴포넌트
 export function RealtimeKoreanV2() {
   const { academyId } = useAuthStore();
-  const { records, wordCounts, historicalAccuracy, checkInInfo, loading, connectionStatus, lastUpdate, deleteSession } = useRealtimeKorean(academyId);
+  const { records, wordCounts, historicalAccuracy, checkInInfo, dictionarySearches, loading, connectionStatus, lastUpdate, deleteSession } = useRealtimeKorean(academyId);
   // Presence 훅 (academyId 그대로 전달 - UUID 문자열)
   const { getPresence, connectionStatus: presenceStatus } = useStudentPresence(academyId);
 
@@ -755,6 +783,23 @@ export function RealtimeKoreanV2() {
       summary.records.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
     });
 
+    // 검색기록만 있는 학생도 summaryMap에 추가 (학습기록 없어도 표시)
+    dictionarySearches.forEach((searches, studentId) => {
+      if (!summaryMap.has(studentId) && searches.length > 0) {
+        const studentName = searches[0]?.studentName || `학생 ${studentId}`;
+        summaryMap.set(studentId, {
+          studentId,
+          studentName,
+          currentActivity: null,
+          wordPang: { count: 0, correctCount: 0, accuracyRate: 0 },
+          passageQuiz: { sessionCount: 0, count: 0, correctCount: 0, accuracyRate: 0 },
+          sentenceClinic: { count: 0, correctCount: 0, accuracyRate: 0 },
+          handwriting: { sessionCount: 0, count: 0, correctCount: 0, accuracyRate: 0 },
+          records: []
+        });
+      }
+    });
+
     const summaries = Array.from(summaryMap.values());
 
     // 체크인/체크아웃 기준 정렬 (안정화 버전 - currentActivity 제거)
@@ -793,7 +838,7 @@ export function RealtimeKoreanV2() {
     });
 
     return summaries;
-  }, [records, wordCounts, historicalAccuracy, checkInInfoSignature]);
+  }, [records, wordCounts, historicalAccuracy, checkInInfoSignature, dictionarySearches]);
 
   // 숨긴 학생 제외
   const visibleSummaries = useMemo(() => {
@@ -856,6 +901,7 @@ export function RealtimeKoreanV2() {
               onWordClick={handleWordClick}
               deletedVocaIds={deletedVocaIds}
               onStudentNameClick={handleStudentNameClick}
+              dictionarySearches={dictionarySearches.get(summary.studentId)}
             />
           ))}
         </div>

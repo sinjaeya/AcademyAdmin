@@ -39,7 +39,8 @@ import {
   History,
   RefreshCw,
   LogIn,
-  School
+  School,
+  Search
 } from 'lucide-react';
 
 // 네비게이션 아이템 타입 정의
@@ -78,7 +79,8 @@ const navigationCategories: NavigationCategory[] = [
       { name: '대시보드', href: '/admin', icon: LayoutDashboard, badge: '3', requiredPermission: null, liteVisible: true },
       { name: '실시간 국어 (v2)', href: '/admin/learning/realtime-korean2', icon: Radio, requiredPermission: null, liteVisible: true },
       { name: '내손내줄 실시간', href: '/admin/handwriting/live', icon: PenTool, requiredPermission: null },
-      { name: '레벨테스트', href: '/admin/level-test', icon: ClipboardCheck, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true }
+      { name: '레벨테스트', href: '/admin/level-test', icon: ClipboardCheck, requiredPermission: PERMISSION_IDS.REPORTS_VIEW, liteVisible: true },
+      { name: '사전 검색기록', href: '/admin/learning/dictionary-search', icon: Search, requiredPermission: null, liteVisible: true }
     ]
   },
   {

@@ -10,6 +10,7 @@ import type {
   SentenceClinicV2Detail,
   PassageQuizDetail,
   HandwritingDetail,
+  DictionarySearchEntry,
   RealtimeKoreanApiResponse
 } from '@/types/realtime-korean';
 
@@ -55,6 +56,7 @@ export function useRealtimeKorean(academyId: string | null) {
   const [wordCounts, setWordCounts] = useState<Map<number, StudentWordCount>>(new Map());
   const [historicalAccuracy, setHistoricalAccuracy] = useState<Map<number, StudentHistoricalAccuracy>>(new Map());
   const [checkInInfo, setCheckInInfo] = useState<Map<number, StudentCheckInInfo>>(new Map());
+  const [dictionarySearches, setDictionarySearches] = useState<Map<number, DictionarySearchEntry[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -118,6 +120,13 @@ export function useRealtimeKorean(academyId: string | null) {
           newCheckInInfo.set(Number(studentId), info);
         }
         setCheckInInfo(newCheckInInfo);
+      }
+      if (result.dictionarySearches) {
+        const newSearches = new Map<number, DictionarySearchEntry[]>();
+        for (const [studentId, searches] of Object.entries(result.dictionarySearches)) {
+          newSearches.set(Number(studentId), searches);
+        }
+        setDictionarySearches(newSearches);
       }
       setLastUpdate(new Date());
     } catch (error) {
@@ -622,7 +631,49 @@ export function useRealtimeKorean(academyId: string | null) {
       )
       .subscribe();
 
-    channelsRef.current = [testSessionChannel, testResultChannel, checkInChannel];
+    // dictionary_search_log 채널 (사전 검색 실시간)
+    const dictSearchChannel = supabase
+      .channel('realtime_korean_dict_search')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'dictionary_search_log'
+        },
+        (payload) => {
+          const newSearch = payload.new as { id: number; student_id: number; query: string; searched_at: string };
+
+          // 오늘 날짜 체크 (KST 기준)
+          const today = getKSTDateString(new Date());
+          const searchDate = getKSTDateString(new Date(newSearch.searched_at));
+          if (searchDate !== today) return;
+
+          // 학원 학생 필터링
+          if (academyStudentIdsRef.current.size > 0 && !academyStudentIdsRef.current.has(newSearch.student_id)) {
+            return;
+          }
+
+          const entry: DictionarySearchEntry = {
+            id: newSearch.id,
+            query: newSearch.query,
+            searchedAt: newSearch.searched_at
+          };
+
+          setDictionarySearches(prev => {
+            const newMap = new Map(prev);
+            const existing = newMap.get(newSearch.student_id) || [];
+            // 최신 검색어가 앞에 오도록 추가
+            newMap.set(newSearch.student_id, [entry, ...existing]);
+            return newMap;
+          });
+
+          setLastUpdate(new Date());
+        }
+      )
+      .subscribe();
+
+    channelsRef.current = [testSessionChannel, testResultChannel, checkInChannel, dictSearchChannel];
   }, [academyId, fetchStudentName, fetchSessionWords, fetchSessionPassageQuiz, fetchShortPassageV2, fetchPassageQuizDetail, unsubscribeAll]);
 
   // 세션 삭제 (고아 세션 정리용)
@@ -739,6 +790,7 @@ export function useRealtimeKorean(academyId: string | null) {
     wordCounts,
     historicalAccuracy,
     checkInInfo,
+    dictionarySearches,
     loading,
     connectionStatus,
     lastUpdate,
