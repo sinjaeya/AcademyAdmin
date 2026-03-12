@@ -81,7 +81,7 @@ export async function GET(): Promise<NextResponse> {
           studentStats[studentId].passageQuizAccuracySum += accuracy;
           studentStats[studentId].passageQuizSessionCount += 1;
           break;
-        case 'sentence_clinic':
+        case 'sentence_clinic_v2':
           studentStats[studentId].sentenceLearningCount += 1;
           studentStats[studentId].sentenceLearningCorrectCount += (session.correct_count || 0);
           studentStats[studentId].sentenceLearningTotalQuestions += (session.total_items || 0);

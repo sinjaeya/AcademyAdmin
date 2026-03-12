@@ -36,7 +36,7 @@ async function getLearningData(year: number, month: number) {
       correct_count,
       total_items
     `)
-    .in('test_type', ['word_pang', 'passage_quiz', 'sentence_clinic'])
+    .in('test_type', ['word_pang', 'passage_quiz', 'sentence_clinic_v2'])
     .gte('started_at', `${startDate}T00:00:00.000Z`)
     .lte('started_at', `${endDate}T23:59:59.999Z`);
 
@@ -123,10 +123,10 @@ async function getLearningData(year: number, month: number) {
         } else if (record.test_type === 'passage_quiz') {
           student.dailyActivities[utcDay].passageQuiz.count += 1;
           student.dailyActivities[utcDay].passageQuiz.accuracySum += accuracy;
-        } else if (record.test_type === 'sentence_clinic') {
+        } else if (record.test_type === 'sentence_clinic_v2') {
           student.dailyActivities[utcDay].sentenceClinic.count += 1;
           student.dailyActivities[utcDay].sentenceClinic.correctCount += (record.correct_count || 0);
-          student.dailyActivities[utcDay].sentenceClinic.totalCount += (record.total_items || 2);
+          student.dailyActivities[utcDay].sentenceClinic.totalCount += (record.total_items || 4);
         }
       }
     }
