@@ -140,11 +140,12 @@ export async function GET(
         .in('depth', [0, 1])
         .order('sort_order', { ascending: true }),
 
-      // 쿼리2: 해당 교재의 exam_sets 전체 조회 (세트번호 부여용)
+      // 쿼리2: 해당 교재의 승인된 exam_sets 조회 (세트번호 부여용)
       supabase
         .from('exam_sets')
         .select('id, textbook_id, unit_range, created_at')
         .eq('textbook_id', textbookId)
+        .eq('status', 'approved')
         .order('unit_range', { ascending: true })
         .order('created_at', { ascending: true }),
 
