@@ -51,7 +51,8 @@ const getKSTDateString = (date: Date): string => {
   return kstDate.toISOString().split('T')[0];
 };
 
-export function useRealtimeKorean(academyId: string | null) {
+// selectedDate: YYYY-MM-DD (KST) 또는 null(오늘)
+export function useRealtimeKorean(academyId: string | null, selectedDate?: string | null) {
   const [records, setRecords] = useState<LearningRecord[]>([]);
   const [wordCounts, setWordCounts] = useState<Map<number, StudentWordCount>>(new Map());
   const [historicalAccuracy, setHistoricalAccuracy] = useState<Map<number, StudentHistoricalAccuracy>>(new Map());
@@ -90,10 +91,12 @@ export function useRealtimeKorean(academyId: string | null) {
         academyStudentIdsRef.current = new Set();
       }
 
-      // API 호출 (academy_id 쿼리 파라미터 추가)
-      const url = academyId
-        ? `/api/admin/learning/realtime?academy_id=${academyId}`
-        : '/api/admin/learning/realtime';
+      // API 호출
+      const params = new URLSearchParams();
+      if (academyId) params.set('academy_id', academyId);
+      if (selectedDate) params.set('date', selectedDate);
+      const qs = params.toString();
+      const url = `/api/admin/learning/realtime${qs ? `?${qs}` : ''}`;
       const response = await fetch(url);
       const result: RealtimeKoreanApiResponse = await response.json();
 
@@ -134,7 +137,7 @@ export function useRealtimeKorean(academyId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [academyId]);
+  }, [academyId, selectedDate]);
 
   // 학생 이름 조회
   const fetchStudentName = useCallback(async (studentId: number): Promise<string> => {
@@ -261,9 +264,41 @@ export function useRealtimeKorean(academyId: string | null) {
         options: [q.option_1 || '', q.option_2 || '', q.option_3 || '', q.option_4 || ''],
         correctAnswer: q.correct_answer ?? 0,
         selectedAnswer: null,
-        isCorrect: null
+        isCorrect: null,
+        explanation: q.explanation || ''
       }))
     };
+  }, []);
+
+  // 내손내줄 퀴즈 구조 조회 (passage_id 기반)
+  const fetchHandwritingQuizzes = useCallback(async (passageId: string): Promise<{ quizzes: HandwritingDetail['quizzes']; passageText?: string }> => {
+    if (!supabase) return { quizzes: [] };
+
+    // 지문 본문 + 퀴즈 동시 조회
+    const [passageResult, quizResult] = await Promise.all([
+      supabase.from('handwriting_passage').select('content').eq('id', passageId).single(),
+      supabase.from('handwriting_quiz')
+        .select('id, sort_order, question, option_1, option_2, option_3, option_4, option_5, correct_answer, explanation')
+        .eq('passage_id', passageId)
+        .order('sort_order', { ascending: true })
+    ]);
+
+    const quizzes = quizResult.data?.map(q => {
+      const options = [q.option_1, q.option_2, q.option_3, q.option_4].filter(Boolean);
+      if (q.option_5) options.push(q.option_5);
+      return {
+        quizId: q.id,
+        sortOrder: q.sort_order ?? 0,
+        question: q.question || '',
+        options,
+        correctAnswer: q.correct_answer ?? 0,
+        selectedAnswer: null,
+        isCorrect: null,
+        explanation: q.explanation || ''
+      };
+    }) || [];
+
+    return { quizzes, passageText: passageResult.data?.content || undefined };
   }, []);
 
   // 보물찾기 문제 정보 조회
@@ -352,10 +387,14 @@ export function useRealtimeKorean(academyId: string | null) {
             } else if (newRecord.test_type === 'passage_quiz') {
               passageQuizData = await fetchSessionPassageQuiz(newRecord.id);
             } else if (newRecord.test_type === 'handwriting') {
-              // metadata에서 code_id 추출
+              // metadata에서 code_id 추출 + 퀴즈 구조 및 지문 로드
+              const hwPassageId = newRecord.metadata?.passage_id;
+              const hwData = hwPassageId ? await fetchHandwritingQuizzes(hwPassageId) : { quizzes: [] };
               handwritingData = {
                 passageCode: newRecord.metadata?.code_id || '-',
-                passageId: newRecord.metadata?.passage_id
+                passageId: hwPassageId,
+                passageText: hwData.passageText,
+                quizzes: hwData.quizzes
               };
             } else if (newRecord.test_type === 'sentence_clinic_v2') {
               const passageId = newRecord.metadata?.passage_id;
@@ -522,6 +561,23 @@ export function useRealtimeKorean(academyId: string | null) {
                 }
               }
 
+              // 내손내줄 개별 퀴즈 업데이트
+              if (testType === 'handwriting' && newResult.item_uuid && record.handwritingDetail?.quizzes) {
+                record.handwritingDetail = {
+                  ...record.handwritingDetail,
+                  quizzes: record.handwritingDetail.quizzes.map(quiz => {
+                    if (quiz.quizId === newResult.item_uuid) {
+                      return {
+                        ...quiz,
+                        selectedAnswer: newResult.selected_answer ?? null,
+                        isCorrect: isCorrect
+                      };
+                    }
+                    return quiz;
+                  })
+                };
+              }
+
               // 문장클리닉 v2 결과 업데이트
               if (['sc_v2_cloze', 'sc_v2_comprehension', 'sc_v2_inference', 'sc_v2_relation'].includes(testType)) {
                 // sentenceClinicV2Detail이 없으면 경고만 (타이밍 이슈 대응)
@@ -674,7 +730,7 @@ export function useRealtimeKorean(academyId: string | null) {
       .subscribe();
 
     channelsRef.current = [testSessionChannel, testResultChannel, checkInChannel, dictSearchChannel];
-  }, [academyId, fetchStudentName, fetchSessionWords, fetchSessionPassageQuiz, fetchShortPassageV2, fetchPassageQuizDetail, unsubscribeAll]);
+  }, [academyId, fetchStudentName, fetchSessionWords, fetchSessionPassageQuiz, fetchShortPassageV2, fetchHandwritingQuizzes, fetchPassageQuizDetail, unsubscribeAll]);
 
   // 세션 삭제 (고아 세션 정리용)
   const deleteSession = useCallback(async (recordId: string, learningType: string): Promise<boolean> => {
@@ -753,11 +809,20 @@ export function useRealtimeKorean(academyId: string | null) {
     }, delay);
   }, [setupSubscriptions]);
 
+  // 오늘 날짜 여부 (과거 날짜면 실시간 구독 불필요)
+  const isToday = !selectedDate || selectedDate === getKSTDateString(new Date());
+
   // 초기 로드 및 구독 설정 (순서 보장: 데이터 로드 완료 후 구독 설정)
   useEffect(() => {
     const initialize = async (): Promise<void> => {
-      await loadData();  // 데이터 로드 완료 후
-      setupSubscriptions();  // 구독 설정 (중복 카운트 방지)
+      await loadData();
+      if (isToday) {
+        setupSubscriptions();
+      } else {
+        // 과거 날짜 조회 시 실시간 구독 해제
+        unsubscribeAll();
+        setConnectionStatus('disconnected');
+      }
     };
 
     initialize();
@@ -768,14 +833,14 @@ export function useRealtimeKorean(academyId: string | null) {
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [loadData, setupSubscriptions, unsubscribeAll]);
+  }, [loadData, setupSubscriptions, unsubscribeAll, isToday]);
 
-  // 연결 끊김 시 재연결
+  // 연결 끊김 시 재연결 (오늘만)
   useEffect(() => {
-    if (connectionStatus === 'disconnected') {
+    if (isToday && connectionStatus === 'disconnected') {
       reconnect();
     }
-  }, [connectionStatus, reconnect]);
+  }, [connectionStatus, reconnect, isToday]);
 
   // 연결 성공 시 재연결 카운터 리셋
   useEffect(() => {

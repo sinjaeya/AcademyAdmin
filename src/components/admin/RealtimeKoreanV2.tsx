@@ -3,12 +3,13 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Radio, Wifi, WifiOff, AlertCircle, X, Circle } from 'lucide-react';
+import { Radio, Wifi, WifiOff, AlertCircle, X, Circle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRealtimeKorean, ConnectionStatus } from '@/hooks/useRealtimeKorean';
 import { useStudentPresence, type StudentPresenceState } from '@/hooks/useStudentPresence';
 import { useAuthStore } from '@/store/auth';
 import type { LearningRecord, StudentSummary, DictionarySearchEntry } from '@/types/realtime-korean';
 import { WordPangDetailDialog } from '@/components/admin/WordPangDetailDialog';
+import { QuizDetailDialog } from '@/components/admin/QuizDetailDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 // 학습 유형 한글 변환
@@ -179,7 +180,7 @@ function PassageQuizBadges({ record }: { record: LearningRecord }) {
 }
 
 // 문장클리닉 v2 결과 배지
-function SentenceClinicV2Badges({ record }: { record: LearningRecord }) {
+function SentenceClinicV2Badges({ record, onClick }: { record: LearningRecord; onClick?: () => void }) {
   const detail = record.sentenceClinicV2Detail;
   if (!detail) {
     return <span className="text-gray-400 text-sm">-</span>;
@@ -201,7 +202,11 @@ function SentenceClinicV2Badges({ record }: { record: LearningRecord }) {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div
+      className={`flex items-center gap-2 ${onClick ? 'cursor-pointer hover:opacity-80' : ''}`}
+      onClick={onClick}
+      title={onClick ? '클릭하여 상세 보기' : undefined}
+    >
       <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">
         {detail.keyword || '키워드'}
       </Badge>
@@ -227,7 +232,7 @@ const hwQuizTypeLabels: Record<number, string> = {
 };
 
 // 내손내줄 결과 배지
-function HandwritingBadges({ record }: { record: LearningRecord }) {
+function HandwritingBadges({ record, onClick }: { record: LearningRecord; onClick?: () => void }) {
   const detail = record.handwritingDetail;
   const quizzes = detail?.quizzes || [];
 
@@ -238,8 +243,15 @@ function HandwritingBadges({ record }: { record: LearningRecord }) {
     return <span className="text-red-600">✗</span>;
   };
 
+  // 퀴즈 상세 데이터가 있으면 클릭 가능
+  const hasQuizDetail = quizzes.some(q => q.question);
+
   return (
-    <div className="flex items-center gap-2">
+    <div
+      className={`flex items-center gap-2 ${hasQuizDetail && onClick ? 'cursor-pointer hover:opacity-80' : ''}`}
+      onClick={hasQuizDetail ? onClick : undefined}
+      title={hasQuizDetail && onClick ? '클릭하여 상세 보기' : undefined}
+    >
       <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">
         {detail?.passageCode || '-'}
       </Badge>
@@ -345,7 +357,7 @@ const DurationDisplay = React.memo(function DurationDisplay({
 });
 
 // 학생 로우 컴포넌트
-const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, onWordClick, deletedVocaIds, onStudentNameClick, dictionarySearches }: {
+const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessions, presence, checkInTime, onWordClick, deletedVocaIds, onStudentNameClick, onQuizDetailClick, dictionarySearches }: {
   summary: StudentSummary;
   onDeleteOrphanSessions: (records: { id: string; learningType: string }[]) => Promise<void>;
   presence?: StudentPresenceState;
@@ -353,6 +365,7 @@ const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessi
   onWordClick?: (vocaId: number, word: string) => void;
   deletedVocaIds?: Set<number>;
   onStudentNameClick?: (studentId: number, studentName: string) => void;
+  onQuizDetailClick?: (record: LearningRecord) => void;
   dictionarySearches?: DictionarySearchEntry[];
 }) {
   const isActive = summary.currentActivity !== null;
@@ -514,7 +527,7 @@ const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessi
                       <span className="w-16">
                         <DurationDisplay startedAt={record.startedAt} completedAt={record.completedAt} />
                       </span>
-                      <SentenceClinicV2Badges record={record} />
+                      <SentenceClinicV2Badges record={record} onClick={() => onQuizDetailClick?.(record)} />
                     </div>
                   ))}
               </div>
@@ -549,7 +562,7 @@ const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessi
                       <span className="w-16">
                         <DurationDisplay startedAt={record.startedAt} completedAt={record.completedAt} />
                       </span>
-                      <HandwritingBadges record={record} />
+                      <HandwritingBadges record={record} onClick={() => onQuizDetailClick?.(record)} />
                     </div>
                   ))}
               </div>
@@ -595,10 +608,24 @@ const StudentRow = React.memo(function StudentRow({ summary, onDeleteOrphanSessi
   );
 });
 
+// KST 기준 오늘 날짜 문자열
+const getKSTToday = (): string => {
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().split('T')[0];
+};
+
 // 메인 컴포넌트
 export function RealtimeKoreanV2() {
   const { academyId } = useAuthStore();
-  const { records, wordCounts, historicalAccuracy, checkInInfo, dictionarySearches, loading, connectionStatus, lastUpdate, deleteSession } = useRealtimeKorean(academyId);
+
+  // 날짜 선택 상태 (null = 오늘)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  const isToday = !selectedDate || selectedDate === getKSTToday();
+
+  const { records, wordCounts, historicalAccuracy, checkInInfo, dictionarySearches, loading, connectionStatus, lastUpdate, deleteSession } = useRealtimeKorean(academyId, selectedDate);
   // Presence 훅 (academyId 그대로 전달 - UUID 문자열)
   const { getPresence, connectionStatus: presenceStatus } = useStudentPresence(academyId);
 
@@ -613,6 +640,10 @@ export function RealtimeKoreanV2() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedVocaId, setSelectedVocaId] = useState(0);
   const [selectedWord, setSelectedWord] = useState('');
+
+  // 퀴즈 상세 Dialog 상태 (문장클리닉/내손내줄 공용) — ID로 저장하여 실시간 업데이트 반영
+  const [quizDetailOpen, setQuizDetailOpen] = useState(false);
+  const [quizDetailRecordId, setQuizDetailRecordId] = useState<string | null>(null);
 
   // 학생 진행현황 다이얼로그
   const [progressDialogOpen, setProgressDialogOpen] = useState(false);
@@ -678,6 +709,12 @@ export function RealtimeKoreanV2() {
       await deleteSession(record.id, record.learningType);
     }
   }, [deleteSession]);
+
+  // 퀴즈 상세 클릭 핸들러
+  const handleQuizDetailClick = useCallback((record: LearningRecord): void => {
+    setQuizDetailRecordId(record.id);
+    setQuizDetailOpen(true);
+  }, []);
 
   // 단어 클릭 핸들러
   const handleWordClick = useCallback((vocaId: number, word: string): void => {
@@ -851,7 +888,9 @@ export function RealtimeKoreanV2() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">실시간 국어 (v2)</h1>
-          <p className="text-gray-600 text-sm">학생들의 오늘 학습 현황을 실시간으로 확인합니다</p>
+          <p className="text-gray-600 text-sm">
+            {isToday ? '학생들의 오늘 학습 현황을 실시간으로 확인합니다' : '과거 날짜의 학습 기록을 조회합니다'}
+          </p>
         </div>
         <div className="flex items-center gap-4">
           <ConnectionStatusIndicator status={connectionStatus} />
@@ -862,9 +901,78 @@ export function RealtimeKoreanV2() {
               <span className="text-xs">접속현황</span>
             </div>
           )}
-          <Badge variant="outline" className="text-gray-600">
-            {new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
-          </Badge>
+          <div className="flex items-center gap-1">
+            {/* 이전 날짜 버튼 */}
+            <button
+              onClick={() => {
+                const current = selectedDate || getKSTToday();
+                const d = new Date(current + 'T00:00:00');
+                d.setDate(d.getDate() - 1);
+                setSelectedDate(d.toISOString().split('T')[0]);
+              }}
+              className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 cursor-pointer"
+              title="이전 날짜"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            {/* 날짜 배지 (클릭 시 달력 열림) */}
+            <Badge
+              variant="outline"
+              className={`cursor-pointer hover:bg-gray-50 ${!isToday ? 'bg-blue-50 text-blue-700 border-blue-200' : 'text-gray-600'}`}
+              onClick={() => dateInputRef.current?.showPicker()}
+            >
+              {(() => {
+                const dateStr = selectedDate || getKSTToday();
+                const [y, m, d] = dateStr.split('-').map(Number);
+                return `${y}년 ${m}월 ${d}일`;
+              })()}
+            </Badge>
+            {/* 다음 날짜 / 오늘로 돌아가기 */}
+            {!isToday && (
+              <button
+                onClick={() => setSelectedDate(null)}
+                className="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer"
+                title="오늘로 돌아가기"
+              >
+                오늘
+              </button>
+            )}
+            {!isToday && (
+              <button
+                onClick={() => {
+                  const current = selectedDate || getKSTToday();
+                  const d = new Date(current + 'T00:00:00');
+                  d.setDate(d.getDate() + 1);
+                  const next = d.toISOString().split('T')[0];
+                  if (next >= getKSTToday()) {
+                    setSelectedDate(null);
+                  } else {
+                    setSelectedDate(next);
+                  }
+                }}
+                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 cursor-pointer"
+                title="다음 날짜"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+            {/* 숨겨진 네이티브 date input */}
+            <input
+              ref={dateInputRef}
+              type="date"
+              className="absolute w-0 h-0 opacity-0 pointer-events-none"
+              value={selectedDate || getKSTToday()}
+              max={getKSTToday()}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === getKSTToday()) {
+                  setSelectedDate(null);
+                } else if (val) {
+                  setSelectedDate(val);
+                }
+              }}
+            />
+          </div>
           {lastUpdate && (
             <span className="text-xs text-gray-400">
               마지막 업데이트: {formatTime(lastUpdate.toISOString())}
@@ -884,7 +992,7 @@ export function RealtimeKoreanV2() {
       {!loading && visibleSummaries.length === 0 && (
         <Card className="p-8 text-center text-gray-500">
           {studentSummaries.length === 0
-            ? '오늘 학습 기록이 없습니다.'
+            ? (isToday ? '오늘 학습 기록이 없습니다.' : '해당 날짜에 학습 기록이 없습니다.')
             : '모든 학생을 닫았습니다. 새 업데이트가 있으면 다시 표시됩니다.'}
         </Card>
       )}
@@ -901,11 +1009,19 @@ export function RealtimeKoreanV2() {
               onWordClick={handleWordClick}
               deletedVocaIds={deletedVocaIds}
               onStudentNameClick={handleStudentNameClick}
+              onQuizDetailClick={handleQuizDetailClick}
               dictionarySearches={dictionarySearches.get(summary.studentId)}
             />
           ))}
         </div>
       )}
+
+      {/* 퀴즈 상세 Dialog (문장클리닉/내손내줄 공용) — records에서 최신 데이터 참조 */}
+      <QuizDetailDialog
+        open={quizDetailOpen}
+        onOpenChange={setQuizDetailOpen}
+        record={quizDetailRecordId ? records.find(r => r.id === quizDetailRecordId) || null : null}
+      />
 
       {/* 단어팡 상세 Dialog */}
       <WordPangDetailDialog

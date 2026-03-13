@@ -47,19 +47,29 @@ export async function GET(request: Request) {
   try {
     const supabase = createServerClient();
 
-    // academy_id 파라미터로 학원별 필터링
+    // 파라미터 파싱
     const { searchParams } = new URL(request.url);
     const academyId = searchParams.get('academy_id');
+    const dateParam = searchParams.get('date'); // YYYY-MM-DD (KST 기준), 없으면 오늘
 
-    // 한국 시간(KST, UTC+9) 기준 오늘
+    // 한국 시간(KST, UTC+9) 기준 날짜 계산
     const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-    const now = new Date();
 
-    // KST 기준 현재 날짜 계산
-    const kstNow = new Date(now.getTime() + KST_OFFSET_MS);
-    const kstYear = kstNow.getUTCFullYear();
-    const kstMonth = kstNow.getUTCMonth();
-    const kstDate = kstNow.getUTCDate();
+    let kstYear: number, kstMonth: number, kstDate: number;
+    if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      // 특정 날짜 지정
+      const [y, m, d] = dateParam.split('-').map(Number);
+      kstYear = y;
+      kstMonth = m - 1;
+      kstDate = d;
+    } else {
+      // 오늘 (KST 기준)
+      const now = new Date();
+      const kstNow = new Date(now.getTime() + KST_OFFSET_MS);
+      kstYear = kstNow.getUTCFullYear();
+      kstMonth = kstNow.getUTCMonth();
+      kstDate = kstNow.getUTCDate();
+    }
 
     // KST 오늘 00:00:00을 UTC로 변환
     const startOfDay = new Date(Date.UTC(kstYear, kstMonth, kstDate, 0, 0, 0, 0) - KST_OFFSET_MS);
@@ -306,11 +316,20 @@ export async function GET(request: Request) {
       }
     }
 
-    // 내손내줄 세션별 실제 정답 수 집계 + 개별 문제 결과
+    // 내손내줄 세션별 실제 정답 수 집계 + 개별 문제 결과 (상세 포함)
     const handwritingResultMap = new Map<number, {
       totalItems: number;
       correctCount: number;
-      quizzes: Array<{ sortOrder: number; isCorrect: boolean | null }>;
+      quizzes: Array<{
+        quizId?: string;
+        sortOrder: number;
+        question?: string;
+        options?: string[];
+        correctAnswer?: number;
+        selectedAnswer?: number | null;
+        isCorrect: boolean | null;
+        explanation?: string;
+      }>;
     }>();
     if (testSessionData) {
       const handwritingSessionIds = testSessionData
@@ -318,22 +337,38 @@ export async function GET(request: Request) {
         .map(r => r.id);
 
       if (handwritingSessionIds.length > 0) {
-        // item_uuid 포함하여 조회
+        // item_uuid, selected_answer 포함하여 조회
         const { data: hwResultData } = await supabase
           .from('test_result')
-          .select('session_id, is_correct, item_uuid')
+          .select('session_id, is_correct, item_uuid, selected_answer')
           .eq('test_type', 'handwriting')
           .in('session_id', handwritingSessionIds);
 
-        // item_uuid로 handwriting_quiz의 sort_order 조회
+        // item_uuid로 handwriting_quiz 전체 상세 조회
         const itemUuids = hwResultData?.map(r => r.item_uuid).filter(Boolean) || [];
-        let quizSortMap = new Map<string, number>();
+        const quizDetailMap = new Map<string, {
+          sortOrder: number;
+          question: string;
+          options: string[];
+          correctAnswer: number;
+          explanation: string;
+        }>();
         if (itemUuids.length > 0) {
           const { data: quizData } = await supabase
             .from('handwriting_quiz')
-            .select('id, sort_order')
+            .select('id, sort_order, question, option_1, option_2, option_3, option_4, option_5, correct_answer, explanation')
             .in('id', itemUuids);
-          quizData?.forEach(q => quizSortMap.set(q.id, q.sort_order ?? 0));
+          quizData?.forEach(q => {
+            const options = [q.option_1, q.option_2, q.option_3, q.option_4].filter(Boolean);
+            if (q.option_5) options.push(q.option_5);
+            quizDetailMap.set(q.id, {
+              sortOrder: q.sort_order ?? 0,
+              question: q.question || '',
+              options,
+              correctAnswer: q.correct_answer ?? 0,
+              explanation: q.explanation || ''
+            });
+          });
         }
 
         if (hwResultData) {
@@ -345,15 +380,42 @@ export async function GET(request: Request) {
             const data = handwritingResultMap.get(sessionId)!;
             data.totalItems += 1;
             if (result.is_correct) data.correctCount += 1;
-            // 개별 문제 결과 추가
-            const sortOrder = result.item_uuid ? (quizSortMap.get(result.item_uuid) ?? 0) : 0;
-            data.quizzes.push({ sortOrder, isCorrect: result.is_correct });
+            // 퀴즈 상세 정보 포함
+            const quizDetail = result.item_uuid ? quizDetailMap.get(result.item_uuid) : undefined;
+            data.quizzes.push({
+              quizId: result.item_uuid || undefined,
+              sortOrder: quizDetail?.sortOrder ?? 0,
+              question: quizDetail?.question,
+              options: quizDetail?.options,
+              correctAnswer: quizDetail?.correctAnswer,
+              selectedAnswer: result.selected_answer ?? null,
+              isCorrect: result.is_correct,
+              explanation: quizDetail?.explanation
+            });
           }
           // 각 세션의 quizzes를 sort_order 순으로 정렬
           for (const [, data] of handwritingResultMap) {
             data.quizzes.sort((a, b) => a.sortOrder - b.sortOrder);
           }
         }
+      }
+    }
+
+    // 내손내줄 지문 본문 조회 (passage_id → content)
+    const hwPassageTextMap = new Map<string, string>();
+    if (testSessionData) {
+      const hwPassageIds = testSessionData
+        .filter(r => r.test_type === 'handwriting' && r.metadata?.passage_id)
+        .map(r => r.metadata.passage_id as string);
+      const uniquePassageIds = [...new Set(hwPassageIds)];
+      if (uniquePassageIds.length > 0) {
+        const { data: passageData } = await supabase
+          .from('handwriting_passage')
+          .select('id, content')
+          .in('id', uniquePassageIds);
+        passageData?.forEach(p => {
+          hwPassageTextMap.set(p.id, p.content || '');
+        });
       }
     }
 
@@ -434,7 +496,8 @@ export async function GET(request: Request) {
                   options: [q.option_1, q.option_2, q.option_3, q.option_4],
                   correctAnswer: q.correct_answer,
                   selectedAnswer: result?.selected_answer ?? null,
-                  isCorrect: result?.is_correct ?? null
+                  isCorrect: result?.is_correct ?? null,
+                  explanation: q.explanation || ''
                 };
               })
             });
@@ -471,6 +534,7 @@ export async function GET(request: Request) {
           ? {
             passageCode: metadata?.code_id || '-',
             passageId: metadata?.passage_id,
+            passageText: metadata?.passage_id ? hwPassageTextMap.get(metadata.passage_id) : undefined,
             quizzes: hwResult?.quizzes || []
           }
           : undefined;

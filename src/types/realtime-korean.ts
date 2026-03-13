@@ -37,6 +37,7 @@ export interface SentenceClinicV2Detail {
     correctAnswer: number;
     selectedAnswer: number | null;
     isCorrect: boolean | null;
+    explanation?: string;
   }>;
 }
 
@@ -50,14 +51,21 @@ export interface PassageQuizDetail {
 
 // 내손내줄 개별 문제 결과
 export interface HandwritingQuizResult {
-  sortOrder: number;       // 문제 순서 (1~5)
-  isCorrect: boolean | null; // 정답 여부 (null=미응답)
+  quizId?: string;              // handwriting_quiz.id (UUID)
+  sortOrder: number;            // 문제 순서 (1~5)
+  question?: string;            // 문제 텍스트
+  options?: string[];           // 선택지 (4~5개)
+  correctAnswer?: number;       // 정답 번호
+  selectedAnswer?: number | null; // 학생 선택
+  isCorrect: boolean | null;    // 정답 여부 (null=미응답)
+  explanation?: string;         // 해설
 }
 
 // 내손내줄 상세 정보
 export interface HandwritingDetail {
   passageCode: string;  // 지문 코드
   passageId?: string;   // 지문 ID (UUID)
+  passageText?: string; // 지문 본문
   quizzes?: HandwritingQuizResult[]; // 개별 문제 결과
 }
 
