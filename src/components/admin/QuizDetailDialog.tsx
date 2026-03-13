@@ -182,9 +182,8 @@ export function QuizDetailDialog({ open, onOpenChange, record }: QuizDetailDialo
     ? 'bg-purple-100 text-purple-700 border-purple-200'
     : 'bg-amber-100 text-amber-700 border-amber-200';
 
-  // 지문 텍스트
-  const passageText = isSentenceClinic ? detail?.text : hwDetail?.passageText;
-  const hasPassage = !!passageText;
+  // 내손내줄 지문 텍스트 (탭 UI 적용)
+  const hwPassageText = hwDetail?.passageText;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -200,7 +199,8 @@ export function QuizDetailDialog({ open, onOpenChange, record }: QuizDetailDialo
           </DialogTitle>
         </DialogHeader>
 
-        {hasPassage ? (
+        {isHandwriting && hwPassageText ? (
+          /* 내손내줄: 지문이 길어서 탭으로 분리 */
           <Tabs defaultValue="passage">
             <TabsList className="w-full">
               <TabsTrigger value="passage" className="flex-1">지문</TabsTrigger>
@@ -209,15 +209,25 @@ export function QuizDetailDialog({ open, onOpenChange, record }: QuizDetailDialo
               </TabsTrigger>
             </TabsList>
             <TabsContent value="passage" className="mt-3">
-              <PassageView text={passageText!} />
+              <PassageView text={hwPassageText} />
             </TabsContent>
             <TabsContent value="quiz" className="mt-3">
               <QuizList quizzes={quizzes} />
             </TabsContent>
           </Tabs>
         ) : (
-          // 지문이 없으면 퀴즈만 바로 표시
-          <QuizList quizzes={quizzes} />
+          /* 문장클리닉: 짧은 지문 + 문제를 한 화면에 */
+          <>
+            {isSentenceClinic && detail?.text && (
+              <div className="bg-gray-50 rounded-lg p-4 mb-2">
+                <p className="text-xs font-medium text-gray-500 mb-1">지문</p>
+                <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                  {detail.text}
+                </p>
+              </div>
+            )}
+            <QuizList quizzes={quizzes} />
+          </>
         )}
       </DialogContent>
     </Dialog>
